@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "25184120050",
+    "project_id": "merkado-go",
+    "storage_bucket": "merkado-go.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:25184120050:android:b5c99cebd2040dab5ef46b",
+        "android_client_info": {
+          "package_name": "com.merkadogo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAW3mmqsCQSL5ZLDbo86RVBwzDN2qmyhWo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:25184120050:android:418205228226f5dc5ef46b",
+        "android_client_info": {
+          "package_name": "com.merkadogo.merkado_go"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAW3mmqsCQSL5ZLDbo86RVBwzDN2qmyhWo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

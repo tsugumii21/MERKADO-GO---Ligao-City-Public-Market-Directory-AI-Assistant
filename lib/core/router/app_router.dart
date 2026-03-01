@@ -5,9 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/auth/presentation/get_started_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/email_verify_screen.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/stalls/presentation/stall_list_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
@@ -32,6 +34,12 @@ class AppRouter {
           builder: (context, state) => const SplashScreen(),
         ),
         
+        // Get Started Screen
+        GoRoute(
+          path: RouteNames.getStarted,
+          builder: (context, state) => const GetStartedScreen(),
+        ),
+        
         // Auth Routes
         GoRoute(
           path: RouteNames.login,
@@ -44,6 +52,10 @@ class AppRouter {
         GoRoute(
           path: RouteNames.verifyEmail,
           builder: (context, state) => const EmailVerifyScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.forgotPassword,
+          builder: (context, state) => const ForgotPasswordScreen(),
         ),
         
         // User Routes with Bottom Navigation
@@ -148,15 +160,17 @@ class AppRouter {
         final isVerifyingEmail = state.uri.toString() == RouteNames.verifyEmail;
         final isAdminLogin = state.uri.toString() == RouteNames.adminLogin;
 
-        // Allow splash, login, signup, and admin login without redirect
-        if (isOnSplash || isLoggingIn || isSigningUp || isAdminLogin) {
-          return null;
-        }
+          // Allow splash, get started, login, signup, forgot password without redirect
+          final isGetStarted = state.uri.toString() == RouteNames.getStarted;
+          final isForgotPassword = state.uri.toString() == RouteNames.forgotPassword;
+          if (isOnSplash || isGetStarted || isLoggingIn || isSigningUp || isForgotPassword || isAdminLogin) {
+            return null;
+          }
 
-        // Not authenticated -> login
-        if (user == null) {
-          return RouteNames.login;
-        }
+          // Not authenticated -> get started
+          if (user == null) {
+            return RouteNames.getStarted;
+          }
 
         // Email not verified -> verify screen
         if (!user.emailVerified && !isVerifyingEmail) {

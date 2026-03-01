@@ -1,35 +1,204 @@
-// TODO: Implement Firebase Auth repository
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../models/user_model.dart';
+import '../../../core/exceptions/auth_exception.dart';
 
-class AuthRepository {
+abstract class AuthRepository {
+  Stream<User?> get authStateChanges;
+  User? get currentUser;
+  
+  Future<UserCredential> signUp({
+    required String username,
+    required String fullName,
+    required String address,
+    required DateTime birthday,
+    required String email,
+    required String password,
+  });
+  
+  Future<UserCredential> signIn({
+    required String usernameOrEmail,
+    required String password,
+  });
+  
+  Future<void> signOut();
+  Future<void> sendPasswordReset(String email);
+  Future<void> sendVerificationEmail();
+  Future<bool> checkEmailVerified();
+  Future<UserModel?> getUserData(String uid);
+}
+
+class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
 
-  AuthRepository(this._auth, this._firestore);
+  FirebaseAuthRepository(this._auth, this._firestore);
 
-  // TODO: Implement auth methods
+  @override
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-  
-  Future<void> signUp({
+
+  @override
+  User? get currentUser => _auth.currentUser;
+
+  @override
+  Future<UserCredential> signUp({
     required String username,
+    required String fullName,
+    required String address,
+    required DateTime birthday,
     required String email,
     required String password,
   }) async {
-    // TODO: Implement signup with Firestore user creation
-    throw UnimplementedError();
+    try {
+      final usernameDoc = await _firestore
+          .collection('usernames')
+          .doc(username.toLowerCase())
+          .get();
+
+      if (usernameDoc.exists) {
+        throw AuthException.fromFirebase('username-already-taken');
+      }
+
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = userCredential.user!;
+      final now = DateTime.now();
+
+      final userModel = UserModel(
+        uid: user.uid,
+        username: username,
+        fullName: fullName,
+        email: email,
+        address: address,
+        birthday: birthday,
+        role: 'user',
+        createdAt: now,
+      );
+
+      await _firestore.collection('users').doc(user.uid).set(userModel.toFirestore());
+
+      await _firestore.collection('usernames').doc(username.toLowerCase()).set({
+        'uid': user.uid,
+        'createdAt': Timestamp.fromDate(now),
+      });
+
+      await user.sendEmailVerification();
+
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      throw AuthException.fromFirebase(e.code);
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException(
+        code: 'unknown',
+        message: 'An error occurred during sign up.',
+        messageFil: 'May nangyaring error sa pag-sign up.',
+      );
+    }
   }
-  
-  Future<void> signIn({
+
+  @override
+  Future<UserCredential> signIn({
     required String usernameOrEmail,
     required String password,
   }) async {
-    // TODO: Implement login (check if username or email)
-    throw UnimplementedError();
+    try {
+      String email = usernameOrEmail;
+
+      if (!usernameOrEmail.contains('@')) {
+        final usernameDoc = await _firestore
+            .collection('usernames')
+            .doc(usernameOrEmail.toLowerCase())
+            .get();
+
+        if (!usernameDoc.exists) {
+          throw AuthException.fromFirebase('username-not-found');
+        }
+
+        final uid = usernameDoc.data()?['uid'] as String;
+        final userDoc = await _firestore.collection('users').doc(uid).get();
+        email = userDoc.data()?['email'] as String;
+      }
+
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      throw AuthException.fromFirebase(e.code);
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException(
+        code: 'unknown',
+        message: 'An error occurred during sign in.',
+        messageFil: 'May nangyaring error sa pag-sign in.',
+      );
+    }
   }
-  
+
+  @override
   Future<void> signOut() async {
-    // TODO: Implement logout
-    throw UnimplementedError();
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      throw AuthException(
+        code: 'sign-out-failed',
+        message: 'Failed to sign out.',
+        messageFil: 'Hindi nag-sign out.',
+      );
+    }
+  }
+
+  @override
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw AuthException.fromFirebase(e.code);
+    }
+  }
+
+  @override
+  Future<void> sendVerificationEmail() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+      }
+    } catch (e) {
+      throw AuthException(
+        code: 'verification-failed',
+        message: 'Failed to send verification email.',
+        messageFil: 'Hindi nag-send ng verification email.',
+      );
+    }
+  }
+
+  @override
+  Future<bool> checkEmailVerified() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return false;
+      await user.reload();
+      return _auth.currentUser?.emailVerified ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<UserModel?> getUserData(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (!doc.exists) return null;
+      return UserModel.fromFirestore(doc);
+    } catch (e) {
+      return null;
+    }
   }
 }

@@ -45,7 +45,7 @@ android {
 
     defaultConfig {
         applicationId "com.merkadogo.app"
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion 30
         targetSdk 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

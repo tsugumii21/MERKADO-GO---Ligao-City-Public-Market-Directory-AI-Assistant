@@ -1,8 +1,12 @@
-// TODO: Define User Model for shared use
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserModel {
   final String uid;
   final String username;
+  final String fullName;
   final String email;
+  final String address;
+  final DateTime birthday;
   final String? profilePhotoUrl;
   final String role;
   final List<String> favoriteStalls;
@@ -12,7 +16,10 @@ class UserModel {
   UserModel({
     required this.uid,
     required this.username,
+    required this.fullName,
     required this.email,
+    required this.address,
+    required this.birthday,
     this.profilePhotoUrl,
     required this.role,
     this.favoriteStalls = const [],
@@ -20,12 +27,61 @@ class UserModel {
     required this.createdAt,
   });
 
-  // TODO: Add fromJson, toJson, copyWith methods
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    throw UnimplementedError();
+  factory UserModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return UserModel(
+      uid: doc.id,
+      username: data['username'] ?? '',
+      fullName: data['fullName'] ?? '',
+      email: data['email'] ?? '',
+      address: data['address'] ?? '',
+      birthday: (data['birthday'] as Timestamp).toDate(),
+      profilePhotoUrl: data['profilePhotoUrl'],
+      role: data['role'] ?? 'user',
+      favoriteStalls: List<String>.from(data['favoriteStalls'] ?? []),
+      fcmToken: data['fcmToken'],
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+    );
   }
 
-  Map<String, dynamic> toJson() {
-    throw UnimplementedError();
+  Map<String, dynamic> toFirestore() {
+    return {
+      'username': username,
+      'fullName': fullName,
+      'email': email,
+      'address': address,
+      'birthday': Timestamp.fromDate(birthday),
+      'profilePhotoUrl': profilePhotoUrl,
+      'role': role,
+      'favoriteStalls': favoriteStalls,
+      'fcmToken': fcmToken,
+      'createdAt': Timestamp.fromDate(createdAt),
+    };
+  }
+
+  UserModel copyWith({
+    String? username,
+    String? fullName,
+    String? email,
+    String? address,
+    DateTime? birthday,
+    String? profilePhotoUrl,
+    String? role,
+    List<String>? favoriteStalls,
+    String? fcmToken,
+  }) {
+    return UserModel(
+      uid: uid,
+      username: username ?? this.username,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      address: address ?? this.address,
+      birthday: birthday ?? this.birthday,
+      profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
+      role: role ?? this.role,
+      favoriteStalls: favoriteStalls ?? this.favoriteStalls,
+      fcmToken: fcmToken ?? this.fcmToken,
+      createdAt: createdAt,
+    );
   }
 }

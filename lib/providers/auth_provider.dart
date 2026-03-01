@@ -1,27 +1,43 @@
-// TODO: Implement Auth Provider (Riverpod)
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/data/auth_repository.dart';
+import '../models/user_model.dart';
+import 'firebase_providers.dart';
 
-// Auth state stream provider
-final authStateProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final auth = ref.watch(firebaseAuthProvider);
+  final firestore = ref.watch(firestoreProvider);
+  return FirebaseAuthRepository(auth, firestore);
 });
 
-// Current user provider
+final authStateProvider = StreamProvider<User?>((ref) {
+  final authRepo = ref.watch(authRepositoryProvider);
+  return authRepo.authStateChanges;
+});
+
 final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(authStateProvider).value;
 });
 
-// Is user authenticated provider
 final isAuthenticatedProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   return user != null;
 });
 
-// Is email verified provider
 final isEmailVerifiedProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   return user?.emailVerified ?? false;
 });
 
-// TODO: Add user role provider (fetch from Firestore)
+final currentUserDataProvider = FutureProvider<UserModel?>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+  
+  final authRepo = ref.watch(authRepositoryProvider);
+  return await authRepo.getUserData(user.uid);
+});
+
+final userRoleProvider = FutureProvider<String?>((ref) async {
+  final userData = await ref.watch(currentUserDataProvider.future);
+  return userData?.role;
+});

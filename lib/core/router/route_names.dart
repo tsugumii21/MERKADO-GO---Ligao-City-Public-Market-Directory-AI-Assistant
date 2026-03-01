@@ -2,6 +2,7 @@
 class RouteNames {
   // Auth routes
   static const String splash = '/';
+  static const String getStarted = '/get-started';
   static const String login = '/login';
   static const String signup = '/signup';
   static const String verifyEmail = '/verify-email';

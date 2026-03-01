@@ -1,0 +1,17 @@
+// TODO: Implement Admin Login Screen
+import 'package:flutter/material.dart';
+
+class AdminLoginScreen extends StatelessWidget {
+  const AdminLoginScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: Implement admin login UI
+    return Scaffold(
+      appBar: AppBar(title: const Text('Admin Login')),
+      body: const Center(
+        child: Text('🔐 Admin Login Screen - TODO'),
+      ),
+    );
+  }
+}

@@ -28,8 +28,7 @@ def googleMapsApiKey = project.findProperty('GOOGLE_MAPS_API_KEY') ?: 'YOUR_API_
 
 android {
     namespace "com.merkadogo.app"
-    compileSdk 34
-    ndkVersion "25.1.8937393"
+    compileSdk 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -46,8 +45,8 @@ android {
 
     defaultConfig {
         applicationId "com.merkadogo.app"
-        minSdk 21
-        targetSdk 34
+        minSdkVersion flutter.minSdkVersion
+        targetSdk 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true

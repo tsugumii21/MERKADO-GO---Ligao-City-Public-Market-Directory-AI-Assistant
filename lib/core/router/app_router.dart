@@ -1,0 +1,223 @@
+// GoRouter configuration with role-based routing
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/signup_screen.dart';
+import '../../features/auth/presentation/email_verify_screen.dart';
+import '../../features/map/presentation/map_screen.dart';
+import '../../features/stalls/presentation/stall_list_screen.dart';
+import '../../features/chat/presentation/chat_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/map/presentation/report_screen.dart';
+import '../../features/admin/presentation/admin_login_screen.dart';
+import '../../features/admin/presentation/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/manage_stalls_screen.dart';
+import '../../features/admin/presentation/add_edit_stall_screen.dart';
+import '../../features/admin/presentation/reports_screen.dart';
+import 'route_names.dart';
+
+class AppRouter {
+  static GoRouter router() {
+    return GoRouter(
+      initialLocation: RouteNames.splash,
+      routes: [
+        // Splash Screen
+        GoRoute(
+          path: RouteNames.splash,
+          builder: (context, state) => const SplashScreen(),
+        ),
+        
+        // Auth Routes
+        GoRoute(
+          path: RouteNames.login,
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.signup,
+          builder: (context, state) => const SignupScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.verifyEmail,
+          builder: (context, state) => const EmailVerifyScreen(),
+        ),
+        
+        // User Routes with Bottom Navigation
+        ShellRoute(
+          builder: (context, state, child) {
+            return Scaffold(
+              body: child,
+              bottomNavigationBar: BottomNavigationBar(
+                currentIndex: _getSelectedIndex(state.uri.toString()),
+                onTap: (index) => _onItemTapped(index, context),
+                type: BottomNavigationBarType.fixed,
+                selectedItemColor: const Color(0xFF1B5E20),
+                unselectedItemColor: Colors.grey,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.map),
+                    label: 'Map',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.store),
+                    label: 'Stalls',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.chat),
+                    label: 'Chat',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person),
+                    label: 'Profile',
+                  ),
+                ],
+              ),
+            );
+          },
+          routes: [
+            GoRoute(
+              path: RouteNames.home,
+              builder: (context, state) => const MapScreen(),
+            ),
+            GoRoute(
+              path: RouteNames.stalls,
+              builder: (context, state) => const StallListScreen(),
+            ),
+            GoRoute(
+              path: RouteNames.chat,
+              builder: (context, state) => const ChatScreen(),
+            ),
+            GoRoute(
+              path: RouteNames.profile,
+              builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
+        ),
+        
+        // Other User Routes
+        GoRoute(
+          path: RouteNames.editProfile,
+          builder: (context, state) => const EditProfileScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.reportStall,
+          builder: (context, state) {
+            final stallId = state.pathParameters['id'] ?? '';
+            return ReportScreen(stallId: stallId);
+          },
+        ),
+        
+        // Admin Routes
+        GoRoute(
+          path: RouteNames.adminLogin,
+          builder: (context, state) => const AdminLoginScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.adminDashboard,
+          builder: (context, state) => const AdminDashboardScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.adminStalls,
+          builder: (context, state) => const ManageStallsScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.adminAddStall,
+          builder: (context, state) => const AddEditStallScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.adminEditStall,
+          builder: (context, state) {
+            final stallId = state.pathParameters['id'];
+            return AddEditStallScreen(stallId: stallId);
+          },
+        ),
+        GoRoute(
+          path: RouteNames.adminReports,
+          builder: (context, state) => const ReportsScreen(),
+        ),
+      ],
+      redirect: (context, state) async {
+        final user = FirebaseAuth.instance.currentUser;
+        final isLoggingIn = state.uri.toString() == RouteNames.login;
+        final isSigningUp = state.uri.toString() == RouteNames.signup;
+        final isOnSplash = state.uri.toString() == RouteNames.splash;
+        final isVerifyingEmail = state.uri.toString() == RouteNames.verifyEmail;
+        final isAdminLogin = state.uri.toString() == RouteNames.adminLogin;
+
+        // Allow splash, login, signup, and admin login without redirect
+        if (isOnSplash || isLoggingIn || isSigningUp || isAdminLogin) {
+          return null;
+        }
+
+        // Not authenticated -> login
+        if (user == null) {
+          return RouteNames.login;
+        }
+
+        // Email not verified -> verify screen
+        if (!user.emailVerified && !isVerifyingEmail) {
+          return RouteNames.verifyEmail;
+        }
+
+        // Check user role from Firestore
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+          if (userDoc.exists) {
+            final role = userDoc.data()?['role'] as String?;
+
+            // Admin role -> admin dashboard
+            if (role == 'admin' && !state.uri.toString().startsWith('/admin')) {
+              return RouteNames.adminDashboard;
+            }
+
+            // Regular user role -> home
+            if (role == 'user' && state.uri.toString().startsWith('/admin')) {
+              return RouteNames.home;
+            }
+          }
+        } catch (e) {
+          // Error fetching role, default to home
+          return RouteNames.home;
+        }
+
+        return null;
+      },
+    );
+  }
+
+  // Helper to get selected bottom nav index
+  static int _getSelectedIndex(String location) {
+    if (location.startsWith(RouteNames.home)) return 0;
+    if (location.startsWith(RouteNames.stalls)) return 1;
+    if (location.startsWith(RouteNames.chat)) return 2;
+    if (location.startsWith(RouteNames.profile)) return 3;
+    return 0;
+  }
+
+  // Handle bottom nav tap
+  static void _onItemTapped(int index, BuildContext context) {
+    switch (index) {
+      case 0:
+        context.go(RouteNames.home);
+        break;
+      case 1:
+        context.go(RouteNames.stalls);
+        break;
+      case 2:
+        context.go(RouteNames.chat);
+        break;
+      case 3:
+        context.go(RouteNames.profile);
+        break;
+    }
+  }
+}
+

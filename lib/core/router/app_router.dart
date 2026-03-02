@@ -21,6 +21,7 @@ import '../../features/admin/presentation/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/manage_stalls_screen.dart';
 import '../../features/admin/presentation/add_edit_stall_screen.dart';
 import '../../features/admin/presentation/reports_screen.dart';
+import '../widgets/main_shell.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -58,56 +59,46 @@ class AppRouter {
           builder: (context, state) => const ForgotPasswordScreen(),
         ),
         
-        // User Routes with Bottom Navigation
-        ShellRoute(
-          builder: (context, state, child) {
-            return Scaffold(
-              body: child,
-              bottomNavigationBar: BottomNavigationBar(
-                currentIndex: _getSelectedIndex(state.uri.toString()),
-                onTap: (index) => _onItemTapped(index, context),
-                type: BottomNavigationBarType.fixed,
-                selectedItemColor: const Color(0xFF1B5E20),
-                unselectedItemColor: Colors.grey,
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.map),
-                    label: 'Map',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.store),
-                    label: 'Stalls',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.chat),
-                    label: 'Chat',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person),
-                    label: 'Profile',
-                  ),
-                ],
-              ),
-            );
+        // User Routes with Bottom Navigation (3 tabs: Map, Stalls, Profile)
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return MainShell(navigationShell: navigationShell);
           },
-          routes: [
-            GoRoute(
-              path: RouteNames.home,
-              builder: (context, state) => const MapScreen(),
+          branches: [
+            // Branch 0: Map
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: RouteNames.home,
+                  builder: (context, state) => const MapScreen(),
+                ),
+              ],
             ),
-            GoRoute(
-              path: RouteNames.stalls,
-              builder: (context, state) => const StallListScreen(),
+            // Branch 1: Stalls
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: RouteNames.stalls,
+                  builder: (context, state) => const StallListScreen(),
+                ),
+              ],
             ),
-            GoRoute(
-              path: RouteNames.chat,
-              builder: (context, state) => const ChatScreen(),
-            ),
-            GoRoute(
-              path: RouteNames.profile,
-              builder: (context, state) => const ProfileScreen(),
+            // Branch 2: Profile
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: RouteNames.profile,
+                  builder: (context, state) => const ProfileScreen(),
+                ),
+              ],
             ),
           ],
+        ),
+        
+        // Chat Screen (outside bottom nav)
+        GoRoute(
+          path: RouteNames.chat,
+          builder: (context, state) => const ChatScreen(),
         ),
         
         // Other User Routes
@@ -159,18 +150,19 @@ class AppRouter {
         final isOnSplash = state.uri.toString() == RouteNames.splash;
         final isVerifyingEmail = state.uri.toString() == RouteNames.verifyEmail;
         final isAdminLogin = state.uri.toString() == RouteNames.adminLogin;
+        final isGetStarted = state.uri.toString() == RouteNames.getStarted;
+        final isForgotPassword = state.uri.toString() == RouteNames.forgotPassword;
 
-          // Allow splash, get started, login, signup, forgot password without redirect
-          final isGetStarted = state.uri.toString() == RouteNames.getStarted;
-          final isForgotPassword = state.uri.toString() == RouteNames.forgotPassword;
-          if (isOnSplash || isGetStarted || isLoggingIn || isSigningUp || isForgotPassword || isAdminLogin) {
-            return null;
-          }
+        // Allow splash, get started, login, signup, forgot password without redirect
+        if (isOnSplash || isGetStarted || isLoggingIn || isSigningUp || 
+            isForgotPassword || isAdminLogin) {
+          return null;
+        }
 
-          // Not authenticated -> get started
-          if (user == null) {
-            return RouteNames.getStarted;
-          }
+        // Not authenticated -> get started
+        if (user == null) {
+          return RouteNames.getStarted;
+        }
 
         // Email not verified -> verify screen
         if (!user.emailVerified && !isVerifyingEmail) {
@@ -206,32 +198,4 @@ class AppRouter {
       },
     );
   }
-
-  // Helper to get selected bottom nav index
-  static int _getSelectedIndex(String location) {
-    if (location.startsWith(RouteNames.home)) return 0;
-    if (location.startsWith(RouteNames.stalls)) return 1;
-    if (location.startsWith(RouteNames.chat)) return 2;
-    if (location.startsWith(RouteNames.profile)) return 3;
-    return 0;
-  }
-
-  // Handle bottom nav tap
-  static void _onItemTapped(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        context.go(RouteNames.home);
-        break;
-      case 1:
-        context.go(RouteNames.stalls);
-        break;
-      case 2:
-        context.go(RouteNames.chat);
-        break;
-      case 3:
-        context.go(RouteNames.profile);
-        break;
-    }
-  }
 }
-

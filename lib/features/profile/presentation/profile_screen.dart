@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/theme_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -21,14 +22,14 @@ class ProfileScreen extends ConsumerWidget {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF1B5E20),
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to sign out?',
           style: GoogleFonts.poppins(
             fontSize: 14,
-            color: const Color(0xFF757575),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         actions: [
@@ -39,7 +40,7 @@ class ProfileScreen extends ConsumerWidget {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF9E9E9E),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -50,7 +51,7 @@ class ProfileScreen extends ConsumerWidget {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFFD32F2F),
+                color: Theme.of(context).colorScheme.error,
               ),
             ),
           ),
@@ -73,7 +74,7 @@ class ProfileScreen extends ConsumerWidget {
                 'Failed to sign out. Please try again.',
                 style: GoogleFonts.poppins(fontSize: 13),
               ),
-              backgroundColor: const Color(0xFFD32F2F),
+              backgroundColor: Theme.of(context).colorScheme.error,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -89,12 +90,15 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authRepositoryProvider).currentUser;
     final email = user?.email ?? 'No email';
+    final themeMode = ref.watch(themeModeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: Text(
           'Profile',
           style: GoogleFonts.poppins(
@@ -115,17 +119,17 @@ class ProfileScreen extends ConsumerWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F8E9),
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFF2E7D32),
+                    color: Theme.of(context).colorScheme.primary,
                     width: 3,
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_rounded,
                   size: 50,
-                  color: Color(0xFF2E7D32),
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
 
@@ -137,7 +141,7 @@ class ProfileScreen extends ConsumerWidget {
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF1B5E20),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -149,11 +153,69 @@ class ProfileScreen extends ConsumerWidget {
                 '👤 Profile Screen - TODO',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: const Color(0xFF9E9E9E),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
 
               const SizedBox(height: 48),
+
+              // Dark Mode Toggle (Temporary for testing)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          isDarkMode ? 'Dark Mode' : 'Light Mode',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: isDarkMode,
+                      onChanged: (value) {
+                        ref.read(themeModeProvider.notifier).state =
+                            value ? ThemeMode.dark : ThemeMode.light;
+                      },
+                      activeColor: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Info text
+              Text(
+                'Toggle to test dark mode',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+
+              const SizedBox(height: 32),
 
               // Sign Out Button
               SizedBox(
@@ -162,9 +224,9 @@ class ProfileScreen extends ConsumerWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => _handleSignOut(context, ref),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFD32F2F),
-                    side: const BorderSide(
-                      color: Color(0xFFD32F2F),
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
                       width: 2,
                     ),
                     shape: RoundedRectangleBorder(

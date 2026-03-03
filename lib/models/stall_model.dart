@@ -1,4 +1,5 @@
-// TODO: Define Stall Model for shared use
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class StallModel {
   final String stallId;
   final String name;
@@ -30,12 +31,97 @@ class StallModel {
     required this.updatedAt,
   });
 
-  // TODO: Add fromJson, toJson, copyWith methods
-  factory StallModel.fromJson(Map<String, dynamic> json) {
-    throw UnimplementedError();
+  // Create StallModel from Firestore document
+  factory StallModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    
+    return StallModel(
+      stallId: doc.id,
+      name: data['name'] as String? ?? '',
+      category: data['category'] as String? ?? '',
+      products: List<String>.from(data['products'] as List<dynamic>? ?? []),
+      address: data['address'] as String? ?? '',
+      photoUrls: List<String>.from(data['photoUrls'] as List<dynamic>? ?? []),
+      openTime: data['openTime'] as String? ?? '06:00',
+      closeTime: data['closeTime'] as String? ?? '18:00',
+      daysOpen: List<String>.from(data['daysOpen'] as List<dynamic>? ?? []),
+      latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
+      isActive: data['isActive'] as bool? ?? true,
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
   }
 
-  Map<String, dynamic> toJson() {
-    throw UnimplementedError();
+  // Convert StallModel to Firestore document
+  Map<String, dynamic> toFirestore() {
+    return {
+      'name': name,
+      'category': category,
+      'products': products,
+      'address': address,
+      'photoUrls': photoUrls,
+      'openTime': openTime,
+      'closeTime': closeTime,
+      'daysOpen': daysOpen,
+      'latitude': latitude,
+      'longitude': longitude,
+      'isActive': isActive,
+      'updatedAt': Timestamp.fromDate(updatedAt),
+    };
+  }
+
+  // Create a copy with updated fields
+  StallModel copyWith({
+    String? stallId,
+    String? name,
+    String? category,
+    List<String>? products,
+    String? address,
+    List<String>? photoUrls,
+    String? openTime,
+    String? closeTime,
+    List<String>? daysOpen,
+    double? latitude,
+    double? longitude,
+    bool? isActive,
+    DateTime? updatedAt,
+  }) {
+    return StallModel(
+      stallId: stallId ?? this.stallId,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      products: products ?? this.products,
+      address: address ?? this.address,
+      photoUrls: photoUrls ?? this.photoUrls,
+      openTime: openTime ?? this.openTime,
+      closeTime: closeTime ?? this.closeTime,
+      daysOpen: daysOpen ?? this.daysOpen,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isActive: isActive ?? this.isActive,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'StallModel(stallId: $stallId, name: $name, category: $category, products: $products)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+  
+    return other is StallModel &&
+      other.stallId == stallId &&
+      other.name == name &&
+      other.category == category;
+  }
+
+  @override
+  int get hashCode {
+    return stallId.hashCode ^
+      name.hashCode ^
+      category.hashCode;
   }
 }

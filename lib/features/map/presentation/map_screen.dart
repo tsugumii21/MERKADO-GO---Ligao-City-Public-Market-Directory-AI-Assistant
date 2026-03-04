@@ -1,10 +1,12 @@
 // Part 6: Interactive Market Map with camera bounds locked to market area
+// Part 7: Updated to use StallDetailSheet with full features
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
+import '../../stalls/presentation/stall_detail_sheet.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -125,6 +127,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     setState(() {
       _selectedStall = stall;
     });
+    
+    // Show full stall detail sheet
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StallDetailSheet(
+        stall: stall,
+        onClose: () {
+          Navigator.of(context).pop();
+          setState(() {
+            _selectedStall = null;
+          });
+        },
+      ),
+    );
   }
 
   void _onSearchChanged(String query) {
@@ -607,261 +625,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ),
-              
-              // Draggable stall detail sheet
-              if (_selectedStall != null)
-                DraggableScrollableSheet(
-                  initialChildSize: 0.35,
-                  minChildSize: 0.35,
-                  maxChildSize: 0.85,
-                  builder: (context, scrollController) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(24),
-                          topRight: Radius.circular(24),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 30,
-                            offset: const Offset(0, -4),
-                          ),
-                        ],
-                      ),
-                      child: ListView(
-                        controller: scrollController,
-                        padding: EdgeInsets.zero,
-                        children: [
-                          // Drag handle
-                          Center(
-                            child: Container(
-                              margin: const EdgeInsets.only(top: 12, bottom: 8),
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE0E0E0),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ),
-                          
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Close button and category badge
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.primaryContainer,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.store_rounded,
-                                            size: 14,
-                                            color: colorScheme.primary,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _selectedStall!.category,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: colorScheme.primary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    IconButton(
-                                      icon: const Icon(Icons.close_rounded),
-                                      onPressed: () {
-                                        setState(() {
-                                          _selectedStall = null;
-                                        });
-                                      },
-                                      color: const Color(0xFF757575),
-                                    ),
-                                  ],
-                                ),
-                                
-                                const SizedBox(height: 12),
-                                
-                                // Stall name
-                                Text(
-                                  _selectedStall!.name,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF1B5E20),
-                                    height: 1.2,
-                                  ),
-                                ),
-                                
-                                const SizedBox(height: 8),
-                                
-                                // Address
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.location_on_outlined,
-                                      size: 16,
-                                      color: Color(0xFF757575),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        _selectedStall!.address,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          color: const Color(0xFF757575),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                
-                                const SizedBox(height: 12),
-                                
-                                // Operating hours
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F5F5),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.access_time_rounded,
-                                        size: 18,
-                                        color: Color(0xFF1B5E20),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            '${_selectedStall!.openTime} - ${_selectedStall!.closeTime}',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF212121),
-                                            ),
-                                          ),
-                                          Text(
-                                            _selectedStall!.daysOpen.join(', '),
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 11,
-                                              color: const Color(0xFF757575),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                
-                                const SizedBox(height: 16),
-                                
-                                // Products section
-                                Text(
-                                  'Products Available',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF212121),
-                                  ),
-                                ),
-                                
-                                const SizedBox(height: 8),
-                                
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: _selectedStall!.products.map((product) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        border: Border.all(
-                                          color: const Color(0xFFE0E0E0),
-                                          width: 1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        product,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF424242),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                                
-                                const SizedBox(height: 20),
-                                
-                                // View full details button
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 50,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      // TODO: Navigate to stall detail screen (Part 7)
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Full stall details coming in Part 7!',
-                                            style: GoogleFonts.poppins(),
-                                          ),
-                                          backgroundColor: colorScheme.primary,
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: colorScheme.primary,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'View Full Details',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
             ],
           );
         },

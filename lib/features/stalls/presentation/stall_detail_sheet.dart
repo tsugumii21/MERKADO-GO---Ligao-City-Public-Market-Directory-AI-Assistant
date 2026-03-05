@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/stall_model.dart';
-import '../../../providers/auth_provider.dart';
+import '../../../providers/stall_provider.dart';
+import '../../../providers/favorite_provider.dart';
 import '../../report/presentation/report_screen.dart';
 
 class StallDetailSheet extends ConsumerStatefulWidget {
@@ -25,15 +25,12 @@ class StallDetailSheet extends ConsumerStatefulWidget {
 class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
     with SingleTickerProviderStateMixin {
   int _currentPhotoIndex = 0;
-  bool _isFavorite = false;
-  bool _isTogglingFavorite = false;
   late AnimationController _favoriteAnimationController;
   late Animation<double> _favoriteScaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _checkIfFavorite();
     
     // Favorite button bounce animation
     _favoriteAnimationController = AnimationController(
@@ -41,8 +38,8 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
       vsync: this,
     );
     _favoriteScaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.4), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.4, end: 1.0), weight: 50),
     ]).animate(CurvedAnimation(
       parent: _favoriteAnimationController,
       curve: Curves.easeOut,
@@ -53,112 +50,6 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
   void dispose() {
     _favoriteAnimationController.dispose();
     super.dispose();
-  }
-
-  Future<void> _checkIfFavorite() async {
-    final user = ref.read(authStateProvider).value;
-    if (user == null) return;
-
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('favorites')
-          .doc(widget.stall.stallId)
-          .get();
-
-      if (mounted) {
-        setState(() {
-          _isFavorite = doc.exists;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error checking favorite: $e');
-    }
-  }
-
-  Future<void> _toggleFavorite() async {
-    if (_isTogglingFavorite) return;
-
-    final user = ref.read(authStateProvider).value;
-    if (user == null) return;
-
-    // Play bounce animation
-    _favoriteAnimationController.forward(from: 0);
-
-    setState(() {
-      _isTogglingFavorite = true;
-    });
-
-    try {
-      final favRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('favorites')
-          .doc(widget.stall.stallId);
-
-      if (_isFavorite) {
-        // Remove from favorites
-        await favRef.delete();
-        if (mounted) {
-          setState(() {
-            _isFavorite = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Removed from favorites',
-                style: GoogleFonts.poppins(),
-              ),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        // Add to favorites
-        await favRef.set({
-          'stallId': widget.stall.stallId,
-          'stallName': widget.stall.name,
-          'category': widget.stall.category,
-          'addedAt': FieldValue.serverTimestamp(),
-        });
-        if (mounted) {
-          setState(() {
-            _isFavorite = true;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Added to favorites',
-                style: GoogleFonts.poppins(),
-              ),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error: ${e.toString()}',
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isTogglingFavorite = false;
-        });
-      }
-    }
   }
 
   void _navigateToReportScreen() {
@@ -493,23 +384,32 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
                               ),
                             ),
 
-                            // Favorite button
-                            ScaleTransition(
-                              scale: _favoriteScaleAnimation,
-                              child: IconButton(
-                                onPressed: _isTogglingFavorite
-                                    ? null
-                                    : _toggleFavorite,
-                                icon: Icon(
-                                  _isFavorite
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  color: _isFavorite
-                                      ? const Color(0xFFE53935)
-                                      : const Color(0xFFBDBDBD),
-                                  size: 24,
-                                ),
-                              ),
+                            // Favorite button using new provider
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final favState = ref.watch(favoriteProvider);
+                                final isFav = favState.isFavorite(widget.stall.stallId);
+                                
+                                return ScaleTransition(
+                                  scale: _favoriteScaleAnimation,
+                                  child: IconButton(
+                                    onPressed: () async {
+                                      _favoriteAnimationController.forward(from: 0);
+                                      await ref.read(favoriteProvider.notifier)
+                                         .toggleFavorite(widget.stall.stallId);
+                                    },
+                                    icon: Icon(
+                                      isFav
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_border_rounded,
+                                      color: isFav
+                                          ? const Color(0xFFE53935)
+                                          : const Color(0xFFBDBDBD),
+                                      size: 24,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),

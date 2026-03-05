@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/favorite_provider.dart';
 import '../../../core/exceptions/auth_exception.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -48,6 +49,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         usernameOrEmail: _usernameOrEmailController.text.trim(),
         password: _passwordController.text,
       );
+
+      // Load favorites after successful login
+      await ref.read(favoriteProvider.notifier).loadFavorites();
 
       if (mounted) {
         final user = authRepo.currentUser;

@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/theme_provider.dart';
+import '../../../providers/favorite_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -63,6 +64,10 @@ class ProfileScreen extends ConsumerWidget {
       try {
         final authRepo = ref.read(authRepositoryProvider);
         await authRepo.signOut();
+        
+        // Clear favorites on sign out
+        ref.read(favoriteProvider.notifier).clearFavorites();
+        
         if (context.mounted) {
           context.go(RouteNames.getStarted);
         }

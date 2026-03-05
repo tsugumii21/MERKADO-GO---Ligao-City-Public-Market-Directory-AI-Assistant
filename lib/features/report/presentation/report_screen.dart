@@ -211,7 +211,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Help us improve by reporting issues with stalls.',
+                        'We appreciate your help in keeping our marketplace information accurate and reliable.',
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: const Color(0xFF2E7D32),
@@ -311,20 +311,23 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             color: isSelected
                                 ? const Color(0xFF1B5E20)
                                 : const Color(0xFFE0E0E0),
-                            width: isSelected ? 1.5 : 1,
+                            width: 1.5,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (isSelected) ...[
-                              const Icon(
-                                Icons.check_circle_rounded,
-                                size: 14,
-                                color: Color(0xFF1B5E20),
-                              ),
-                              const SizedBox(width: 6),
-                            ],
+                            SizedBox(
+                              width: 14,
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 14,
+                                      color: Color(0xFF1B5E20),
+                                    )
+                                  : null,
+                            ),
+                            SizedBox(width: isSelected ? 6 : 0),
                             Text(
                               category,
                               style: GoogleFonts.poppins(

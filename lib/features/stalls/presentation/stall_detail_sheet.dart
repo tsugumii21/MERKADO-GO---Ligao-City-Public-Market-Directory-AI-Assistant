@@ -138,6 +138,11 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
   }
 
   String _formatTime12Hour(String time) {
+    // If already in 12-hour format with AM/PM, return as is
+    if (time.toUpperCase().contains('AM') || time.toUpperCase().contains('PM')) {
+      return time;
+    }
+    
     // Convert 24-hour format to 12-hour format with AM/PM
     try {
       final parts = time.split(':');
@@ -159,7 +164,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
       
       return '$hour:$minute $period';
     } catch (e) {
-      // If already in 12-hour format or invalid, return as is
+      // If invalid, return as is
       return time;
     }
   }

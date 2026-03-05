@@ -688,7 +688,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                       ),
                       SliverToBoxAdapter(
                         child: SizedBox(
-                          height: 140,
+                          height: 150,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -1,16 +1,28 @@
-// TODO: Define Chat Message Model
 class ChatMessage {
   final String id;
-  final String message;
-  final bool isUser;
+  final String content;
+  final String role; // 'user' | 'aling_suki'
   final DateTime timestamp;
-
-  ChatMessage({
+  final bool isStreaming;
+  
+  const ChatMessage({
     required this.id,
-    required this.message,
-    required this.isUser,
+    required this.content,
+    required this.role,
     required this.timestamp,
+    this.isStreaming = false,
   });
-
-  // TODO: Add fromJson, toJson methods
+  
+  ChatMessage copyWith({
+    String? content,
+    bool? isStreaming,
+  }) {
+    return ChatMessage(
+      id: id,
+      content: content ?? this.content,
+      role: role,
+      timestamp: timestamp,
+      isStreaming: isStreaming ?? this.isStreaming,
+    );
+  }
 }

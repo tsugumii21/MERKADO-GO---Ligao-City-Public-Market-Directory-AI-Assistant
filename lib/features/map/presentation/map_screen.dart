@@ -1,11 +1,15 @@
 // Part 6: Interactive Market Map with camera bounds locked to market area
 // Part 7: Updated to use StallDetailSheet with full features
+// Part 9: Added Aling Suki AI Assistant as floating button
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
+import '../../../providers/chat_provider.dart';
+import '../../../features/chat/domain/chat_message.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -15,9 +19,14 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMixin {
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
+  
+  // Animation for floating Aling Suki button
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  bool _isChatOpen = false;
   
   // Ligao City Public Market coordinates (exact location from Google Maps)
   static const LatLng _ligaoMarketCenter = LatLng(13.2419233, 123.5385460);
@@ -37,9 +46,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   MapType _currentMapType = MapType.hybrid; // Default to hybrid mode
 
   @override
+  void initState() {
+    super.initState();
+    
+    // Initialize pulse animation for Aling Suki button
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
   void dispose() {
     _mapController?.dispose();
     _searchController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -625,6 +650,84 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ),
+              
+              // Floating Aling Suki AI Assistant button (bottom left)
+              Positioned(
+                bottom: 90,
+                left: 16,
+                child: AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _isChatOpen ? 1.0 : _pulseAnimation.value,
+                      child: child,
+                    );
+                  },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Main button
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2E7D32).withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _isChatOpen = true;
+                              });
+                              _showAlingSukiOverlay();
+                            },
+                            borderRadius: BorderRadius.circular(28),
+                            child: const Center(
+                              child: CircleAvatar(
+                                backgroundColor: Colors.transparent,
+                                backgroundImage: AssetImage('assets/images/aling_suki.png'),
+                                radius: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Unread badge (red dot) - show when chat has messages and is closed
+                      if (!_isChatOpen && ref.watch(chatProvider).length > 1)
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -681,6 +784,499 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // Show Aling Suki chat overlay (modal bottom sheet)
+  void _showAlingSukiOverlay() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _AlingSukiChatSheet(),
+    ).then((_) {
+      setState(() {
+        _isChatOpen = false;
+      });
+    });
+  }
+}
+
+// Aling Suki Chat Overlay Widget
+class _AlingSukiChatSheet extends ConsumerStatefulWidget {
+  const _AlingSukiChatSheet();
+
+  @override
+  ConsumerState<_AlingSukiChatSheet> createState() => _AlingSukiChatSheetState();
+}
+
+class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
+  final TextEditingController _inputController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Scroll to bottom when sheet opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom(instant: true);
+    });
+    
+    // Refresh stall data when chat opens
+    _refreshStallData();
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshStallData() async {
+    if (_isRefreshing) return;
+    
+    setState(() => _isRefreshing = true);
+    
+    // Refresh stall data and clear chat to start fresh
+    await ref.read(chatProvider.notifier).refreshStalls();
+    ref.read(chatProvider.notifier).clearChat();
+    
+    setState(() => _isRefreshing = false);
+  }
+
+  void _scrollToBottom({bool instant = false}) {
+    if (!_scrollController.hasClients) return;
+    
+    if (instant) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    } else {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  void _sendMessage() {
+    final text = _inputController.text.trim();
+    if (text.isEmpty) return;
+    
+    ref.read(chatProvider.notifier).sendMessage(text);
+    _inputController.clear();
+    _scrollToBottom();
+  }
+
+  void _sendSuggestion(String suggestion) {
+    ref.read(chatProvider.notifier).sendMessage(suggestion);
+    _scrollToBottom();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = ref.watch(chatProvider);
+    final screenHeight = MediaQuery.of(context).size.height;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final hasUserMessages = messages.where((m) => m.role == 'user').isNotEmpty;
+
+    // Scroll to bottom when messages update
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (messages.isNotEmpty && messages.last.isStreaming) {
+        _scrollToBottom();
+      }
+    });
+
+    return Container(
+      height: screenHeight * 0.7 + keyboardHeight,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFAFAFA),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 8, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFBDBDBD),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE8F5E9),
+              border: Border(
+                bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Avatar
+                const CircleAvatar(
+                  backgroundColor: Colors.white,
+                  backgroundImage: AssetImage('assets/images/aling_suki.png'),
+                  radius: 20,
+                ),
+                const SizedBox(width: 12),
+                
+                // Name and status
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Aling Suki',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1B5E20),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Online indicator
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF4CAF50),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Inyong Market Guide 🛒',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: const Color(0xFF666666),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Refresh button
+                IconButton(
+                  icon: _isRefreshing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(Color(0xFF1B5E20)),
+                          ),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                  color: const Color(0xFF1B5E20),
+                  onPressed: _isRefreshing ? null : _refreshStallData,
+                  tooltip: 'Reset Chat',
+                ),
+                
+                // Close button
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  color: const Color(0xFF666666),
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Close',
+                ),
+              ],
+            ),
+          ),
+
+          // Messages list
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final message = messages[index];
+                return _buildMessageBubble(message);
+              },
+            ),
+          ),
+
+          // Quick suggestions (show only when no user messages)
+          if (!hasUserMessages) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Mga tanong na maaari mong itanong:',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: const Color(0xFF666666),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildSuggestionChip('Saan makakabili ng sariwang isda?'),
+                        _buildSuggestionChip('May bukas pa bang stalls ngayon?'),
+                        _buildSuggestionChip('Saan ang karne at manok section?'),
+                        _buildSuggestionChip('Ilan lahat ng stalls sa palengke?'),
+                        _buildSuggestionChip('Nasaan ang dry goods area?'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Input bar
+          Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: 12 + MediaQuery.of(context).padding.bottom,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: Color(0xFFE0E0E0), width: 1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _inputController,
+                    onSubmitted: (_) => _sendMessage(),
+                    onChanged: (_) => setState(() {}),
+                    style: GoogleFonts.poppins(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Magtanong kay Aling Suki...',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: const Color(0xFF9E9E9E),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF5F5F5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Send button
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _inputController.text.trim().isEmpty
+                        ? const Color(0xFFBDBDBD)
+                        : const Color(0xFF1B5E20),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _inputController.text.trim().isEmpty
+                          ? null
+                          : _sendMessage,
+                      borderRadius: BorderRadius.circular(22),
+                      child: const Icon(
+                        Icons.send_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionChip(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(
+          text,
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            color: const Color(0xFF1B5E20),
+          ),
+        ),
+        backgroundColor: Colors.white,
+        side: const BorderSide(color: Color(0xFF1B5E20), width: 1),
+        onPressed: () => _sendSuggestion(text),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(ChatMessage message) {
+    final isUser = message.role == 'user';
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isUser) ...[
+            // Small avatar for Aling Suki
+            const CircleAvatar(
+              backgroundColor: Colors.white,
+              backgroundImage: AssetImage('assets/images/aling_suki.png'),
+              radius: 12,
+            ),
+            const SizedBox(width: 8),
+          ],
+          Container(
+            constraints: BoxConstraints(maxWidth: screenWidth * 0.75),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: isUser ? const Color(0xFF1B5E20) : const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(isUser ? 18 : 4),
+                topRight: const Radius.circular(18),
+                bottomLeft: const Radius.circular(18),
+                bottomRight: Radius.circular(isUser ? 4 : 18),
+              ),
+            ),
+            child: message.isStreaming
+                ? _buildTypingIndicator()
+                : isUser
+                    ? Text(
+                        message.content,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.white,
+                          height: 1.5,
+                        ),
+                      )
+                    : MarkdownBody(
+                        data: message.content,
+                        softLineBreak: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF212121),
+                            height: 1.5,
+                          ),
+                          strong: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF212121),
+                            height: 1.5,
+                          ),
+                          listBullet: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF212121),
+                          ),
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(
+        3,
+        (index) => _TypingDot(delay: index * 200),
+      ),
+    );
+  }
+}
+
+// Typing indicator animation
+class _TypingDot extends StatefulWidget {
+  final int delay;
+  
+  const _TypingDot({required this.delay});
+
+  @override
+  State<_TypingDot> createState() => _TypingDotState();
+}
+
+class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) {
+        _controller.repeat(reverse: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: child,
+        );
+      },
+      child: Container(
+        width: 8,
+        height: 8,
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1B5E20),
+          shape: BoxShape.circle,
         ),
       ),
     );

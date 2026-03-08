@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,11 +10,38 @@ import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 
 void main() async {
+  // CRITICAL: Catch all Flutter errors before anything else
+  FlutterError.onError = (details) {
+    debugPrint('🔴 FLUTTER ERROR: ${details.exceptionAsString()}');
+    debugPrint('🔴 STACK: ${details.stack}');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('🔴 PLATFORM ERROR: $error');
+    debugPrint('🔴 STACK: $stack');
+    return true;
+  };
+
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  
+  try {
+    await dotenv.load(fileName: '.env');
+    debugPrint('✅ dotenv loaded successfully');
+  } catch (e, stack) {
+    debugPrint('🔴 dotenv load failed: $e');
+    debugPrint('🔴 STACK: $stack');
+  }
+  
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('✅ Firebase initialized successfully');
+  } catch (e, stack) {
+    debugPrint('🔴 Firebase init failed: $e');
+    debugPrint('🔴 STACK: $stack');
+  }
+  
   runApp(
     const ProviderScope(
       child: MyApp(),

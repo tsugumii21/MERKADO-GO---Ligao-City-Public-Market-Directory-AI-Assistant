@@ -66,6 +66,8 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
   IconData _getCategoryIcon(String category) {
     final categoryLower = category.toLowerCase();
     switch (categoryLower) {
+      case 'eatery':
+        return Icons.restaurant_rounded;
       case 'pork':
         return Icons.set_meal_outlined;
       case 'poultry':
@@ -79,11 +81,19 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
         return Icons.eco_outlined;
       case 'fruits':
         return Icons.energy_savings_leaf_outlined;
+      case 'rice':
+        return Icons.grain_rounded;
+      case 'sari-sari':
+      case 'sari_sari':
+        return Icons.store_rounded;
       case 'dry goods':
       case 'dry_goods':
         return Icons.shopping_bag_outlined;
       case 'spices':
         return Icons.grass_outlined;
+      case 'ukay-ukay':
+      case 'ukay_ukay':
+        return Icons.checkroom_rounded;
       default:
         return Icons.storefront_outlined;
     }
@@ -92,6 +102,11 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
   Map<String, Color> _getCategoryColors(String category) {
     final categoryLower = category.toLowerCase();
     switch (categoryLower) {
+      case 'eatery':
+        return {
+          'bg': const Color(0xFFFFE0B2),
+          'text': const Color(0xFFFF7043),
+        };
       case 'pork':
         return {
           'bg': const Color(0xFFFFEBEE),
@@ -123,11 +138,28 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
           'bg': const Color(0xFFFFF3E0),
           'text': const Color(0xFFEF6C00),
         };
+      case 'rice':
+        return {
+          'bg': const Color(0xFFFFFDE7),
+          'text': const Color(0xFFFDD835),
+        };
+      case 'sari-sari':
+      case 'sari_sari':
+        return {
+          'bg': const Color(0xFFE0F7FA),
+          'text': const Color(0xFF26C6DA),
+        };
       case 'dry goods':
       case 'dry_goods':
         return {
           'bg': const Color(0xFFF3E5F5),
           'text': const Color(0xFF7B1FA2),
+        };
+      case 'ukay-ukay':
+      case 'ukay_ukay':
+        return {
+          'bg': const Color(0xFFEFEBE9),
+          'text': const Color(0xFF8D6E63),
         };
       default:
         return {

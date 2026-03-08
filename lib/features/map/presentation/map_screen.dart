@@ -1,6 +1,9 @@
 // Part 6: Interactive Market Map with camera bounds locked to market area
 // Part 7: Updated to use StallDetailSheet with full features
 // Part 9: Added Aling Suki AI Assistant as floating button
+// Part 10: Manual clustering implementation for better marker management
+import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -28,13 +31,21 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
   late Animation<double> _pulseAnimation;
   bool _isChatOpen = false;
   
+  // Manual clustering state
+  double? _currentZoom = 19.0;
+  static const double _clusterRadius = 0.0003; // ~30 meters at market zoom level
+  
+  // Performance optimization: Cache cluster bitmaps
+  final Map<int, BitmapDescriptor> _clusterBitmapCache = {};
+  Timer? _markerDebounce;
+  
   // Ligao City Public Market coordinates (exact location from Google Maps)
-  static const LatLng _ligaoMarketCenter = LatLng(13.2419233, 123.5385460);
+  static const LatLng _ligaoMarketCenter = LatLng(13.241861, 123.538917);
   
   // Strict market boundary (tight around the two main buildings)
   static final LatLngBounds _marketBounds = LatLngBounds(
-    southwest: const LatLng(13.2409233, 123.5375460),
-    northeast: const LatLng(13.2429233, 123.5395460),
+    southwest: const LatLng(13.24155, 123.53850),
+    northeast: const LatLng(13.24215, 123.53930),
   );
   
   Set<Marker> _markers = {};
@@ -62,6 +73,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
 
   @override
   void dispose() {
+    _markerDebounce?.cancel();
     _mapController?.dispose();
     _searchController.dispose();
     _pulseController.dispose();
@@ -106,53 +118,192 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
     );
   }
 
-  void _createMarkers(List<StallModel> stalls, {List<StallModel>? highlightStalls}) {
-    final markers = <Marker>{};
-    
-    for (final stall in stalls) {
-      final isHighlighted = highlightStalls?.contains(stall) ?? false;
-      final isSelected = _selectedStall?.stallId == stall.stallId;
-      
-      // Optimized marker colors for hybrid/satellite mode
-      double hue;
-      double alpha;
-      
-      if (isSelected) {
-        hue = BitmapDescriptor.hueYellow;
-        alpha = 1.0;
-      } else if (isHighlighted) {
-        hue = BitmapDescriptor.hueOrange;
-        alpha = 1.0;
-      } else {
-        hue = BitmapDescriptor.hueGreen;
-        alpha = 0.7;
-      }
-      
-      markers.add(
-        Marker(
-          markerId: MarkerId(stall.stallId),
-          position: LatLng(stall.latitude, stall.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(hue),
-          alpha: alpha,
-          infoWindow: InfoWindow(
-            title: stall.name,
-            snippet: stall.category,
-          ),
-          onTap: () => _onMarkerTapped(stall),
-        ),
-      );
+  Map<String, List<StallModel>> _clusterStalls(
+      List<StallModel> stalls, double zoom) {
+    // At high zoom (20+), don't cluster — show all individually
+    if (zoom >= 20.0) {
+      return {
+        for (var s in stalls) s.stallId: [s]
+      };
     }
-    
-    setState(() {
-      _markers = markers;
-    });
+
+    final Map<String, List<StallModel>> clusters = {};
+    final List<StallModel> assigned = [];
+
+    for (final stall in stalls) {
+      if (assigned.contains(stall)) continue;
+      
+      final nearby = stalls.where((other) {
+        if (assigned.contains(other)) return false;
+        final latDiff = (stall.latitude - other.latitude).abs();
+        final lngDiff = (stall.longitude - other.longitude).abs();
+        return latDiff < _clusterRadius && lngDiff < _clusterRadius;
+      }).toList();
+
+      final clusterId = 'cluster_${stall.stallId}';
+      clusters[clusterId] = nearby;
+      assigned.addAll(nearby);
+    }
+
+    return clusters;
   }
 
-  void _onMarkerTapped(StallModel stall) {
+  Future<void> _buildMarkers(
+      List<StallModel> stalls, double zoom) async {
+    final clusters = _clusterStalls(stalls, zoom);
+    final Set<Marker> newMarkers = {};
+
+    for (final entry in clusters.entries) {
+      final clusterStalls = entry.value;
+
+      if (clusterStalls.length == 1) {
+        // Single stall — show normal green marker
+        final stall = clusterStalls.first;
+        newMarkers.add(Marker(
+          markerId: MarkerId(stall.stallId),
+          position: LatLng(stall.latitude, stall.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          ),
+          infoWindow: InfoWindow(
+            title: stall.name,
+            snippet: '${_getCategoryLabel(stall.category)} • ${stall.openTime}',
+          ),
+          onTap: () => _onStallMarkerTapped(stall),
+        ));
+      } else {
+        // Multiple stalls — show cluster bubble
+        final center = LatLng(
+          clusterStalls.map((s) => s.latitude)
+              .reduce((a, b) => a + b) / clusterStalls.length,
+          clusterStalls.map((s) => s.longitude)
+              .reduce((a, b) => a + b) / clusterStalls.length,
+        );
+
+        newMarkers.add(Marker(
+          markerId: MarkerId(entry.key),
+          position: center,
+          icon: await _buildClusterBitmap(clusterStalls.length),
+          onTap: () {
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                center,
+                (zoom + 1.5).clamp(18.0, 21.0),
+              ),
+            );
+          },
+        ));
+      }
+    }
+
+    if (mounted) {
+      setState(() => _markers = newMarkers);
+    }
+  }
+
+  Future<BitmapDescriptor> _buildClusterBitmap(int clusterSize) async {
+    // Return cached version if exists
+    if (_clusterBitmapCache.containsKey(clusterSize)) {
+      return _clusterBitmapCache[clusterSize]!;
+    }
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint = Paint()..color = const Color(0xFF1B5E20);
+    final double radius = clusterSize > 10 ? 30 : 24;
+
+    // outer dark green circle
+    canvas.drawCircle(Offset(radius, radius), radius, paint);
+
+    // white border ring
+    canvas.drawCircle(
+      Offset(radius, radius),
+      radius,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+
+    // white count text
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(
+        text: clusterSize.toString(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        radius - textPainter.width / 2,
+        radius - textPainter.height / 2,
+      ),
+    );
+
+    final img = await pictureRecorder
+        .endRecording()
+        .toImage((radius * 2).toInt(), (radius * 2).toInt());
+    final data = await img.toByteData(format: ui.ImageByteFormat.png);
+
+    final bitmap = BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
+    
+    // Save to cache before returning
+    _clusterBitmapCache[clusterSize] = bitmap;
+    return bitmap;
+  }
+
+  String _getCategoryLabel(String category) {
+    switch (category.toLowerCase()) {
+      case 'seafood':
+      case 'fish':
+        return '🐟 Seafood';
+      case 'meat':
+      case 'karne':
+      case 'pork':
+      case 'beef':
+        return '🥩 Karne';
+      case 'poultry':
+      case 'manok':
+        return '🐔 Manok';
+      case 'vegetables':
+      case 'gulay':
+        return '🥦 Gulay';
+      case 'fruits':
+      case 'prutas':
+        return '🍎 Prutas';
+      case 'rice':
+      case 'bigas':
+        return '🌾 Bigas';
+      case 'eatery':
+        return '🍽️ Eatery';
+      case 'sari-sari':
+      case 'sari_sari':
+        return '🏪 Sari-Sari';
+      case 'spices':
+      case 'pampalasa':
+        return '🌶️ Pampalasa';
+      case 'dry goods':
+      case 'dry_goods':
+        return '📦 Dry Goods';
+      case 'ukay-ukay':
+      case 'ukay_ukay':
+        return '👕 Ukay-Ukay';
+      default:
+        return '🏪 Stall';
+    }
+  }
+
+  void _onStallMarkerTapped(StallModel stall) {
     setState(() {
       _selectedStall = stall;
     });
-    
+
     // Show full stall detail sheet
     showModalBottomSheet(
       context: context,
@@ -177,7 +328,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
         _filteredStalls = [];
         _searchMode = '';
       });
-      _createMarkers(_allStalls);
+      _buildMarkers(_allStalls, _currentZoom ?? 19.0);
       _recenterMap();
       return;
     }
@@ -219,10 +370,12 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
       _searchMode = mode;
     });
     
-    _createMarkers(_allStalls, highlightStalls: results);
-    
+    // Update markers to show only search results
     if (results.isNotEmpty) {
+      _buildMarkers(results, _currentZoom ?? 19.0);
       _animateToStalls(results);
+    } else {
+      _buildMarkers([], _currentZoom ?? 19.0);
     }
   }
 
@@ -280,7 +433,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
           if (_allStalls.isEmpty || _allStalls.length != stalls.length) {
             _allStalls = stalls;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _createMarkers(stalls);
+              _buildMarkers(stalls, _currentZoom ?? 19.0);
             });
           }
           
@@ -289,7 +442,20 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
               // Google Map with strict camera bounds (hybrid mode)
               GoogleMap(
                 onMapCreated: _onMapCreated,
-                onCameraMove: _onCameraMove,
+                onCameraMove: (position) {
+                  _currentZoom = position.zoom;
+                },
+                onCameraIdle: () {
+                  // Debounce marker rebuilding to avoid lag
+                  _markerDebounce?.cancel();
+                  _markerDebounce = Timer(
+                    const Duration(milliseconds: 300),
+                    () {
+                      final stalls = _isSearching ? _filteredStalls : _allStalls;
+                      _buildMarkers(stalls, _currentZoom ?? 19.0);
+                    },
+                  );
+                },
                 initialCameraPosition: const CameraPosition(
                   target: _ligaoMarketCenter,
                   zoom: 19.0,
@@ -299,7 +465,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
-                compassEnabled: true,
+                compassEnabled: false,
                 rotateGesturesEnabled: true,
                 tiltGesturesEnabled: false,
                 scrollGesturesEnabled: true,
@@ -311,6 +477,41 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
                 minMaxZoomPreference: const MinMaxZoomPreference(18.0, 21.0),
                 cameraTargetBounds: CameraTargetBounds(_marketBounds),
               ),
+              
+              // Cluster count badge (below search bar)
+              if (stalls.isNotEmpty)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 74,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1B5E20),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${stalls.length} ${stalls.length == 1 ? 'stall' : 'stalls'} sa palengke',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               
               // Search bar overlay
               Positioned(

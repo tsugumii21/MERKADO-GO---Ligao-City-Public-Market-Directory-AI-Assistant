@@ -33,14 +33,18 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
   final List<String> _categories = [
     'All',
     'Favorites',
+    'Eatery',
+    'Seafood',
     'Pork',
     'Poultry',
     'Beef',
     'Vegetables',
-    'Seafood',
-    'Dry Goods',
     'Fruits',
+    'Rice',
+    'Sari-Sari',
+    'Dry Goods',
     'Spices',
+    'Ukay-Ukay',
   ];
 
   final Map<String, List<String>> dayMapping = {
@@ -317,6 +321,8 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
         return Icons.grid_view_rounded;
       case 'favorites':
         return Icons.favorite_rounded;
+      case 'eatery':
+        return Icons.restaurant_rounded;
       case 'pork':
         return Icons.set_meal_outlined;
       case 'poultry':
@@ -330,10 +336,17 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
         return Icons.eco_outlined;
       case 'fruits':
         return Icons.energy_savings_leaf_outlined;
+      case 'rice':
+        return Icons.grain_rounded;
+      case 'sari-sari':
+        return Icons.store_rounded;
       case 'dry goods':
         return Icons.shopping_bag_outlined;
       case 'spices':
         return Icons.grass_outlined;
+      case 'ukay-ukay':
+      case 'ukay_ukay':
+        return Icons.checkroom_rounded;
       default:
         return Icons.storefront_outlined;
     }
@@ -502,7 +515,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                                 child: InkWell(
                                   onTap: () {
                                     setState(() {
-                                      _selectedCategory = category;
+                                      _selectedCategory = isSelected ? 'All' : category;
                                     });
                                   },
                                   borderRadius: BorderRadius.circular(20),
@@ -558,7 +571,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                               child: InkWell(
                                 onTap: () {
                                   setState(() {
-                                    _selectedCategory = category;
+                                    _selectedCategory = isSelected ? 'All' : category;
                                   });
                                 },
                                 borderRadius: BorderRadius.circular(20),

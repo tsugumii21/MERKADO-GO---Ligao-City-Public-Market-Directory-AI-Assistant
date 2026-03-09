@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/map/presentation/map_screen.dart';
+import '../../features/stalls/presentation/stall_list_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+
+// GlobalKeys for accessing each page's State (for resetUI)
+final GlobalKey<MapScreenState> mapPageKey = GlobalKey<MapScreenState>();
+final GlobalKey<StallListScreenState> stallsPageKey = GlobalKey<StallListScreenState>();
+final GlobalKey<ProfileScreenState> profilePageKey = GlobalKey<ProfileScreenState>();
 
 class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -15,6 +23,24 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
+  int _currentIndex = 0;
+
+  void _resetPage(int pageIndex) {
+    if (!mounted) return;
+    
+    switch (pageIndex) {
+      case 0: // Map page
+        mapPageKey.currentState?.resetUI();
+        break;
+      case 1: // Stalls page
+        stallsPageKey.currentState?.resetUI();
+        break;
+      case 2: // Profile page
+        profilePageKey.currentState?.resetUI();
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -34,6 +60,18 @@ class _MainShellState extends ConsumerState<MainShell> {
         child: NavigationBar(
           selectedIndex: widget.navigationShell.currentIndex,
           onDestinationSelected: (index) {
+            // Don't process if same tab tapped
+            if (index == _currentIndex) return;
+            
+            // Reset UI state on the page being LEFT
+            _resetPage(_currentIndex);
+            
+            // Update current index
+            setState(() {
+              _currentIndex = index;
+            });
+            
+            // Navigate to the new tab
             widget.navigationShell.goBranch(
               index,
               initialLocation: index == widget.navigationShell.currentIndex,

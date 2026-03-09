@@ -10,8 +10,41 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../../providers/user_provider.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  ConsumerState<ProfileScreen> createState() => ProfileScreenState();
+}
+
+class ProfileScreenState extends ConsumerState<ProfileScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  // Reset UI state when user leaves this tab
+  void resetUI() {
+    if (!mounted) return;
+
+    // Scroll to top with animation
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+    // Nothing else to reset on profile page
+  }
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleSignOut(BuildContext context, WidgetRef ref) async {
     final shouldSignOut = await showDialog<bool>(
@@ -98,7 +131,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final userDataAsync = ref.watch(userDataStreamProvider);
     final favoriteCount = ref.watch(favoriteCountProvider);
 
@@ -135,6 +168,7 @@ class ProfileScreen extends ConsumerWidget {
           }
 
           return SingleChildScrollView(
+            controller: _scrollController,
             physics: const ClampingScrollPhysics(),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),

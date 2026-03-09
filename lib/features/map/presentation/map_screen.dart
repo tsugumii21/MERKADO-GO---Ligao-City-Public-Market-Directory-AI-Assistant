@@ -3,6 +3,7 @@
 // Part 9: Added Aling Suki AI Assistant as floating button
 // Part 10: Manual clustering implementation for better marker management
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,10 +20,10 @@ class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
   @override
-  ConsumerState<MapScreen> createState() => _MapScreenState();
+  ConsumerState<MapScreen> createState() => MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMixin {
+class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMixin {
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
   
@@ -42,10 +43,10 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
   // Ligao City Public Market coordinates (exact location from Google Maps)
   static const LatLng _ligaoMarketCenter = LatLng(13.241861, 123.538917);
   
-  // Strict market boundary (tight around the two main buildings)
+  // Market boundary (wider to show all stalls)
   static final LatLngBounds _marketBounds = LatLngBounds(
-    southwest: const LatLng(13.24155, 123.53850),
-    northeast: const LatLng(13.24215, 123.53930),
+    southwest: const LatLng(13.2410, 123.5378),
+    northeast: const LatLng(13.2428, 123.5398),
   );
   
   Set<Marker> _markers = {};
@@ -71,6 +72,31 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
     );
   }
 
+  // Reset UI state when user leaves this tab
+  void resetUI() {
+    if (!mounted) return;
+
+    // Close stall info bottom sheet if open
+    if (_selectedStall != null) {
+      setState(() => _selectedStall = null);
+      // Pop any open modal bottom sheets
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }
+
+    // Close chatbot bottom sheet if open
+    if (_isChatOpen) {
+      setState(() => _isChatOpen = false);
+      // Pop chatbot sheet if it's open
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }
+
+    // DO NOT reset: map camera, chat history, markers
+  }
+
   @override
   void dispose() {
     _markerDebounce?.cancel();
@@ -82,21 +108,27 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
-    // Fit map to market bounds on creation
-    Future.delayed(const Duration(milliseconds: 500), () {
-      controller.animateCamera(
-        CameraUpdate.newLatLngBounds(_marketBounds, 40),
-      );
+    // Show the whole market area on creation
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _initMapView();
     });
+  }
+  
+  void _initMapView() {
+    if (_mapController == null) return;
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: const LatLng(13.2413, 123.5380),
+          northeast: const LatLng(13.2425, 123.5395),
+        ),
+        60.0, // pixel padding
+      ),
+    );
   }
 
   void _onCameraMove(CameraPosition position) {
-    // Enforce boundary - snap back to center if user pans outside
-    if (!_marketBounds.contains(position.target)) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLng(_ligaoMarketCenter),
-      );
-    }
+    // No bounds restriction - users can pan freely
   }
 
   void _toggleMapType() {
@@ -120,8 +152,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
 
   Map<String, List<StallModel>> _clusterStalls(
       List<StallModel> stalls, double zoom) {
-    // At high zoom (20+), don't cluster — show all individually
-    if (zoom >= 20.0) {
+    // At high zoom (19+), don't cluster — show all individually
+    if (zoom >= 19.0) {
       return {
         for (var s in stalls) s.stallId: [s]
       };
@@ -328,7 +360,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
         _filteredStalls = [];
         _searchMode = '';
       });
-      _buildMarkers(_allStalls, _currentZoom ?? 19.0);
+      _buildMarkers(_allStalls, _currentZoom ?? 18.0);
       _recenterMap();
       return;
     }
@@ -372,10 +404,10 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
     
     // Update markers to show only search results
     if (results.isNotEmpty) {
-      _buildMarkers(results, _currentZoom ?? 19.0);
+      _buildMarkers(results, _currentZoom ?? 18.0);
       _animateToStalls(results);
     } else {
-      _buildMarkers([], _currentZoom ?? 19.0);
+      _buildMarkers([], _currentZoom ?? 18.0);
     }
   }
 
@@ -433,7 +465,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
           if (_allStalls.isEmpty || _allStalls.length != stalls.length) {
             _allStalls = stalls;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _buildMarkers(stalls, _currentZoom ?? 19.0);
+              _buildMarkers(stalls, _currentZoom ?? 18.0);
+              _initMapView();
             });
           }
           
@@ -452,13 +485,13 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
                     const Duration(milliseconds: 300),
                     () {
                       final stalls = _isSearching ? _filteredStalls : _allStalls;
-                      _buildMarkers(stalls, _currentZoom ?? 19.0);
+                      _buildMarkers(stalls, _currentZoom ?? 18.0);
                     },
                   );
                 },
                 initialCameraPosition: const CameraPosition(
                   target: _ligaoMarketCenter,
-                  zoom: 19.0,
+                  zoom: 18.0,
                 ),
                 markers: _markers,
                 myLocationEnabled: false,
@@ -474,8 +507,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateM
                 buildingsEnabled: false,
                 indoorViewEnabled: false,
                 mapType: _currentMapType,
-                minMaxZoomPreference: const MinMaxZoomPreference(18.0, 21.0),
-                cameraTargetBounds: CameraTargetBounds(_marketBounds),
+                minMaxZoomPreference: const MinMaxZoomPreference(16.0, 21.0),
+                cameraTargetBounds: CameraTargetBounds.unbounded,
               ),
               
               // Cluster count badge (below search bar)
@@ -1027,8 +1060,8 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
       _scrollToBottom(instant: true);
     });
     
-    // Refresh stall data when chat opens
-    _refreshStallData();
+    // Refresh stall data when chat opens (without clearing chat)
+    _initializeChat();
   }
 
   @override
@@ -1036,6 +1069,17 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializeChat() async {
+    if (_isRefreshing) return;
+    
+    setState(() => _isRefreshing = true);
+    
+    // Only refresh stall data, don't clear chat history
+    await ref.read(chatProvider.notifier).refreshStalls();
+    
+    setState(() => _isRefreshing = false);
   }
 
   Future<void> _refreshStallData() async {
@@ -1236,7 +1280,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                     child: Row(
                       children: [
                         _buildSuggestionChip('Saan makakabili ng sariwang isda?'),
-                        _buildSuggestionChip('May bukas pa bang stalls ngayon?'),
+                        _buildSuggestionChip('Which stalls are open right now?'),
                         _buildSuggestionChip('Saan ang karne at manok section?'),
                         _buildSuggestionChip('Ilan lahat ng stalls sa palengke?'),
                         _buildSuggestionChip('Nasaan ang dry goods area?'),

@@ -16,6 +16,51 @@ class GeminiService {
   
   GeminiService(this._ref);
   
+  String _getCurrentPhilippineTime() {
+    // Get current Philippine time (UTC+8)
+    final now = DateTime.now().toUtc().add(const Duration(hours: 8));
+    
+    final days = [
+      'Monday', 'Tuesday', 'Wednesday',
+      'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ];
+    final months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    final currentTime24 = '${now.hour.toString().padLeft(2, '0')}:'
+        '${now.minute.toString().padLeft(2, '0')}';
+    final currentDay = days[now.weekday - 1];
+    final currentDate = '${months[now.month - 1]} ${now.day}, ${now.year}';
+    final amPm = now.hour < 12 ? 'AM' : 'PM';
+    final hour12 = now.hour == 0 ? 12 : 
+                   now.hour > 12 ? now.hour - 12 : 
+                   now.hour;
+    final timeReadable = '$hour12:'
+        '${now.minute.toString().padLeft(2, '0')} $amPm';
+    
+    return '''
+CURRENT DATE AND TIME (Philippine Standard Time):
+Date: $currentDate
+Day: $currentDay
+Time: $timeReadable (24hr: $currentTime24)
+
+Use this to determine which stalls are currently open or closed based on their operating hours.
+
+HOW TO DETERMINE IF A STALL IS OPEN:
+- Compare current time against the stall's opening and closing hours
+- Consider the current day against the stall's operating days
+- If current time is BETWEEN opening and closing time AND today is an operating day, the stall is OPEN
+- Otherwise it is CLOSED
+
+When asked about open stalls, ALWAYS:
+1. State the current time you are using
+2. List which stalls are open RIGHT NOW
+3. List which stalls are closed with their opening time so user knows when they open
+''';
+  }
+  
   Future<String> _fetchStallsContext() async {
     try {
       final snapshot = await FirebaseFirestore.instance
@@ -29,16 +74,15 @@ class GeminiService {
       final stallsData = snapshot.docs.map((doc) {
         final data = doc.data();
         return '''
-Stall ID: ${doc.id}
-Pangalan: ${data['name'] ?? 'Unknown'}
+Stall: ${data['name'] ?? 'Unknown'}
 Category: ${data['category'] ?? 'Unknown'}
-Lokasyon: ${data['address'] ?? 'Unknown'}
-Operating Hours: ${data['openTime'] ?? 'N/A'} - ${data['closeTime'] ?? 'N/A'}
-Days Open: ${(data['daysOpen'] as List?)?.join(', ') ?? 'N/A'}
+Hours: ${data['openTime'] ?? 'N/A'} - ${data['closeTime'] ?? 'N/A'}
+Days: ${(data['daysOpen'] as List?)?.join(', ') ?? 'N/A'}
+Status: ${data['isActive'] == true ? 'Active' : 'Inactive'}
+Location: ${data['address'] ?? 'Unknown'}
 Products: ${(data['products'] as List?)?.join(', ') ?? 'N/A'}
-Contact: ${data['contactNumber'] ?? 'N/A'}
-''';
-      }).join('\n---\n');
+---''';
+      }).join('\n');
       
       return stallsData;
     } catch (e) {
@@ -55,6 +99,9 @@ Contact: ${data['contactNumber'] ?? 'N/A'}
       _stallsContext = await _fetchStallsContext();
       print('✅ Fetched ${_stallsContext.split('---').length} stalls');
       
+      // Get current Philippine time
+      final currentTimeInfo = _getCurrentPhilippineTime();
+      
       final apiKey = AppSecrets.geminiApiKey;
       
       _model = GenerativeModel(
@@ -63,6 +110,8 @@ Contact: ${data['contactNumber'] ?? 'N/A'}
         systemInstruction: Content.system('''
 Ikaw si Aling Suki, ang digital na gabay ng Ligao City Public Market 
 sa Ligao City, Albay, Pilipinas.
+
+$currentTimeInfo
 
 MAHALAGANG ALITUNTUNIN:
 Sumagot LAMANG batay sa tunay na datos ng mga stall na ito. 
@@ -84,10 +133,10 @@ GABAY SA PAGSAGOT:
 TONO AT UGALI:
 - Palaging gumamit ng po/opo para magiliw
 - Maging makulay at friendly sa pagsagot
-- Sumagot sa Filipino kung Filipino ang tanong
-- Sumagot sa English kung English ang tanong
+- Sumagot sa PAREHONG WIKA na ginamit ng user (Filipino o English)
 - Tulungan ang mamimili na makahanap ng hinahanap nila
 - Maging totoong "Aling" - mapagkaibigan at matulungin
+- Laging gamitin ang Philippine time context para sa katumpakan
 
 FORMATTING RULES:
 - When listing items, always use bullet points on separate lines with \n before each bullet

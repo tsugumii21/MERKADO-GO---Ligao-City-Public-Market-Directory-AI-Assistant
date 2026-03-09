@@ -14,11 +14,12 @@ class StallListScreen extends ConsumerStatefulWidget {
   const StallListScreen({super.key});
 
   @override
-  ConsumerState<StallListScreen> createState() => _StallListScreenState();
+  ConsumerState<StallListScreen> createState() => StallListScreenState();
 }
 
-class _StallListScreenState extends ConsumerState<StallListScreen> {
+class StallListScreenState extends ConsumerState<StallListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _selectedType = 'all';
   String? _selectedSubcategory; // null means 'All' of that type
   String? _selectedTag; // for product-level filtering (sari_sari only)
@@ -352,9 +353,55 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
     'Sun': ['sunday', 'sun'],
   };
 
+  // Reset UI state when user leaves this tab
+  void resetUI() {
+    if (!mounted) return;
+
+    // Scroll to top with animation
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
+    // Close subcategory row
+    setState(() {
+      _selectedSubcategory = null;
+      _selectedTag = null;
+    });
+
+    // Clear search
+    _searchController.clear();
+    setState(() => _searchQuery = '');
+
+    // Close any open bottom sheets (filter sheet)
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    // DO NOT reset: _selectedType (filter chip), favorites
+  }
+
   @override
   void initState() {
     super.initState();
+    
+    // Reset all filter and search state to initial values
+    _selectedType = 'all';
+    _selectedSubcategory = null;
+    _selectedTag = null;
+    _searchQuery = '';
+    _searchController.clear();
+    
+    // Reset sort/filter state
+    sortAlpha = null;
+    filterOpenTime = null;
+    filterCloseTime = null;
+    selectedDay = null;
+    showOpenOnDay = true;
+    
     _loadRecentlyViewed();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(favoriteProvider.notifier).loadFavorites();
@@ -364,6 +411,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -872,6 +920,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
 
               Expanded(
                 child: CustomScrollView(
+                  controller: _scrollController,
                   slivers: [
                     // Category chips
                     SliverToBoxAdapter(

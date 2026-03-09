@@ -42,9 +42,14 @@ void main() async {
     debugPrint('🔴 STACK: $stack');
   }
   
+  // Create ProviderContainer and set it for AppRouter
+  final container = ProviderContainer();
+  AppRouter.setContainer(container);
+  
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    UncontrolledProviderScope(
+      container: container,
+      child: const MyApp(),
     ),
   );
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/presentation/get_started_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
@@ -23,7 +24,17 @@ import '../../features/admin/presentation/reports_screen.dart';
 import '../widgets/main_shell.dart';
 import 'route_names.dart';
 
+// Import GlobalKeys for page state management
+import '../widgets/main_shell.dart' show mapPageKey, stallsPageKey, profilePageKey;
+
 class AppRouter {
+  // Store ProviderContainer reference for accessing state
+  static ProviderContainer? _container;
+  
+  static void setContainer(ProviderContainer container) {
+    _container = container;
+  }
+  
   static GoRouter router() {
     try {
       debugPrint('🔍 Creating GoRouter...');
@@ -66,21 +77,21 @@ class AppRouter {
             return MainShell(navigationShell: navigationShell);
           },
           branches: [
-            // Branch 0: Map
+            // Branch 0: Map (preserve camera, markers, chatbot)
             StatefulShellBranch(
               routes: [
                 GoRoute(
                   path: RouteNames.home,
-                  builder: (context, state) => const MapScreen(),
+                  builder: (context, state) => MapScreen(key: mapPageKey),
                 ),
               ],
             ),
-            // Branch 1: Stalls
+            // Branch 1: Stalls (preserve filter chip, favorites)
             StatefulShellBranch(
               routes: [
                 GoRoute(
                   path: RouteNames.stalls,
-                  builder: (context, state) => const StallListScreen(),
+                  builder: (context, state) => StallListScreen(key: stallsPageKey),
                 ),
               ],
             ),
@@ -89,7 +100,7 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: RouteNames.profile,
-                  builder: (context, state) => const ProfileScreen(),
+                  builder: (context, state) => ProfileScreen(key: profilePageKey),
                 ),
               ],
             ),

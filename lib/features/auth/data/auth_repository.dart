@@ -26,6 +26,12 @@ abstract class AuthRepository {
   Future<void> sendVerificationEmail();
   Future<bool> checkEmailVerified();
   Future<UserModel?> getUserData(String uid);
+  Future<void> updateUserProfile({
+    required String uid,
+    String? username,
+    String? fullName,
+    String? profilePhotoUrl,
+  });
 }
 
 class FirebaseAuthRepository implements AuthRepository {
@@ -199,6 +205,81 @@ class FirebaseAuthRepository implements AuthRepository {
       return UserModel.fromFirestore(doc);
     } catch (e) {
       return null;
+    }
+  }
+
+  @override
+  Future<void> updateUserProfile({
+    required String uid,
+    String? username,
+    String? fullName,
+    String? profilePhotoUrl,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{};
+
+      // Get current user data
+      final currentUserDoc = await _firestore.collection('users').doc(uid).get();
+      if (!currentUserDoc.exists) {
+        throw AuthException(
+          code: 'user-not-found',
+          message: 'User not found.',
+          messageFil: 'Hindi nahanap ang user.',
+        );
+      }
+
+      final currentUsername = currentUserDoc.data()?['username'] as String;
+
+      // Handle username change
+      if (username != null && username != currentUsername) {
+        // Check if new username is already taken
+        final usernameDoc = await _firestore
+            .collection('usernames')
+            .doc(username.toLowerCase())
+            .get();
+
+        if (usernameDoc.exists) {
+          throw AuthException.fromFirebase('username-already-taken');
+        }
+
+        // Delete old username document
+        await _firestore
+            .collection('usernames')
+            .doc(currentUsername.toLowerCase())
+            .delete();
+
+        // Create new username document
+        await _firestore.collection('usernames').doc(username.toLowerCase()).set({
+          'uid': uid,
+          'createdAt': Timestamp.now(),
+        });
+
+        updateData['username'] = username;
+      }
+
+      // Handle full name update
+      if (fullName != null) {
+        updateData['fullName'] = fullName;
+      }
+
+      // Handle profile photo URL update
+      if (profilePhotoUrl != null) {
+        updateData['profilePhotoUrl'] = profilePhotoUrl;
+      }
+
+      // Update user document if there are changes
+      if (updateData.isNotEmpty) {
+        await _firestore.collection('users').doc(uid).update(updateData);
+      }
+    } on FirebaseException catch (e) {
+      throw AuthException.fromFirebase(e.code);
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException(
+        code: 'update-failed',
+        message: 'Failed to update profile.',
+        messageFil: 'Hindi nag-update ang profile.',
+      );
     }
   }
 }

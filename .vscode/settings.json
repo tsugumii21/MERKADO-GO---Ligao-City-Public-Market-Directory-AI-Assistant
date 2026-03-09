@@ -1,4 +1,7 @@
 {
   "java.configuration.updateBuildConfiguration": "automatic",
-  "postman.settings.dotenv-detection-notification-visibility": false
+  "postman.settings.dotenv-detection-notification-visibility": false,
+  "chat.tools.terminal.autoApprove": {
+    "git commit": true
+  }
 }

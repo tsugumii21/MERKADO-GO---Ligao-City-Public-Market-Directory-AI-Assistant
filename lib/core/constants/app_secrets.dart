@@ -7,6 +7,16 @@ class AppSecrets {
   static String get cloudinaryCloudName =>
       dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
   
+  // Note: These credentials are stored but NOT used in unsigned uploads
+  static String get cloudinaryApiKey =>
+      dotenv.env['CLOUDINARY_API_KEY'] ?? '';
+  
+  static String get cloudinaryApiSecret =>
+      dotenv.env['CLOUDINARY_API_SECRET'] ?? '';
+  
+  static String get cloudinaryUrl =>
+      dotenv.env['CLOUDINARY_URL'] ?? '';
+  
   static String get cloudinaryUploadPreset =>
       dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
 

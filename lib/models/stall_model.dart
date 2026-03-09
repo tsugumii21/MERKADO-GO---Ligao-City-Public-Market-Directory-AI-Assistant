@@ -51,7 +51,9 @@ class StallModel {
       longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
       isActive: data['isActive'] as bool? ?? true,
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      tags: List<String>.from(data['tags'] as List<dynamic>? ?? []),
+      tags: data['tags'] != null 
+          ? List<String>.from(data['tags'] as List) 
+          : const [],
     );
   }
 

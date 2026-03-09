@@ -124,6 +124,13 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
   // 4. Ask the stall owner which meals they serve
   // 5. Tags should match the 'tag' values in eatery subcategoryMap below
   // 
+  // For Dry Goods stalls to use product tags filtering:
+  // 1. Find the stall document for "Bigas ni Mang Tomas" (or any dry_goods stall)
+  // 2. Add a field: tags (type: array)
+  // 3. Add tag values based on what products they sell:
+  //    - ['rice', 'noodles', 'cooking_oil', 'sugar_salt', 'flour_baking', 'spices']
+  // 4. Tags should match the 'tag' values in dry_goods subcategoryMap below
+  // 
   // Note: Existing stalls without tags will still work (defaults to empty array)
 
   // Subcategory map for 2-level filtering
@@ -220,15 +227,38 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
     'dry_goods': [
       {
         'label': 'All Dry Goods',
-        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas']
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas', 'spices', 'pampalasa'],
+        'tag': null,
       },
       {
         'label': 'Rice',
-        'categories': ['rice', 'bigas']
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas', 'spices', 'pampalasa'],
+        'tag': 'rice',
       },
       {
-        'label': 'Dry Goods',
-        'categories': ['dry_goods', 'drygoods']
+        'label': 'Noodles & Pasta',
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas', 'spices', 'pampalasa'],
+        'tag': 'noodles',
+      },
+      {
+        'label': 'Cooking Oil',
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas', 'spices', 'pampalasa'],
+        'tag': 'cooking_oil',
+      },
+      {
+        'label': 'Sugar & Salt',
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas', 'spices', 'pampalasa'],
+        'tag': 'sugar_salt',
+      },
+      {
+        'label': 'Flour & Baking',
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas', 'spices', 'pampalasa'],
+        'tag': 'flour_baking',
+      },
+      {
+        'label': 'Spices',
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas', 'spices', 'pampalasa'],
+        'tag': 'spices',
       },
     ],
     'sari_sari': [
@@ -443,13 +473,14 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
               final matchesCategory = subcatCategories
                   .contains(stall.category.toLowerCase().trim());
               
-              // For sari_sari, eatery, and retail with tag filtering
+              // For sari_sari, eatery, retail, and dry_goods with tag filtering
               if ((_selectedType == 'sari_sari' || 
                    _selectedType == 'eatery' || 
-                   _selectedType == 'retail') && 
+                   _selectedType == 'retail' || 
+                   _selectedType == 'dry_goods') && 
                   _selectedTag != null) {
                 return matchesCategory && 
-                       stall.tags
+                       (stall.tags)
                            .map((t) => t.toLowerCase())
                            .contains(_selectedTag!.toLowerCase());
               }
@@ -688,7 +719,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
     }
     
     if (_selectedSubcategory != null) {
-      // For sari_sari, eatery, and retail with tag filtering, show "Tag - Type" format
+      // For sari_sari, eatery, retail, and dry_goods with tag filtering, show "Tag - Type" format
       if (_selectedTag != null) {
         if (_selectedType == 'sari_sari') {
           return '$_selectedSubcategory - Sari-Sari';
@@ -696,6 +727,8 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
           return '$_selectedSubcategory - Eatery';
         } else if (_selectedType == 'retail') {
           return '$_selectedSubcategory - Retail';
+        } else if (_selectedType == 'dry_goods') {
+          return '$_selectedSubcategory - Dry Goods';
         }
       }
       return _selectedSubcategory!;

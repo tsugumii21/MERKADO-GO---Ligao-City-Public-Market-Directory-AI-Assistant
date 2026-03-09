@@ -10,8 +10,6 @@ abstract class AuthRepository {
   Future<UserCredential> signUp({
     required String username,
     required String fullName,
-    required String address,
-    required DateTime birthday,
     required String email,
     required String password,
   });
@@ -50,8 +48,6 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<UserCredential> signUp({
     required String username,
     required String fullName,
-    required String address,
-    required DateTime birthday,
     required String email,
     required String password,
   }) async {
@@ -78,8 +74,6 @@ class FirebaseAuthRepository implements AuthRepository {
         username: username,
         fullName: fullName,
         email: email,
-        address: address,
-        birthday: birthday,
         role: 'user',
         createdAt: now,
       );

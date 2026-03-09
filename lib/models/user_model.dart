@@ -5,8 +5,6 @@ class UserModel {
   final String username;
   final String fullName;
   final String email;
-  final String address;
-  final DateTime birthday;
   final String? profilePhotoUrl;
   final String role;
   final List<String> favoriteStalls;
@@ -18,8 +16,6 @@ class UserModel {
     required this.username,
     required this.fullName,
     required this.email,
-    required this.address,
-    required this.birthday,
     this.profilePhotoUrl,
     required this.role,
     this.favoriteStalls = const [],
@@ -34,8 +30,6 @@ class UserModel {
       username: data['username'] ?? '',
       fullName: data['fullName'] ?? '',
       email: data['email'] ?? '',
-      address: data['address'] ?? '',
-      birthday: (data['birthday'] as Timestamp).toDate(),
       profilePhotoUrl: data['profilePhotoUrl'],
       role: data['role'] ?? 'user',
       favoriteStalls: List<String>.from(data['favoriteStalls'] ?? []),
@@ -49,8 +43,6 @@ class UserModel {
       'username': username,
       'fullName': fullName,
       'email': email,
-      'address': address,
-      'birthday': Timestamp.fromDate(birthday),
       'profilePhotoUrl': profilePhotoUrl,
       'role': role,
       'favoriteStalls': favoriteStalls,
@@ -63,8 +55,6 @@ class UserModel {
     String? username,
     String? fullName,
     String? email,
-    String? address,
-    DateTime? birthday,
     String? profilePhotoUrl,
     String? role,
     List<String>? favoriteStalls,
@@ -75,8 +65,6 @@ class UserModel {
       username: username ?? this.username,
       fullName: fullName ?? this.fullName,
       email: email ?? this.email,
-      address: address ?? this.address,
-      birthday: birthday ?? this.birthday,
       profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
       role: role ?? this.role,
       favoriteStalls: favoriteStalls ?? this.favoriteStalls,

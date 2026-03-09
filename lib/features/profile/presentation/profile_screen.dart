@@ -455,26 +455,6 @@ class ProfileScreen extends ConsumerWidget {
             label: 'Email',
             value: userData.email,
           ),
-          const Divider(
-            height: 1,
-            color: Color(0xFFF5F5F5),
-            indent: 56,
-          ),
-          _buildInfoRow(
-            icon: Icons.location_on_outlined,
-            label: 'Address',
-            value: userData.address,
-          ),
-          const Divider(
-            height: 1,
-            color: Color(0xFFF5F5F5),
-            indent: 56,
-          ),
-          _buildInfoRow(
-            icon: Icons.cake_outlined,
-            label: 'Birthday',
-            value: DateFormat('MMMM d, yyyy').format(userData.birthday),
-          ),
         ],
       ),
     );

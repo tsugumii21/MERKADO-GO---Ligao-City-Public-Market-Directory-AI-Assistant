@@ -109,8 +109,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       await authRepo.signUp(
         username: _usernameController.text.trim(),
         fullName: _usernameController.text.trim(),
-        address: 'Ligao City',
-        birthday: DateTime.now().subtract(const Duration(days: 365 * 18)),
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );

@@ -24,23 +24,18 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _usernameController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _birthdayController = TextEditingController();
   final _newEmailController = TextEditingController();
   final _imagePicker = ImagePicker();
 
   File? _selectedImage;
   bool _isSaving = false;
   bool _isInitialized = false;
-  DateTime? _selectedBirthday;
   String _currentEmail = '';
 
   @override
   void dispose() {
     _usernameController.dispose();
     _fullNameController.dispose();
-    _addressController.dispose();
-    _birthdayController.dispose();
     _newEmailController.dispose();
     super.dispose();
   }
@@ -79,30 +74,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  Future<void> _pickBirthday() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedBirthday ?? DateTime(2000, 1, 1),
-      firstDate: DateTime(1950),
-      lastDate: DateTime.now(),
-      builder: (context, child) => Theme(
-        data: ThemeData(
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF1B5E20),
-          ),
-        ),
-        child: child!,
-      ),
-    );
-
-    if (picked != null) {
-      setState(() {
-        _selectedBirthday = picked;
-        _birthdayController.text = DateFormat('MMMM d, yyyy').format(picked);
-      });
-    }
-  }
-
   Future<void> _saveChanges() async {
     setState(() => _isSaving = true);
 
@@ -129,10 +100,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final Map<String, dynamic> updateData = {
         'username': _usernameController.text.trim(),
         'fullName': _fullNameController.text.trim(),
-        'address': _addressController.text.trim(),
-        'birthday': _selectedBirthday != null 
-            ? Timestamp.fromDate(_selectedBirthday!) 
-            : null,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
@@ -288,9 +255,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           if (!_isInitialized) {
             _usernameController.text = userData.username;
             _fullNameController.text = userData.fullName;
-            _addressController.text = userData.address;
-            _selectedBirthday = userData.birthday;
-            _birthdayController.text = DateFormat('MMMM d, yyyy').format(userData.birthday);
             _currentEmail = userData.email;
             _isInitialized = true;
           }
@@ -408,30 +372,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         'Full Name',
                         Icons.person_outline_rounded,
                         _fullNameController,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 68),
-                        child: const Divider(
-                          height: 1,
-                          color: Color(0xFFF0F0F0),
-                        ),
-                      ),
-                      _buildEditableRow(
-                        'Address',
-                        Icons.location_on_outlined,
-                        _addressController,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 68),
-                        child: const Divider(
-                          height: 1,
-                          color: Color(0xFFF0F0F0),
-                        ),
-                      ),
-                      _buildEditableDateRow(
-                        'Birthday',
-                        Icons.cake_outlined,
-                        _birthdayController,
                       ),
                     ],
                   ),
@@ -650,69 +590,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 filled: false,
                 isDense: true,
                 contentPadding: const EdgeInsets.only(bottom: 4),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditableDateRow(
-    String fieldName,
-    IconData icon,
-    TextEditingController controller,
-  ) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 64),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F8E9),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: const Color(0xFF1B5E20),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: GestureDetector(
-              onTap: _pickBirthday,
-              child: AbsorbPointer(
-                child: TextField(
-                  controller: controller,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: const Color(0xFF212121),
-                    fontWeight: FontWeight.w400,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: fieldName,
-                    labelStyle: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF9E9E9E),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Color(0xFF1B5E20),
-                        width: 1.5,
-                      ),
-                    ),
-                    filled: false,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.only(bottom: 4),
-                  ),
-                ),
               ),
             ),
           ),

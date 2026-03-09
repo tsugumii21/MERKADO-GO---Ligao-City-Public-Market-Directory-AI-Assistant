@@ -7,6 +7,7 @@ import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../report/presentation/report_screen.dart';
+import '../../../core/utils/stall_utils.dart';
 
 class StallDetailSheet extends ConsumerStatefulWidget {
   final StallModel stall;
@@ -201,69 +202,12 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
     }
   }
 
-  bool _isStallOpen() {
-    final now = DateTime.now();
-    final currentTime = TimeOfDay.now();
-    
-    // Get current day name
-    final daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final currentDay = daysOfWeek[now.weekday - 1];
-    
-    // Check if stall is open today
-    final isOpenToday = widget.stall.daysOpen.any((day) => 
-      day.trim().toLowerCase() == currentDay.toLowerCase()
-    );
-    
-    if (!isOpenToday) {
-      return false;
-    }
-    
-    // Check if current time is within operating hours
-    final openTime = widget.stall.openTime;
-    final closeTime = widget.stall.closeTime;
-    
-    try {
-      final openParts = openTime.split(':');
-      final closeParts = closeTime.split(':');
-      
-      int openHour = int.parse(openParts[0]);
-      int openMinute = int.parse(openParts[1].split(' ')[0]);
-      
-      int closeHour = int.parse(closeParts[0]);
-      int closeMinute = int.parse(closeParts[1].split(' ')[0]);
-      
-      // Handle AM/PM if present
-      if (openTime.toUpperCase().contains('PM') && openHour != 12) {
-        openHour += 12;
-      }
-      if (openTime.toUpperCase().contains('AM') && openHour == 12) {
-        openHour = 0;
-      }
-      
-      if (closeTime.toUpperCase().contains('PM') && closeHour != 12) {
-        closeHour += 12;
-      }
-      if (closeTime.toUpperCase().contains('AM') && closeHour == 12) {
-        closeHour = 0;
-      }
-      
-      final nowMinutes = currentTime.hour * 60 + currentTime.minute;
-      final openMinutes = openHour * 60 + openMinute;
-      final closeMinutes = closeHour * 60 + closeMinute;
-      
-      return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
-    } catch (e) {
-      debugPrint('Error checking if stall is open: $e');
-      return false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final hasPhotos = widget.stall.photoUrls.isNotEmpty;
     final categoryColors = _getCategoryColors(widget.stall.category);
     final categoryIcon = _getCategoryIcon(widget.stall.category);
-    final isOpen = _isStallOpen();
+    final isOpen = StallUtils.isStallOpenNow(widget.stall);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.65,

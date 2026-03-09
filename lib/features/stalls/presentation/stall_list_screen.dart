@@ -10,6 +10,7 @@ import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
 import '../../../providers/favorite_provider.dart';
 import 'stall_detail_sheet.dart';
+import '../../../core/utils/stall_utils.dart';
 
 class StallListScreen extends ConsumerStatefulWidget {
   const StallListScreen({super.key});
@@ -500,84 +501,6 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         dayVariants.any((v) => d.toLowerCase().contains(v.toLowerCase())));
   }
 
-  // Check if a stall is currently open based on Philippine time
-  bool isStallOpenNow(StallModel stall) {
-    // Get current Philippine time (UTC+8)
-    final now = DateTime.now().toUtc().add(const Duration(hours: 8));
-    
-    // Check operating days first
-    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final currentDay = days[now.weekday - 1];
-    
-    if (!_isDayIncluded(stall.daysOpen.join(','), currentDay)) {
-      return false;
-    }
-    
-    // Parse opening and closing times
-    final opening = _parseTimeStr(stall.openTime, now);
-    final closing = _parseTimeStr(stall.closeTime, now);
-    
-    if (opening == null || closing == null) {
-      return stall.isActive; // fallback to DB value
-    }
-    
-    final currentMinutes = now.hour * 60 + now.minute;
-    final openMinutes = opening.hour * 60 + opening.minute;
-    final closeMinutes = closing.hour * 60 + closing.minute;
-    
-    return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
-  }
-
-  // Parse time string like "5:00 AM" or "12:00 PM"
-  DateTime? _parseTimeStr(String timeStr, DateTime ref) {
-    try {
-      timeStr = timeStr.trim().toUpperCase();
-      final parts = timeStr.split(' ');
-      final timeParts = parts[0].split(':');
-      final amPm = parts.length > 1 ? parts[1] : 'AM';
-      
-      int hour = int.parse(timeParts[0]);
-      final minute = int.parse(timeParts[1]);
-      
-      if (amPm == 'PM' && hour != 12) hour += 12;
-      if (amPm == 'AM' && hour == 12) hour = 0;
-      
-      return DateTime(ref.year, ref.month, ref.day, hour, minute);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // Check if current day is in operating days range
-  bool _isDayIncluded(String operatingDays, String currentDay) {
-    // Handle "Mon-Sun" = every day
-    if (operatingDays.toLowerCase().contains('sun') &&
-        operatingDays.toLowerCase().contains('mon')) {
-      return true;
-    }
-    
-    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    if (operatingDays.contains('-')) {
-      final parts = operatingDays.split('-');
-      final startIdx = days.indexOf(parts[0].trim());
-      final endIdx = days.indexOf(parts[1].trim());
-      final currentIdx = days.indexOf(currentDay);
-      
-      if (startIdx == -1 || endIdx == -1) return true;
-      
-      if (startIdx <= endIdx) {
-        return currentIdx >= startIdx && currentIdx <= endIdx;
-      } else {
-        // Wraps around (e.g. Sat-Mon)
-        return currentIdx >= startIdx || currentIdx <= endIdx;
-      }
-    }
-    
-    // Comma separated: "Mon,Wed,Fri"
-    return operatingDays.contains(currentDay);
-  }
-
   List<StallModel> applyFilters(List<StallModel> stalls) {
     var result = List<StallModel>.from(stalls);
 
@@ -676,7 +599,12 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       }).toList();
     }
 
-    // 5. Apply alphabetical sort
+    // 5. Apply open now filter
+    if (_filterOpenOnly) {
+      result = result.where((s) => StallUtils.isStallOpenNow(s)).toList();
+    }
+
+    // 6. Apply alphabetical sort
     if (sortAlpha == 'az') {
       result.sort(
           (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
@@ -1685,7 +1613,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                       // Open/Closed badge
                       Builder(
                         builder: (context) {
-                          final isOpen = isStallOpenNow(stall);
+                          final isOpen = StallUtils.isStallOpenNow(stall);
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -1746,7 +1674,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                       Expanded(
                         child: Builder(
                           builder: (context) {
-                            final isOpen = isStallOpenNow(stall);
+                            final isOpen = StallUtils.isStallOpenNow(stall);
                             return Text(
                               '${stall.openTime} - ${stall.closeTime}',
                               style: GoogleFonts.poppins(

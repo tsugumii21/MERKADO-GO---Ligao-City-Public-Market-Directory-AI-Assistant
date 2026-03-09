@@ -15,6 +15,7 @@ import '../../../providers/stall_provider.dart';
 import '../../../providers/chat_provider.dart';
 import '../../../features/chat/domain/chat_message.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
+import '../../../core/utils/stall_utils.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -68,6 +69,9 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   void initState() {
     super.initState();
     
+    // Clear marker bitmap cache to ensure new small markers are used
+    _clusterBitmapCache.clear();
+    
     // Initialize pulse animation for Aling Suki button
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -104,67 +108,9 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     // DO NOT reset: map camera, chat history, markers
   }
 
-  // Helper: Check if a stall is currently open
-  bool _isStallOpen(StallModel stall) {
-    if (!stall.isActive) return false;
-
-    final now = DateTime.now();
-    final currentDay = _getDayName(now.weekday);
-
-    // Check if stall is open today
-    if (!stall.daysOpen.contains(currentDay)) return false;
-
-    // Parse open and close times
-    final openTime = _parseTime(stall.openTime);
-    final closeTime = _parseTime(stall.closeTime);
-
-    if (openTime == null || closeTime == null) return false;
-
-    final currentMinutes = now.hour * 60 + now.minute;
-
-    // Handle cases where closing time is past midnight
-    if (closeTime < openTime) {
-      return currentMinutes >= openTime || currentMinutes < closeTime;
-    }
-
-    return currentMinutes >= openTime && currentMinutes < closeTime;
-  }
-
-  // Helper: Convert weekday number to day name
-  String _getDayName(int weekday) {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    return days[weekday - 1];
-  }
-
-  // Helper: Parse time string like "6:00 AM" to minutes since midnight
-  int? _parseTime(String timeStr) {
-    try {
-      final cleaned = timeStr.trim().toUpperCase();
-      final isPM = cleaned.contains('PM');
-      final timeOnly = cleaned.replaceAll(RegExp(r'[APM\s]'), '');
-      final parts = timeOnly.split(':');
-
-      if (parts.length != 2) return null;
-
-      int hour = int.parse(parts[0]);
-      final minute = int.parse(parts[1]);
-
-      // Convert to 24-hour format
-      if (isPM && hour != 12) {
-        hour += 12;
-      } else if (!isPM && hour == 12) {
-        hour = 0;
-      }
-
-      return hour * 60 + minute;
-    } catch (e) {
-      return null;
-    }
-  }
-
   // Get count of currently open stalls
   int _getOpenStallsCount(List<StallModel> stalls) {
-    return stalls.where((stall) => _isStallOpen(stall)).length;
+    return stalls.where((stall) => StallUtils.isStallOpenNow(stall)).length;
   }
 
   @override
@@ -225,8 +171,8 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
 
   Map<String, List<StallModel>> _clusterStalls(
       List<StallModel> stalls, double zoom) {
-    // At high zoom (19+), don't cluster — show all individually
-    if (zoom >= 19.0) {
+    // At high zoom (20+), don't cluster — show all individually
+    if (zoom >= 20.0) {
       return {
         for (var s in stalls) s.stallId: [s]
       };
@@ -262,14 +208,13 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
       final clusterStalls = entry.value;
 
       if (clusterStalls.length == 1) {
-        // Single stall — show normal green marker
+        // Single stall — show small custom green marker
         final stall = clusterStalls.first;
         newMarkers.add(Marker(
           markerId: MarkerId(stall.stallId),
           position: LatLng(stall.latitude, stall.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueGreen,
-          ),
+          icon: await _createSmallMarker(),
+          anchor: const Offset(0.5, 0.5),
           infoWindow: InfoWindow(
             title: stall.name,
             snippet: '${_getCategoryLabel(stall.category)} • ${stall.openTime}',
@@ -306,6 +251,36 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     }
   }
 
+  // Create small custom marker for individual stalls (44x44px)
+  Future<BitmapDescriptor> _createSmallMarker() async {
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    const double size = 32.0;
+    const double radius = 16.0;
+    
+    // Dark green circle background
+    final paint = Paint()..color = const Color(0xFF1B5E20);
+    canvas.drawCircle(const Offset(radius, radius), radius, paint);
+    
+    // White border
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(
+      const Offset(radius, radius),
+      radius - 1,
+      borderPaint,
+    );
+    
+    final picture = pictureRecorder.endRecording();
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    
+    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
+  }
+
+  // Create small cluster marker (44x44px)
   Future<BitmapDescriptor> _buildClusterBitmap(int clusterSize) async {
     // Return cached version if exists
     if (_clusterBitmapCache.containsKey(clusterSize)) {
@@ -314,29 +289,30 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
 
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
-    final Paint paint = Paint()..color = const Color(0xFF1B5E20);
-    final double radius = clusterSize > 10 ? 30 : 24;
+    const double size = 32.0;
+    const double radius = 16.0;
+    
+    // Dark green circle background
+    final paint = Paint()..color = const Color(0xFF1B5E20);
+    canvas.drawCircle(const Offset(radius, radius), radius, paint);
 
-    // outer dark green circle
-    canvas.drawCircle(Offset(radius, radius), radius, paint);
-
-    // white border ring
+    // White border ring
     canvas.drawCircle(
-      Offset(radius, radius),
+      const Offset(radius, radius),
       radius,
       Paint()
         ..color = Colors.white
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
+        ..strokeWidth = 2.0,
     );
 
-    // white count text
-    final TextPainter textPainter = TextPainter(
+    // White count text
+    final textPainter = TextPainter(
       text: TextSpan(
         text: clusterSize.toString(),
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 14,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -353,7 +329,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
 
     final img = await pictureRecorder
         .endRecording()
-        .toImage((radius * 2).toInt(), (radius * 2).toInt());
+        .toImage(size.toInt(), size.toInt());
     final data = await img.toByteData(format: ui.ImageByteFormat.png);
 
     final bitmap = BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
@@ -602,7 +578,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                 mapType: _currentMapType,
                 minMaxZoomPreference: const MinMaxZoomPreference(
                   17.0, // minimum zoom matches opening view (prevents zoom out)
-                  19.0, // maximum zoom
+                  22.0, // maximum zoom (allow closer zoom for individual markers)
                 ),
                 cameraTargetBounds: CameraTargetBounds.unbounded,
               ),
@@ -637,7 +613,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                               ? () {
                                   final stallsToCount = _filteredStalls.isEmpty ? stalls : _filteredStalls;
                                   final openCount = _getOpenStallsCount(stallsToCount);
-                                  return '$openCount ${openCount == 1 ? 'stall' : 'stalls'} opened in the market';
+                                  return '$openCount ${openCount == 1 ? 'stall is' : 'stalls are'} open in the market';
                                 }()
                               : '${_filteredStalls.length} ${_filteredStalls.length == 1 ? 'stall' : 'stalls'} found',
                             style: GoogleFonts.poppins(

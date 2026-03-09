@@ -14,6 +14,7 @@ class StallModel {
   final double longitude;
   final bool isActive;
   final DateTime updatedAt;
+  final List<String> tags;
 
   StallModel({
     required this.stallId,
@@ -29,6 +30,7 @@ class StallModel {
     required this.longitude,
     required this.isActive,
     required this.updatedAt,
+    this.tags = const [],
   });
 
   // Create StallModel from Firestore document
@@ -49,6 +51,7 @@ class StallModel {
       longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
       isActive: data['isActive'] as bool? ?? true,
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      tags: List<String>.from(data['tags'] as List<dynamic>? ?? []),
     );
   }
 
@@ -67,6 +70,7 @@ class StallModel {
       'longitude': longitude,
       'isActive': isActive,
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'tags': tags,
     };
   }
 
@@ -85,6 +89,7 @@ class StallModel {
     double? longitude,
     bool? isActive,
     DateTime? updatedAt,
+    List<String>? tags,
   }) {
     return StallModel(
       stallId: stallId ?? this.stallId,
@@ -100,6 +105,7 @@ class StallModel {
       longitude: longitude ?? this.longitude,
       isActive: isActive ?? this.isActive,
       updatedAt: updatedAt ?? this.updatedAt,
+      tags: tags ?? this.tags,
     );
   }
 

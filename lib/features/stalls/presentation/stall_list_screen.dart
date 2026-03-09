@@ -19,7 +19,9 @@ class StallListScreen extends ConsumerStatefulWidget {
 
 class _StallListScreenState extends ConsumerState<StallListScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedCategory = 'All';
+  String _selectedType = 'all';
+  String? _selectedSubcategory; // null means 'All' of that type
+  String? _selectedTag; // for product-level filtering (sari_sari only)
   String _searchQuery = '';
   List<String> _recentlyViewedIds = [];
 
@@ -30,22 +32,285 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
   String? selectedDay; // 'Mon'|'Tue'|...|null
   bool showOpenOnDay = true;
 
-  final List<String> _categories = [
-    'All',
-    'Favorites',
-    'Eatery',
-    'Seafood',
-    'Pork',
-    'Poultry',
-    'Beef',
-    'Vegetables',
-    'Fruits',
-    'Rice',
-    'Sari-Sari',
-    'Dry Goods',
-    'Spices',
-    'Ukay-Ukay',
+  // Stall type groups mapping
+  static const Map<String, List<String>> stallTypeGroups = {
+    'all': [],
+    'favorites': [],
+    'fresh': [
+      'seafood',
+      'fish',
+      'meat',
+      'karne',
+      'pork',
+      'baboy',
+      'beef',
+      'baka',
+      'poultry',
+      'manok',
+      'vegetables',
+      'gulay',
+      'fruits',
+      'prutas'
+    ],
+    'processed': [
+      'frozen',
+      'frozen_goods',
+      'processed',
+      'processed_foods',
+      'spices',
+      'pampalasa'
+    ],
+    'eatery': ['eatery', 'carinderia', 'cooked', 'cooked_food', 'lutong_ulam'],
+    'dry_goods': ['dry_goods', 'drygoods', 'rice', 'bigas'],
+    'sari_sari': ['sari_sari', 'sarisari', 'sari-sari'],
+    'retail': [
+      'ukay_ukay',
+      'ukay-ukay',
+      'ukay',
+      'ukayukay',
+      'retail',
+      'clothing',
+      'non_food',
+      'tailor',
+      'tailor_shop'
+    ],
+  };
+
+  // Filter chips configuration
+  final List<Map<String, dynamic>> filterChips = [
+    {'key': 'all', 'label': 'All', 'icon': Icons.store_rounded},
+    {'key': 'favorites', 'label': 'Favorites', 'icon': Icons.favorite_rounded},
+    {'key': 'fresh', 'label': 'Fresh', 'icon': Icons.eco_rounded},
+    {
+      'key': 'processed',
+      'label': 'Processed',
+      'icon': Icons.kitchen_rounded
+    },
+    {
+      'key': 'dry_goods',
+      'label': 'Dry Goods',
+      'icon': Icons.inventory_2_rounded
+    },
+    {
+      'key': 'eatery',
+      'label': 'Eatery / Carinderia',
+      'icon': Icons.restaurant_rounded
+    },
+    {
+      'key': 'sari_sari',
+      'label': 'Sari-Sari',
+      'icon': Icons.storefront_rounded
+    },
+    {
+      'key': 'retail',
+      'label': 'Retail / Non-Food',
+      'icon': Icons.checkroom_rounded
+    },
   ];
+
+  // TODO: MANUAL FIRESTORE UPDATE REQUIRED
+  // For Sari-Sari stalls to use product tags filtering, update the stall document in Firestore:
+  // 1. Go to Firebase Console > Firestore Database
+  // 2. Find the stall document for "Tindahan ni Aling Rosa" (or any sari_sari stall)
+  // 3. Add a field: tags (type: array)
+  // 4. Add tag values: ['canned_goods', 'snacks', 'beverages', 'condiments', 'tobacco']
+  // 5. Tags should match the 'tag' values in sari_sari subcategoryMap below
+  // 
+  // For Eatery stalls to use meal time tags filtering:
+  // 1. Find the stall document for "Carinderia ni Nena" (or any eatery stall)
+  // 2. Add a field: tags (type: array)
+  // 3. Add tag values based on what meals they serve:
+  //    - ['breakfast', 'lunch'] or ['lunch', 'merienda'] or ['breakfast', 'lunch', 'merienda']
+  // 4. Ask the stall owner which meals they serve
+  // 5. Tags should match the 'tag' values in eatery subcategoryMap below
+  // 
+  // Note: Existing stalls without tags will still work (defaults to empty array)
+
+  // Subcategory map for 2-level filtering
+  static const Map<String, List<Map<String, dynamic>>> subcategoryMap = {
+    'fresh': [
+      {
+        'label': 'All Fresh',
+        'categories': [
+          'seafood',
+          'fish',
+          'meat',
+          'karne',
+          'pork',
+          'baboy',
+          'beef',
+          'baka',
+          'poultry',
+          'manok',
+          'chicken',
+          'vegetables',
+          'gulay',
+          'fruits',
+          'prutas'
+        ]
+      },
+      {
+        'label': 'Seafood',
+        'categories': ['seafood', 'fish']
+      },
+      {
+        'label': 'Meat',
+        'categories': ['meat', 'karne', 'beef', 'baka', 'pork', 'baboy']
+      },
+      {
+        'label': 'Poultry',
+        'categories': ['poultry', 'manok', 'chicken']
+      },
+      {
+        'label': 'Vegetables',
+        'categories': ['vegetables', 'gulay']
+      },
+      {
+        'label': 'Fruits',
+        'categories': ['fruits', 'prutas']
+      },
+    ],
+    'processed': [
+      {
+        'label': 'All Processed',
+        'categories': [
+          'frozen',
+          'frozen_goods',
+          'processed',
+          'processed_foods',
+          'spices',
+          'pampalasa'
+        ]
+      },
+      {
+        'label': 'Frozen Goods',
+        'categories': ['frozen', 'frozen_goods']
+      },
+      {
+        'label': 'Processed',
+        'categories': ['processed', 'processed_foods']
+      },
+      {
+        'label': 'Spices',
+        'categories': ['spices', 'pampalasa']
+      },
+    ],
+    'eatery': [
+      {
+        'label': 'All Eatery',
+        'categories': ['eatery', 'carinderia', 'cooked', 'cooked_food', 'lutong_ulam'],
+        'tag': null,
+      },
+      {
+        'label': 'Breakfast',
+        'categories': ['eatery', 'carinderia', 'cooked', 'cooked_food', 'lutong_ulam'],
+        'tag': 'breakfast',
+      },
+      {
+        'label': 'Lunch',
+        'categories': ['eatery', 'carinderia', 'cooked', 'cooked_food', 'lutong_ulam'],
+        'tag': 'lunch',
+      },
+      {
+        'label': 'Merienda',
+        'categories': ['eatery', 'carinderia', 'cooked', 'cooked_food', 'lutong_ulam'],
+        'tag': 'merienda',
+      },
+    ],
+    'dry_goods': [
+      {
+        'label': 'All Dry Goods',
+        'categories': ['dry_goods', 'drygoods', 'rice', 'bigas']
+      },
+      {
+        'label': 'Rice',
+        'categories': ['rice', 'bigas']
+      },
+      {
+        'label': 'Dry Goods',
+        'categories': ['dry_goods', 'drygoods']
+      },
+    ],
+    'sari_sari': [
+      {
+        'label': 'All Sari-Sari',
+        'categories': ['sari_sari', 'sarisari', 'sari-sari'],
+        'tag': null,
+      },
+      {
+        'label': 'Canned Goods',
+        'categories': ['sari_sari', 'sarisari', 'sari-sari'],
+        'tag': 'canned_goods',
+      },
+      {
+        'label': 'Snacks',
+        'categories': ['sari_sari', 'sarisari', 'sari-sari'],
+        'tag': 'snacks',
+      },
+      {
+        'label': 'Beverages',
+        'categories': ['sari_sari', 'sarisari', 'sari-sari'],
+        'tag': 'beverages',
+      },
+      {
+        'label': 'Condiments',
+        'categories': ['sari_sari', 'sarisari', 'sari-sari'],
+        'tag': 'condiments',
+      },
+      {
+        'label': 'Tobacco & Alcohol',
+        'categories': ['sari_sari', 'sarisari', 'sari-sari'],
+        'tag': 'tobacco',
+      },
+    ],
+    'retail': [
+      {
+        'label': 'All Retail',
+        'categories': [
+          'ukay_ukay',
+          'ukay-ukay',
+          'ukay',
+          'ukayukay',
+          'retail',
+          'clothing',
+          'non_food',
+          'tailor',
+          'tailor_shop'
+        ],
+        'tag': null,
+      },
+      {
+        'label': 'Ukay-Ukay',
+        'categories': [
+          'ukay_ukay',
+          'ukay-ukay',
+          'ukay',
+          'ukayukay',
+          'retail',
+          'clothing',
+          'non_food',
+          'tailor',
+          'tailor_shop'
+        ],
+        'tag': 'ukay_ukay',
+      },
+      {
+        'label': 'Tailor Shop',
+        'categories': [
+          'ukay_ukay',
+          'ukay-ukay',
+          'ukay',
+          'ukayukay',
+          'retail',
+          'clothing',
+          'non_food',
+          'tailor',
+          'tailor_shop'
+        ],
+        'tag': 'tailor_shop',
+      },
+    ],
+  };
 
   final Map<String, List<String>> dayMapping = {
     'Mon': ['monday', 'mon'],
@@ -158,21 +423,51 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
       }).toList();
     }
 
-    // 2. Apply category filter
-    if (_selectedCategory == 'Favorites') {
+    // 2. Apply stall type group filter with subcategory support
+    if (_selectedType == 'favorites') {
       final favState = ref.watch(favoriteProvider);
       result = result.where((s) => favState.isFavorite(s.stallId)).toList();
-    } else if (_selectedCategory != 'All') {
-      result = result.where((s) {
-        final stallCategory = s.category.toLowerCase();
-        final selectedCategory = _selectedCategory.toLowerCase();
-
-        if (selectedCategory == 'seafood') {
-          return stallCategory == 'seafood' || stallCategory == 'fish';
+    } else if (_selectedType != 'all') {
+      // If subcategory is selected, filter by subcategory categories
+      if (_selectedSubcategory != null) {
+        final subcategories = subcategoryMap[_selectedType];
+        if (subcategories != null) {
+          final selectedSubcat = subcategories.firstWhere(
+            (sub) => sub['label'] == _selectedSubcategory,
+            orElse: () => {'label': '', 'categories': []},
+          );
+          final subcatCategories =
+              (selectedSubcat['categories'] as List?)?.cast<String>() ?? [];
+          if (subcatCategories.isNotEmpty) {
+            result = result.where((stall) {
+              final matchesCategory = subcatCategories
+                  .contains(stall.category.toLowerCase().trim());
+              
+              // For sari_sari, eatery, and retail with tag filtering
+              if ((_selectedType == 'sari_sari' || 
+                   _selectedType == 'eatery' || 
+                   _selectedType == 'retail') && 
+                  _selectedTag != null) {
+                return matchesCategory && 
+                       stall.tags
+                           .map((t) => t.toLowerCase())
+                           .contains(_selectedTag!.toLowerCase());
+              }
+              
+              return matchesCategory;
+            }).toList();
+          }
         }
-
-        return stallCategory == selectedCategory;
-      }).toList();
+      } else {
+        // No subcategory selected, show all categories in the type group
+        final groupCategories = stallTypeGroups[_selectedType];
+        if (groupCategories != null && groupCategories.isNotEmpty) {
+          result = result.where((stall) {
+            return groupCategories
+                .contains(stall.category.toLowerCase().trim());
+          }).toList();
+        }
+      }
     }
 
     // 3. Apply time range filter
@@ -316,47 +611,97 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
   }
 
   IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'all':
-        return Icons.grid_view_rounded;
-      case 'favorites':
-        return Icons.favorite_rounded;
-      case 'eatery':
-        return Icons.restaurant_rounded;
+    // For individual stall categories displayed in stall cards
+    switch (category.toLowerCase().replaceAll(' ', '_')) {
+      case 'seafood':
+      case 'fish':
+        return Icons.water_outlined;
       case 'pork':
+      case 'baboy':
+      case 'beef':
+      case 'baka':
+      case 'meat':
+      case 'karne':
         return Icons.set_meal_outlined;
       case 'poultry':
+      case 'manok':
         return Icons.egg_outlined;
-      case 'beef':
-        return Icons.set_meal_outlined;
-      case 'fish':
-      case 'seafood':
-        return Icons.water_outlined;
       case 'vegetables':
+      case 'gulay':
         return Icons.eco_outlined;
       case 'fruits':
+      case 'prutas':
         return Icons.energy_savings_leaf_outlined;
       case 'rice':
+      case 'bigas':
         return Icons.grain_rounded;
+      case 'sari_sari':
+      case 'sarisari':
       case 'sari-sari':
         return Icons.store_rounded;
-      case 'dry goods':
+      case 'dry_goods':
+      case 'drygoods':
         return Icons.shopping_bag_outlined;
       case 'spices':
+      case 'pampalasa':
         return Icons.grass_outlined;
-      case 'ukay-ukay':
       case 'ukay_ukay':
+      case 'ukay-ukay':
+      case 'ukayukay':
+      case 'ukay':
+      case 'clothing':
         return Icons.checkroom_rounded;
+      case 'eatery':
+      case 'carinderia':
+      case 'cooked':
+      case 'cooked_food':
+      case 'lutong_ulam':
+        return Icons.restaurant_rounded;
+      case 'frozen':
+      case 'frozen_goods':
+      case 'processed':
+      case 'processed_foods':
+        return Icons.kitchen_rounded;
       default:
         return Icons.storefront_outlined;
     }
   }
 
   String _getCategoryDisplayName(String category) {
-    if (category.toLowerCase() == 'fish') {
-      return 'Seafood';
-    }
+    // For individual stall categories - just return as is with proper casing
     return category;
+  }
+
+  String _getGroupDisplayName(String groupKey) {
+    // For filter chip group labels
+    final chip = filterChips.firstWhere(
+      (chip) => chip['key'] == groupKey,
+      orElse: () => {'key': groupKey, 'label': groupKey, 'icon': Icons.store},
+    );
+    return chip['label'] as String;
+  }
+
+  String _getDisplayNameForCount() {
+    // Returns the display name for stall count text
+    if (_searchQuery.isNotEmpty) {
+      return 'Search Results';
+    }
+    
+    if (_selectedSubcategory != null) {
+      // For sari_sari, eatery, and retail with tag filtering, show "Tag - Type" format
+      if (_selectedTag != null) {
+        if (_selectedType == 'sari_sari') {
+          return '$_selectedSubcategory - Sari-Sari';
+        } else if (_selectedType == 'eatery') {
+          return '$_selectedSubcategory - Eatery';
+        } else if (_selectedType == 'retail') {
+          return '$_selectedSubcategory - Retail';
+        }
+      }
+      return _selectedSubcategory!;
+    }
+    
+    return _getGroupDisplayName(_selectedType);
   }
 
   String formatTimeOfDay(TimeOfDay time) {
@@ -503,75 +848,25 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _categories.length,
+                          itemCount: filterChips.length,
                           itemBuilder: (context, index) {
-                            final category = _categories[index];
-                            final isSelected = _selectedCategory == category;
-                            final isFavoritesChip = category == 'Favorites';
-
-                            if (isFavoritesChip) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedCategory = isSelected ? 'All' : category;
-                                    });
-                                  },
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? const Color(0xFFFFEBEE)
-                                          : const Color(0xFFF5F5F5),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? const Color(0xFFE53935)
-                                            : const Color(0xFFE0E0E0),
-                                        width: isSelected ? 1.5 : 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          isSelected
-                                              ? Icons.favorite_rounded
-                                              : Icons.favorite_border_rounded,
-                                          size: 14,
-                                          color: isSelected
-                                              ? const Color(0xFFE53935)
-                                              : const Color(0xFF9E9E9E),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Favorites',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: isSelected
-                                                ? const Color(0xFFE53935)
-                                                : const Color(0xFF757575),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
+                            final chip = filterChips[index];
+                            final chipKey = chip['key'] as String;
+                            final chipLabel = chip['label'] as String;
+                            final chipIcon = chip['icon'] as IconData;
+                            final isSelected = _selectedType == chipKey;
+                            final hasSubcategories = subcategoryMap.containsKey(chipKey);
+                            final isSubcategoryOpen = isSelected && hasSubcategories;
 
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: InkWell(
                                 onTap: () {
                                   setState(() {
-                                    _selectedCategory = isSelected ? 'All' : category;
+                                    _selectedType = isSelected ? 'all' : chipKey;
+                                    // Reset subcategory and tag when changing type
+                                    _selectedSubcategory = null;
+                                    _selectedTag = null;
                                   });
                                 },
                                 borderRadius: BorderRadius.circular(20),
@@ -583,19 +878,20 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? const Color(0xFF1B5E20)
-                                        : const Color(0xFFF5F5F5),
+                                        : Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                       color: isSelected
                                           ? const Color(0xFF1B5E20)
-                                          : const Color(0xFFEEEEEE),
+                                          : const Color(0xFFE0E0E0),
+                                      width: isSelected ? 1.5 : 1,
                                     ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        _getCategoryIcon(category),
+                                        chipIcon,
                                         size: 14,
                                         color: isSelected
                                             ? Colors.white
@@ -603,7 +899,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        _getCategoryDisplayName(category),
+                                        chipLabel,
                                         style: GoogleFonts.poppins(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
@@ -612,6 +908,20 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                                               : const Color(0xFF757575),
                                         ),
                                       ),
+                                      if (hasSubcategories) ...[
+                                        const SizedBox(width: 4),
+                                        AnimatedRotation(
+                                          turns: isSubcategoryOpen ? 0.5 : 0,
+                                          duration: const Duration(milliseconds: 250),
+                                          child: Icon(
+                                            Icons.keyboard_arrow_down,
+                                            size: 14,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : const Color(0xFF757575),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -619,6 +929,103 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                             );
                           },
                         ),
+                      ),
+                    ),
+
+                    // Subcategory chips row (Level 2)
+                    SliverToBoxAdapter(
+                      child: AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        child: subcategoryMap.containsKey(_selectedType) &&
+                                _selectedType != 'all' &&
+                                _selectedType != 'favorites'
+                            ? Container(
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF8F9FA),
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Color(0xFFE0E0E0),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: SizedBox(
+                                  height: 36,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    itemCount: subcategoryMap[_selectedType]!
+                                        .length,
+                                    itemBuilder: (context, index) {
+                                      final subcat =
+                                          subcategoryMap[_selectedType]![index];
+                                      final subcatLabel =
+                                          subcat['label'] as String;
+                                      final isSelected =
+                                          _selectedSubcategory == subcatLabel ||
+                                              (_selectedSubcategory == null &&
+                                                  index == 0);
+
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 8),
+                                        child: InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              // If tapping 'All [Type]' (first chip), set to null
+                                              if (index == 0) {
+                                                _selectedSubcategory = null;
+                                                _selectedTag = null;
+                                              } else {
+                                                _selectedSubcategory =
+                                                    subcatLabel;
+                                                // Set tag if available (for sari_sari filtering)
+                                                _selectedTag = subcat['tag'] as String?;
+                                              }
+                                            });
+                                          },
+                                          borderRadius:
+                                              BorderRadius.circular(18),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isSelected
+                                                  ? const Color(0xFF1B5E20)
+                                                  : Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? const Color(0xFF1B5E20)
+                                                    : const Color(0xFFE0E0E0),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              subcatLabel,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : const Color(0xFF1B5E20),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ),
 
@@ -724,13 +1131,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              _selectedCategory == 'Favorites'
-                                  ? 'My Favorites (${filteredStalls.length})'
-                                  : _searchQuery.isNotEmpty
-                                      ? 'Search Results (${filteredStalls.length})'
-                                      : _selectedCategory == 'All'
-                                          ? 'All Stalls (${filteredStalls.length})'
-                                          : '${_getCategoryDisplayName(_selectedCategory)} (${filteredStalls.length})',
+                              '${_getDisplayNameForCount()} ${_selectedType == 'favorites' ? '' : 'Stalls'} (${filteredStalls.length})',
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1155,7 +1556,7 @@ class _StallListScreenState extends ConsumerState<StallListScreen> {
   }
 
   Widget _buildEmptyState() {
-    final isFavoritesEmpty = _selectedCategory == 'Favorites';
+    final isFavoritesEmpty = _selectedType == 'favorites';
     final isSearchEmpty = _searchQuery.isNotEmpty;
 
     return Center(

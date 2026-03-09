@@ -1,4 +1,5 @@
 // Part 8: Rebuilt Sort & Filter System - 3 Options (Alphabetical, Time Range, Day+Status)
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,6 +33,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   TimeOfDay? filterCloseTime;
   String? selectedDay; // 'Mon'|'Tue'|...|null
   bool showOpenOnDay = true;
+  bool _filterOpenOnly = false; // Filter to show only currently open stalls
+  Timer? _statusTimer;
 
   // Stall type groups mapping
   static const Map<String, List<String>> stallTypeGroups = {
@@ -401,15 +404,25 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     filterCloseTime = null;
     selectedDay = null;
     showOpenOnDay = true;
+    _filterOpenOnly = false;
     
     _loadRecentlyViewed();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(favoriteProvider.notifier).loadFavorites();
     });
+    
+    // Refresh open/closed status every 60 seconds
+    _statusTimer = Timer.periodic(
+      const Duration(seconds: 60), 
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -485,6 +498,84 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     final dayVariants = dayMapping[day] ?? [day];
     return stall.daysOpen.any((d) =>
         dayVariants.any((v) => d.toLowerCase().contains(v.toLowerCase())));
+  }
+
+  // Check if a stall is currently open based on Philippine time
+  bool isStallOpenNow(StallModel stall) {
+    // Get current Philippine time (UTC+8)
+    final now = DateTime.now().toUtc().add(const Duration(hours: 8));
+    
+    // Check operating days first
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final currentDay = days[now.weekday - 1];
+    
+    if (!_isDayIncluded(stall.daysOpen.join(','), currentDay)) {
+      return false;
+    }
+    
+    // Parse opening and closing times
+    final opening = _parseTimeStr(stall.openTime, now);
+    final closing = _parseTimeStr(stall.closeTime, now);
+    
+    if (opening == null || closing == null) {
+      return stall.isActive; // fallback to DB value
+    }
+    
+    final currentMinutes = now.hour * 60 + now.minute;
+    final openMinutes = opening.hour * 60 + opening.minute;
+    final closeMinutes = closing.hour * 60 + closing.minute;
+    
+    return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+  }
+
+  // Parse time string like "5:00 AM" or "12:00 PM"
+  DateTime? _parseTimeStr(String timeStr, DateTime ref) {
+    try {
+      timeStr = timeStr.trim().toUpperCase();
+      final parts = timeStr.split(' ');
+      final timeParts = parts[0].split(':');
+      final amPm = parts.length > 1 ? parts[1] : 'AM';
+      
+      int hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      
+      if (amPm == 'PM' && hour != 12) hour += 12;
+      if (amPm == 'AM' && hour == 12) hour = 0;
+      
+      return DateTime(ref.year, ref.month, ref.day, hour, minute);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Check if current day is in operating days range
+  bool _isDayIncluded(String operatingDays, String currentDay) {
+    // Handle "Mon-Sun" = every day
+    if (operatingDays.toLowerCase().contains('sun') &&
+        operatingDays.toLowerCase().contains('mon')) {
+      return true;
+    }
+    
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    if (operatingDays.contains('-')) {
+      final parts = operatingDays.split('-');
+      final startIdx = days.indexOf(parts[0].trim());
+      final endIdx = days.indexOf(parts[1].trim());
+      final currentIdx = days.indexOf(currentDay);
+      
+      if (startIdx == -1 || endIdx == -1) return true;
+      
+      if (startIdx <= endIdx) {
+        return currentIdx >= startIdx && currentIdx <= endIdx;
+      } else {
+        // Wraps around (e.g. Sat-Mon)
+        return currentIdx >= startIdx || currentIdx <= endIdx;
+      }
+    }
+    
+    // Comma separated: "Mon,Wed,Fri"
+    return operatingDays.contains(currentDay);
   }
 
   List<StallModel> applyFilters(List<StallModel> stalls) {
@@ -602,6 +693,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     if (sortAlpha != null) count++;
     if (filterOpenTime != null && filterCloseTime != null) count++;
     if (selectedDay != null) count++;
+    if (_filterOpenOnly) count++;
     return count;
   }
 
@@ -612,6 +704,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       filterCloseTime = null;
       selectedDay = null;
       showOpenOnDay = true;
+      _filterOpenOnly = false;
     });
   }
 
@@ -674,13 +767,15 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         currentFilterCloseTime: filterCloseTime,
         currentSelectedDay: selectedDay,
         currentShowOpenOnDay: showOpenOnDay,
-        onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen) {
+        currentFilterOpenOnly: _filterOpenOnly,
+        onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen, newOpenOnly) {
           setState(() {
             sortAlpha = newSortAlpha;
             filterOpenTime = newOpenTime;
             filterCloseTime = newCloseTime;
             selectedDay = newDay;
             showOpenOnDay = newShowOpen;
+            _filterOpenOnly = newOpenOnly;
           });
         },
         onReset: resetAllFilters,
@@ -1566,23 +1661,78 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _getCategoryDisplayName(stall.category),
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF2E7D32),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _getCategoryDisplayName(stall.category),
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF2E7D32),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      // Open/Closed badge
+                      Builder(
+                        builder: (context) {
+                          final isOpen = isStallOpenNow(stall);
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isOpen
+                                  ? const Color(0xFFE8F5E9)
+                                  : const Color(0xFFFFEBEE),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isOpen
+                                    ? const Color(0xFF4CAF50)
+                                    : const Color(0xFFE53935),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isOpen
+                                        ? const Color(0xFF4CAF50)
+                                        : const Color(0xFFE53935),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isOpen ? 'Open' : 'Closed',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: isOpen
+                                        ? const Color(0xFF2E7D32)
+                                        : const Color(0xFFC62828),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -1594,14 +1744,21 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                       ),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text(
-                          '${stall.openTime} - ${stall.closeTime}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: const Color(0xFF757575),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Builder(
+                          builder: (context) {
+                            final isOpen = isStallOpenNow(stall);
+                            return Text(
+                              '${stall.openTime} - ${stall.closeTime}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: isOpen
+                                    ? const Color(0xFF2E7D32)
+                                    : const Color(0xFF9E9E9E),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -1701,7 +1858,8 @@ class _FilterBottomSheet extends StatefulWidget {
   final TimeOfDay? currentFilterCloseTime;
   final String? currentSelectedDay;
   final bool currentShowOpenOnDay;
-  final Function(String?, TimeOfDay?, TimeOfDay?, String?, bool) onApply;
+  final bool currentFilterOpenOnly;
+  final Function(String?, TimeOfDay?, TimeOfDay?, String?, bool, bool) onApply;
   final VoidCallback onReset;
   final TimeOfDay Function(String) parseTime;
 
@@ -1711,6 +1869,7 @@ class _FilterBottomSheet extends StatefulWidget {
     required this.currentFilterCloseTime,
     required this.currentSelectedDay,
     required this.currentShowOpenOnDay,
+    required this.currentFilterOpenOnly,
     required this.onApply,
     required this.onReset,
     required this.parseTime,
@@ -1726,6 +1885,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   TimeOfDay? _tempFilterCloseTime;
   String? _tempSelectedDay;
   bool _tempShowOpenOnDay = true;
+  bool _tempFilterOpenOnly = false;
 
   final List<String> days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -1737,6 +1897,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     _tempFilterCloseTime = widget.currentFilterCloseTime;
     _tempSelectedDay = widget.currentSelectedDay;
     _tempShowOpenOnDay = widget.currentShowOpenOnDay;
+    _tempFilterOpenOnly = widget.currentFilterOpenOnly;
   }
 
   Future<void> _pickTime(bool isOpenTime) async {
@@ -1781,6 +1942,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     if (_tempSortAlpha != null) count++;
     if (_tempFilterOpenTime != null && _tempFilterCloseTime != null) count++;
     if (_tempSelectedDay != null) count++;
+    if (_tempFilterOpenOnly) count++;
     return count;
   }
 
@@ -1832,6 +1994,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       _tempFilterCloseTime = null;
                       _tempSelectedDay = null;
                       _tempShowOpenOnDay = true;
+                      _tempFilterOpenOnly = false;
                     });
                   },
                   style: TextButton.styleFrom(
@@ -1958,8 +2121,32 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     ),
                   ],
 
-                  // SECTION 3: Day & Status
-                  _buildSectionHeader('03  Day & Status'),
+                  // Quick Filter: Open Now Toggle
+                  _buildSectionHeader('03  Quick Filter'),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Open Now Only',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF212121),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Show only currently open stalls',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: const Color(0xFF9E9E9E),
+                      ),
+                    ),
+                    value: _tempFilterOpenOnly,
+                    activeColor: const Color(0xFF1B5E20),
+                    onChanged: (val) => setState(() => _tempFilterOpenOnly = val),
+                  ),
+
+                  // SECTION 4: Day & Status
+                  _buildSectionHeader('04  Day & Status'),
                   Text(
                     'Filter by Day & Status',
                     style: GoogleFonts.poppins(
@@ -2069,6 +2256,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     _tempFilterCloseTime,
                     _tempSelectedDay,
                     _tempShowOpenOnDay,
+                    _tempFilterOpenOnly,
                   );
                   Navigator.pop(context);
                 },

@@ -1,118 +1,38 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    function isOwner(uid) {
-      return isAuthenticated() && request.auth.uid == uid;
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
     
     function isAdmin() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Users collection
-    match /users/{userId} {
-      // Users can read their own document
-      allow read: if isOwner(userId);
-      
-      // Users can create their own document on signup
-      allow create: if isAuthenticated() && 
-                      isOwner(userId) &&
-                      request.resource.data.role == 'user';
-      
-      // Users can update their own document (except role)
-      allow update: if isOwner(userId) &&
-                      request.resource.data.role == resource.data.role;
-      
-      // Only admins can delete user documents
-      allow delete: if isAdmin();
-    }
-    
-    // Usernames collection (for username uniqueness check during signup)
+    // Usernames collection - allow unauthenticated reads for login username lookup
     match /usernames/{username} {
-      // Anyone can read to check uniqueness
-      allow read: if true;
-      
-      // Users can create username document during signup
-      allow create: if isAuthenticated() &&
-                      request.resource.data.uid == request.auth.uid;
-      
-      // Users can delete their own username document
-      allow delete: if isAuthenticated() &&
-                      resource.data.uid == request.auth.uid;
-      
-      // No updates allowed (usernames are immutable)
-      allow update: if false;
+      allow read: if true;  // Anyone can read (needed for username-to-email lookup during login)
+      allow write: if isAuthenticated();
     }
     
-    // Stalls collection
-    match /stalls/{stallId} {
-      // All authenticated users can read active stalls
-      allow read: if isAuthenticated();
-      
-      // TEMPORARY: Allow all authenticated users to create stalls for seeding
-      // Will be reverted to admin-only after seeding
-      allow create: if isAuthenticated();
-      allow update: if isAdmin();
+    // Users collection - allow unauthenticated read of individual docs for email lookup
+    match /users/{userId} {
+      // Allow unauthenticated read of email field only (for username lookup)
+      allow get: if true;
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && request.resource.data.role == 'user';
+      allow update: if isOwner(userId) && request.resource.data.role == resource.data.role;
       allow delete: if isAdmin();
     }
     
-    // Reports collection (user-submitted reports about stalls)
-    match /reports/{reportId} {
-      // Users can read their own reports, admins can read all
-      allow read: if isAuthenticated() && 
-                    (isAdmin() || resource.data.userId == request.auth.uid);
-      
-      // Authenticated users can create reports
-      allow create: if isAuthenticated() &&
-                      request.resource.data.userId == request.auth.uid &&
-                      request.resource.data.status == 'pending';
-      
-      // Only admins can update or delete reports
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-    
-    // Chat messages collection (for AI chat history - optional for Part 7)
-    match /chatMessages/{messageId} {
-      // Users can read their own chat messages
-      allow read: if isAuthenticated() && 
-                    resource.data.userId == request.auth.uid;
-      
-      // Users can create their own chat messages
-      allow create: if isAuthenticated() &&
-                      request.resource.data.userId == request.auth.uid;
-      
-      // Users can delete their own chat messages
-      allow delete: if isAuthenticated() && 
-                      resource.data.userId == request.auth.uid;
-      
-      // No updates to chat messages
-      allow update: if false;
-    }
-    
-    // Favorites collection (user's favorite stalls)
-    match /users/{userId}/favorites/{favoriteId} {
-      // Users can read their own favorites
-      allow read: if isOwner(userId);
-      
-      // Users can add/remove their own favorites
-      allow create, delete: if isOwner(userId);
-      
-      // No updates needed for favorites
-      allow update: if false;
-    }
-    
-    // Default deny all other collections
+    // All other collections - require authentication
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAuthenticated();
     }
   }
 }

@@ -168,7 +168,8 @@ Future<void> seedStallData() async {
     },
     {
       'name': 'Bigas ni Mang Tomas',
-      'category': 'Rice',
+      'category': 'Dry Goods',
+      'tags': ['rice_dealer'],
       'products': [
         'sinandomeng',
         'jasmine rice',

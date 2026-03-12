@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/router/route_names.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/exceptions/auth_exception.dart';
 
@@ -92,7 +93,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             color: Color(0xFF1B5E20),
             size: 20,
           ),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(RouteNames.login);
+            }
+          },
         ),
         title: Text(
           'Forgot Password',

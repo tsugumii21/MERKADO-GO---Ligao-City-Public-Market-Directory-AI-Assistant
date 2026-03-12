@@ -16,8 +16,9 @@ import '../../features/stalls/presentation/stall_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/map/presentation/report_screen.dart';
-import '../../features/admin/presentation/admin_login_screen.dart';
+import '../../features/admin/presentation/admin_main_shell.dart';
 import '../../features/admin/presentation/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/admin_map_screen.dart';
 import '../../features/admin/presentation/manage_stalls_screen.dart';
 import '../../features/admin/presentation/add_edit_stall_screen.dart';
 import '../../features/admin/presentation/reports_screen.dart';
@@ -120,19 +121,43 @@ class AppRouter {
           },
         ),
         
-        // Admin Routes
-        GoRoute(
-          path: RouteNames.adminLogin,
-          builder: (context, state) => const AdminLoginScreen(),
+        // Admin Routes with Bottom Navigation (3 tabs: Dashboard, Map, Stalls)
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return AdminMainShell(navigationShell: navigationShell);
+          },
+          branches: [
+            // Branch 0: Dashboard
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: RouteNames.admin,
+                  builder: (context, state) => const AdminDashboardScreen(),
+                ),
+              ],
+            ),
+            // Branch 1: Map (admin map with editing)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: RouteNames.adminMap,
+                  builder: (context, state) => const AdminMapScreen(),
+                ),
+              ],
+            ),
+            // Branch 2: Stalls Management
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: RouteNames.adminStalls,
+                  builder: (context, state) => const ManageStallsScreen(),
+                ),
+              ],
+            ),
+          ],
         ),
-        GoRoute(
-          path: RouteNames.adminDashboard,
-          builder: (context, state) => const AdminDashboardScreen(),
-        ),
-        GoRoute(
-          path: RouteNames.adminStalls,
-          builder: (context, state) => const ManageStallsScreen(),
-        ),
+        
+        // Admin Sub-Routes (outside bottom nav)
         GoRoute(
           path: RouteNames.adminAddStall,
           builder: (context, state) => const AddEditStallScreen(),
@@ -157,13 +182,11 @@ class AppRouter {
           final isSigningUp = state.uri.toString() == RouteNames.signup;
           final isOnSplash = state.uri.toString() == RouteNames.splash;
           final isVerifyingEmail = state.uri.toString() == RouteNames.verifyEmail;
-          final isAdminLogin = state.uri.toString() == RouteNames.adminLogin;
           final isGetStarted = state.uri.toString() == RouteNames.getStarted;
           final isForgotPassword = state.uri.toString() == RouteNames.forgotPassword;
 
           // Allow splash, get started, login, signup, forgot password without redirect
-          if (isOnSplash || isGetStarted || isLoggingIn || isSigningUp || 
-              isForgotPassword || isAdminLogin) {
+          if (isOnSplash || isGetStarted || isLoggingIn || isSigningUp || isForgotPassword) {
             debugPrint('✅ Allowing auth/splash route');
             return null;
           }
@@ -195,12 +218,18 @@ class AppRouter {
               // Admin role -> admin dashboard
               if (role == 'admin' && !state.uri.toString().startsWith('/admin')) {
                 debugPrint('✅ Admin user, redirect to Dashboard');
-                return RouteNames.adminDashboard;
+                return RouteNames.admin;
               }
 
-              // Regular user role -> home
+              // Regular user trying to access admin routes -> redirect to home
               if (role == 'user' && state.uri.toString().startsWith('/admin')) {
                 debugPrint('✅ Regular user trying admin route, redirect to Home');
+                return RouteNames.home;
+              }
+              
+              // Non-admin trying to access admin routes -> redirect to home
+              if (role != 'admin' && state.uri.toString().startsWith('/admin')) {
+                debugPrint('⚠️ Non-admin user trying admin route, redirect to Home');
                 return RouteNames.home;
               }
             }

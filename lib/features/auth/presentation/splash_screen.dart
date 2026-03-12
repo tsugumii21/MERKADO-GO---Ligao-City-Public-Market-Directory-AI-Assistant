@@ -147,7 +147,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (mounted) {
         if (userData?.role == 'admin') {
           debugPrint('✅ Admin user, going to Dashboard');
-          context.go(RouteNames.adminDashboard);
+          context.go(RouteNames.admin);
         } else {
           debugPrint('✅ Regular user, going to Home');
           context.go(RouteNames.home);

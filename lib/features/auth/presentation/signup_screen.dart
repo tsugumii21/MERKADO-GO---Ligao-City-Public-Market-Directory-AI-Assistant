@@ -160,7 +160,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             color: Color(0xFF1B5E20),
             size: 20,
           ),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(RouteNames.getStarted);
+            }
+          },
         ),
       ),
       body: SafeArea(

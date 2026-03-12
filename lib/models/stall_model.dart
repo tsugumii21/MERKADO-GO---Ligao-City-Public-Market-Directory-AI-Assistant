@@ -4,6 +4,7 @@ class StallModel {
   final String stallId;
   final String name;
   final String category;
+  final List<String> categories; // Multi-category support
   final List<String> products;
   final String address;
   final List<String> photoUrls;
@@ -20,6 +21,7 @@ class StallModel {
     required this.stallId,
     required this.name,
     required this.category,
+    List<String>? categories,
     required this.products,
     required this.address,
     required this.photoUrls,
@@ -31,16 +33,22 @@ class StallModel {
     required this.isActive,
     required this.updatedAt,
     this.tags = const [],
-  });
+  }) : categories = categories ?? [category];
 
   // Create StallModel from Firestore document
   factory StallModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     
+    // Backward compatibility: if no categories array, use single category field
+    final categoriesList = data['categories'] != null
+        ? List<String>.from(data['categories'] as List)
+        : [data['category'] as String? ?? ''];
+    
     return StallModel(
       stallId: doc.id,
       name: data['name'] as String? ?? '',
       category: data['category'] as String? ?? '',
+      categories: categoriesList,
       products: List<String>.from(data['products'] as List<dynamic>? ?? []),
       address: data['address'] as String? ?? '',
       photoUrls: List<String>.from(data['photoUrls'] as List<dynamic>? ?? []),
@@ -62,6 +70,7 @@ class StallModel {
     return {
       'name': name,
       'category': category,
+      'categories': categories, // Multi-category array
       'products': products,
       'address': address,
       'photoUrls': photoUrls,
@@ -81,6 +90,7 @@ class StallModel {
     String? stallId,
     String? name,
     String? category,
+    List<String>? categories,
     List<String>? products,
     String? address,
     List<String>? photoUrls,
@@ -97,6 +107,7 @@ class StallModel {
       stallId: stallId ?? this.stallId,
       name: name ?? this.name,
       category: category ?? this.category,
+      categories: categories ?? this.categories,
       products: products ?? this.products,
       address: address ?? this.address,
       photoUrls: photoUrls ?? this.photoUrls,

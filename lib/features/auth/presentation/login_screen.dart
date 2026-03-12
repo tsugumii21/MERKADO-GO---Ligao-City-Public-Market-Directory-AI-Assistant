@@ -166,7 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         debugPrint('📊 User data: ${userData?.role}');
         
         if (userData?.role == 'admin') {
-          if (mounted) context.go(RouteNames.adminDashboard);
+          if (mounted) context.go(RouteNames.admin);
         } else {
           if (mounted) context.go(RouteNames.home);
         }
@@ -221,7 +221,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             color: Color(0xFF1B5E20),
             size: 20,
           ),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(RouteNames.getStarted);
+            }
+          },
         ),
       ),
       body: SafeArea(

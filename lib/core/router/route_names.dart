@@ -18,9 +18,9 @@ class RouteNames {
   static const String reportStall = '/stalls/:id/report';
   
   // Admin routes
-  static const String adminLogin = '/admin/login';
-  static const String adminDashboard = '/admin/dashboard';
+  static const String admin = '/admin';
   static const String adminStalls = '/admin/stalls';
+  static const String adminMap = '/admin/map';
   static const String adminAddStall = '/admin/stalls/add';
   static const String adminEditStall = '/admin/stalls/:id/edit';
   static const String adminReports = '/admin/reports';

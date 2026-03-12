@@ -44,7 +44,8 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   final List<Map<String, String>> _categories = [
     {'value': 'fresh', 'label': '🌿 Fresh'},
     {'value': 'seafood', 'label': '🐟 Seafood'},
-    {'value': 'meat', 'label': '🥩 Meat'},
+    {'value': 'pork', 'label': '🥩 Pork'},
+    {'value': 'beef', 'label': '🐄 Beef'},
     {'value': 'poultry', 'label': '🐔 Poultry'},
     {'value': 'vegetables', 'label': '🥦 Vegetables'},
     {'value': 'fruits', 'label': '🍎 Fruits'},
@@ -169,7 +170,18 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         _isOpen = stall.isActive;
         _latitudeController.text = stall.latitude.toString();
         _longitudeController.text = stall.longitude.toString();
-        _existingPhotoUrl = stall.photoUrls.isNotEmpty ? stall.photoUrls.first : null;
+        
+        // Load existing photo URL - filter out demo/placeholder URLs
+        if (stall.photoUrls.isNotEmpty) {
+          _existingPhotoUrl = stall.photoUrls.first;
+          // Remove hardcoded demo URLs
+          if (_existingPhotoUrl != null &&
+              (_existingPhotoUrl!.isEmpty ||
+               _existingPhotoUrl!.contains('demo') ||
+               _existingPhotoUrl!.contains('samples/food'))) {
+            _existingPhotoUrl = null;
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -253,6 +265,104 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         _selectedImage = File(pickedFile.path);
       });
     }
+  }
+
+  Widget _buildPhotoSection() {
+    // Case 1: User just picked a new image
+    if (_selectedImage != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(
+          _selectedImage!,
+          width: double.infinity,
+          height: 180,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    // Case 2: Existing photo from Firestore
+    if (_existingPhotoUrl != null &&
+        _existingPhotoUrl!.isNotEmpty &&
+        _existingPhotoUrl!.startsWith('http')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          _existingPhotoUrl!,
+          width: double.infinity,
+          height: 180,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildPhotoPlaceholder(),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: double.infinity,
+              height: 180,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: const Color(0xFF1B5E20),
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Case 3: No photo - show placeholder
+    return _buildPhotoPlaceholder();
+  }
+
+  Widget _buildPhotoPlaceholder() {
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        width: double.infinity,
+        height: 180,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFE0E0E0),
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.add_photo_alternate_rounded,
+              size: 48,
+              color: Color(0xFF9E9E9E),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap to add stall photo',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: const Color(0xFF9E9E9E),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'JPG, PNG up to 5MB',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: const Color(0xFFBDBDBD),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _selectTime(TextEditingController controller) async {
@@ -921,46 +1031,93 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  width: double.infinity,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE0E0E0)),
-                  ),
-                  child: _selectedImage != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                        )
-                      : _existingPhotoUrl != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(_existingPhotoUrl!, fit: BoxFit.cover),
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.add_photo_alternate_rounded,
-                                  size: 48,
-                                  color: Color(0xFF1B5E20),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Tap to upload photo',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    color: const Color(0xFF666666),
-                                  ),
-                                ),
-                              ],
-                            ),
+              _buildPhotoSection(),
+              const SizedBox(height: 8),
+              // Photo action buttons
+              if (_selectedImage != null ||
+                  (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty)) ...[  
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(
+                          Icons.photo_library_rounded,
+                          size: 16,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        label: Text(
+                          'Change Photo',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: const Color(0xFF1B5E20),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF1B5E20)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: _pickImage,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 16,
+                        color: Color(0xFFE53935),
+                      ),
+                      label: Text(
+                        'Remove',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Color(0xFFE53935),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFE53935)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _selectedImage = null;
+                          _existingPhotoUrl = null;
+                        });
+                      },
+                    ),
+                  ],
                 ),
-              ),
+              ] else ...[  
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(
+                      Icons.photo_library_rounded,
+                      size: 16,
+                      color: Color(0xFF1B5E20),
+                    ),
+                    label: Text(
+                      'Choose Photo',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: const Color(0xFF1B5E20),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF1B5E20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: _pickImage,
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
 
               // 9. Status Toggle
@@ -999,12 +1156,14 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               // 10. Save Button
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveStall,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B5E20),
                     disabledBackgroundColor: const Color(0xFF1B5E20).withOpacity(0.6),
+                    minimumSize: const Size(double.infinity, 56),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -1022,9 +1181,10 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                       : Text(
                           'Save Stall',
                           style: GoogleFonts.poppins(
-                            fontSize: 15,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
+                            letterSpacing: 0.5,
                           ),
                         ),
                 ),

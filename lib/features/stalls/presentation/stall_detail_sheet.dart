@@ -354,7 +354,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    widget.stall.category,
+                                    StallUtils.getCategoryLabel(widget.stall.category),
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,

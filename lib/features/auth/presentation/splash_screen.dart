@@ -15,14 +15,15 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _logoOpacity;
-  late Animation<double> _logoScale;
-  late Animation<double> _textOpacity;
-  late Animation<Offset> _textSlide;
-  late Animation<double> _loadingOpacity;
+  static const ImageProvider _splashLogoProvider = ResizeImage(
+    AssetImage('assets/images/splash_logo.png'),
+    width: 320,
+  );
 
-  int _activeDot = 0;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  bool _assetsReady = false;
 
   @override
   void initState() {
@@ -37,64 +38,55 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    // Single animation controller
-    _controller = AnimationController(
+    _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
-    // Logo animations
-    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
-      ),
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
     );
 
-    _logoScale = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.75, curve: Curves.easeOutBack),
-      ),
-    );
-
-    // Text animations
-    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.25, 0.875, curve: Curves.easeOut),
-      ),
-    );
-
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 15),
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.25, 0.875, curve: Curves.easeOut),
+        parent: _fadeController,
+        curve: Curves.easeOut,
       ),
     );
 
-    // Loading dots animation
-    _loadingOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.625, 1.0, curve: Curves.easeIn),
-      ),
-    );
+    _precacheAndStart();
+  }
 
-    // Start animations
-    _controller.forward();
-
-    // Animated dots cycling
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _startDotsAnimation();
+  Future<void> _precacheAndStart() async {
+    if (mounted) {
+      try {
+        await precacheImage(_splashLogoProvider, context);
+        if (mounted) {
+          setState(() {
+            _assetsReady = true;
+          });
+        }
+      } catch (_) {
+        // Continue splash flow even if precache fails.
+        if (mounted) {
+          setState(() {
+            _assetsReady = true;
+          });
+        }
       }
-    });
+    }
 
-    // Check auth and navigate
+    if (!mounted) return;
+    _fadeController.forward();
+    _startSplashTimer();
+  }
+
+  void _startSplashTimer() {
+    // Keep existing splash delay and auth redirect flow.
     Future.delayed(const Duration(milliseconds: 3500), () async {
       if (mounted) {
         await _checkAuthAndNavigate();
@@ -102,23 +94,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     });
   }
 
-  void _startDotsAnimation() {
-    Future.doWhile(() async {
-      if (!mounted) return false;
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (mounted) {
-        setState(() {
-          _activeDot = (_activeDot + 1) % 3;
-        });
-        return true;
-      }
-      return false;
-    });
-  }
-
   @override
   void dispose() {
-    _controller.dispose();
+    _fadeController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -164,26 +142,33 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    try {
-      return Scaffold(
-        backgroundColor: const Color(0xFF1A5C20),
-        body: Stack(
+    final size = MediaQuery.of(context).size;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1B5E20),
+      body: Stack(
         children: [
-          // Subtle decorative elements
           Positioned(
             top: -80,
             right: -80,
             child: Container(
-              width: 200,
-              height: 200,
+              width: 280,
+              height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF2E7D32).withOpacity(0.15),
-                    const Color(0xFF1A5C20).withOpacity(0.0),
-                  ],
-                ),
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -40,
+            right: -40,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -191,211 +176,334 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             bottom: -100,
             left: -100,
             child: Container(
-              width: 250,
-              height: 250,
+              width: 320,
+              height: 320,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF0D3F13).withOpacity(0.3),
-                    const Color(0xFF1A5C20).withOpacity(0.0),
-                  ],
-                ),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
           Positioned(
-            top: 100,
-            left: 30,
-            child: FadeTransition(
-              opacity: _logoOpacity,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.05),
-                    width: 1,
-                  ),
-                ),
+            bottom: -60,
+            left: -60,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
           Positioned(
-            bottom: 150,
-            right: 40,
-            child: FadeTransition(
-              opacity: _textOpacity,
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.08),
-                    width: 1.5,
-                  ),
-                ),
-              ),
+            top: 80,
+            left: 24,
+            child: _buildDotGrid(
+              rows: 4,
+              cols: 4,
+              color: Colors.white.withValues(alpha: 0.08),
             ),
           ),
-
-          // Main content
+          Positioned(
+            bottom: 120,
+            right: 24,
+            child: _buildDotGrid(
+              rows: 4,
+              cols: 4,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: CustomPaint(
+              size: Size(size.width, 160),
+              painter: _WavePainter(),
+            ),
+          ),
           SafeArea(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Spacer(flex: 2),
-
-                // Logo
-                FadeTransition(
-                  opacity: _logoOpacity,
-                  child: ScaleTransition(
-                    scale: _logoScale,
-                    child: Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x30000000),
-                            blurRadius: 20,
-                            spreadRadius: 0,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(12.5),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          width: 65,
-                          height: 65,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.topCenter,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // App Name & Tagline
-                FadeTransition(
-                  opacity: _textOpacity,
-                  child: AnimatedBuilder(
-                    animation: _textSlide,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, _textSlide.value.dy),
-                        child: child,
-                      );
-                    },
-                    child: Column(
-                      children: [
-                        // App Name
-                        Text(
-                          'Merkado Go',
-                          style: GoogleFonts.poppins(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Tagline
-                        Text(
-                          'Your Ligao City Public Market Guide',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0x99FFFFFF),
-                            letterSpacing: 0.3,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const Spacer(flex: 2),
-
-                // Loading Section
-                FadeTransition(
-                  opacity: _loadingOpacity,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 50),
-                    child: Column(
-                      children: [
-                        // Animated Dots
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(3, (index) {
-                            final isActive = index == _activeDot;
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: isActive ? 8 : 6,
-                              height: isActive ? 8 : 6,
-                              margin: EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: isActive ? 0 : 1,
-                              ),
+                Expanded(
+                  flex: 8,
+                  child: Center(
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 150,
+                              height: 150,
                               decoration: BoxDecoration(
-                                color: isActive
-                                    ? const Color(0xFFFFFFFF)
-                                    : const Color(0x80FFFFFF),
-                                borderRadius: BorderRadius.circular(
-                                  isActive ? 4 : 3,
-                                ),
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(32),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 30,
+                                    offset: const Offset(0, 12),
+                                  ),
+                                  BoxShadow(
+                                    color: const Color(0xFF4CAF50)
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 40,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                            );
-                          }),
+                              padding: const EdgeInsets.all(16),
+                              child: _assetsReady
+                                  ? Image(
+                                      image: _splashLogoProvider,
+                                      fit: BoxFit.contain,
+                                      filterQuality: FilterQuality.medium,
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                            const SizedBox(height: 28),
+                            RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Merkado',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'Go',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFFE53935),
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(width: 30, height: 1, color: Colors.white30),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Your Ligao City Public Market Guide',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      color: Colors.white60,
+                                      fontWeight: FontWeight.w400,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(width: 30, height: 1, color: Colors.white30),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-
-                        const SizedBox(height: 10),
-
-                        // Loading Text
-                        Text(
-                          'LOADING...',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0x70FFFFFF),
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Column(
+                    children: [
+                      const _AnimatedDots(),
+                      const SizedBox(height: 10),
+                      Text(
+                        'LOADING...',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: Colors.white38,
+                          letterSpacing: 3,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 48),
               ],
             ),
           ),
         ],
       ),
     );
-    } catch (e, stack) {
-      debugPrint('🔴 Error in SplashScreen build: $e');
-      debugPrint('🔴 STACK: $stack');
-      return Scaffold(
-        backgroundColor: const Color(0xFF1A5C20),
-        body: Center(
-          child: Text(
-            'Error: $e',
-            style: const TextStyle(color: Colors.white),
+  }
+
+  Widget _buildDotGrid({
+    required int rows,
+    required int cols,
+    required Color color,
+  }) {
+    return Column(
+      children: List.generate(
+        rows,
+        (r) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+              cols,
+              (c) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.04)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(0, size.height * 0.5);
+    path.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.2,
+      size.width * 0.5,
+      size.height * 0.45,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.7,
+      size.width,
+      size.height * 0.4,
+    );
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    canvas.drawPath(path, paint);
+
+    final paint2 = Paint()
+      ..color = Colors.white.withValues(alpha: 0.03)
+      ..style = PaintingStyle.fill;
+
+    final path2 = Path();
+    path2.moveTo(0, size.height * 0.7);
+    path2.quadraticBezierTo(
+      size.width * 0.3,
+      size.height * 0.4,
+      size.width * 0.6,
+      size.height * 0.65,
+    );
+    path2.quadraticBezierTo(
+      size.width * 0.8,
+      size.height * 0.8,
+      size.width,
+      size.height * 0.6,
+    );
+    path2.lineTo(size.width, size.height);
+    path2.lineTo(0, size.height);
+    path2.close();
+    canvas.drawPath(path2, paint2);
+  }
+
+  @override
+  bool shouldRepaint(_WavePainter oldDelegate) => false;
+}
+
+class _AnimatedDots extends StatefulWidget {
+  const _AnimatedDots();
+
+  @override
+  State<_AnimatedDots> createState() => _AnimatedDotsState();
+}
+
+class _AnimatedDotsState extends State<_AnimatedDots>
+    with TickerProviderStateMixin {
+  final List<AnimationController> _controllers = [];
+  final List<Animation<double>> _animations = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    for (int i = 0; i < 3; i++) {
+      final ctrl = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 600),
+      );
+
+      _controllers.add(ctrl);
+      _animations.add(
+        Tween<double>(begin: 0, end: -8).animate(
+          CurvedAnimation(
+            parent: ctrl,
+            curve: Curves.easeInOut,
           ),
         ),
       );
+
+      Future.delayed(Duration(milliseconds: i * 150), () {
+        if (mounted) {
+          ctrl.repeat(reverse: true);
+        }
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(
+        3,
+        (i) => AnimatedBuilder(
+          animation: _animations[i],
+          builder: (_, __) => Transform.translate(
+            offset: Offset(0, _animations[i].value),
+            child: Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white38,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

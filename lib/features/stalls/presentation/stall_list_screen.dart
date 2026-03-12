@@ -1511,7 +1511,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                _getCategoryDisplayName(stall.category),
+                StallUtils.getCategoryLabel(stall.category),
                 style: GoogleFonts.poppins(
                   fontSize: 9,
                   color: const Color(0xFF2E7D32),
@@ -1652,7 +1652,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          _getCategoryDisplayName(stall.category),
+                          StallUtils.getCategoryLabel(stall.category),
                           style: GoogleFonts.poppins(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,

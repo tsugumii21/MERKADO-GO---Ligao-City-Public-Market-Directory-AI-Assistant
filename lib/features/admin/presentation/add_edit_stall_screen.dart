@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../models/stall_model.dart';
 import '../../../core/services/cloudinary_service.dart';
@@ -23,51 +22,125 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   
   // Controllers
   final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _productController = TextEditingController();
   final _stallNumberController = TextEditingController();
   final _openTimeController = TextEditingController();
   final _closeTimeController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
+  final FocusNode _productFocusNode = FocusNode();
 
   // State variables
   final List<String> _selectedCategories = [];
+  List<String> _products = [];
+  String? _selectedSection;
   final List<String> _selectedTags = [];
   final List<String> _selectedDays = [];
-  bool _isOpen = true;
+  String _stallStatus = 'open';
   File? _selectedImage;
   String? _existingPhotoUrl;
   bool _isLoading = false;
   bool _isSaving = false;
 
-  // Category options with emojis
-  final List<Map<String, String>> _categories = [
-    {'value': 'fresh', 'label': '🌿 Fresh'},
-    {'value': 'seafood', 'label': '🐟 Seafood'},
-    {'value': 'pork', 'label': '🥩 Pork'},
-    {'value': 'beef', 'label': '🐄 Beef'},
-    {'value': 'poultry', 'label': '🐔 Poultry'},
-    {'value': 'vegetables', 'label': '🥦 Vegetables'},
-    {'value': 'fruits', 'label': '🍎 Fruits'},
-    {'value': 'frozen', 'label': '🧊 Frozen'},
-    {'value': 'processed', 'label': '🏭 Processed'},
-    {'value': 'spices', 'label': '🌶️ Spices'},
-    {'value': 'rice_dealer', 'label': '🌾 Rice Dealer'},
-    {'value': 'dried_fish', 'label': '🐠 Dried Fish'},
-    {'value': 'carinderia', 'label': '🍳 Carinderia'},
-    {'value': 'bakery', 'label': '🥖 Bakery'},
-    {'value': 'kakanin', 'label': '🍡 Kakanin'},
-    {'value': 'snack_stand', 'label': '🍢 Snack Stand'},
-    {'value': 'sari_sari', 'label': '🏪 Sari-Sari Store'},
-    {'value': 'ukay_ukay', 'label': '👗 Ukay-Ukay'},
-    {'value': 'tailor_shop', 'label': '✂️ Tailor Shop'},
-    {'value': 'hardware', 'label': '🔧 Hardware'},
-    {'value': 'school_supplies', 'label': '📚 School Supplies'},
-    {'value': 'home_supplies', 'label': '🏠 Home Supplies'},
-    {'value': 'agrivet', 'label': '🌱 Agrivet'},
-    {'value': 'electronics_repair', 'label': '📱 Electronics & Repair'},
-    {'value': 'barber_salon', 'label': '💈 Barber/Salon'},
-    {'value': 'general', 'label': '🛒 General Merchandise'},
+  static const List<Map<String, dynamic>> _foodCategories = [
+    {'value': 'fresh', 'label': 'Fresh Produce', 'icon': '🌿'},
+    {'value': 'seafood', 'label': 'Seafood & Fish', 'icon': '🐟'},
+    {'value': 'meat', 'label': 'Meat', 'icon': '🥩'},
+    {'value': 'poultry', 'label': 'Poultry & Chicken', 'icon': '🐔'},
+    {'value': 'vegetables', 'label': 'Vegetables', 'icon': '🥬'},
+    {'value': 'fruits', 'label': 'Fruits', 'icon': '🍎'},
+    {'value': 'frozen', 'label': 'Frozen & Processed', 'icon': '🧊'},
+    {'value': 'dry_goods', 'label': 'Dry Goods', 'icon': '🌾'},
+    {'value': 'rice', 'label': 'Rice', 'icon': '🍚'},
+    {'value': 'cooked', 'label': 'Cooked Food', 'icon': '🍳'},
+    {'value': 'sari_sari', 'label': 'Sari-Sari Store', 'icon': '🏪'},
+  ];
+
+  static const List<Map<String, dynamic>> _nonFoodCategories = [
+    {'value': 'retail', 'label': 'Retail / Clothing', 'icon': '👗'},
+    {'value': 'general', 'label': 'General Merchandise', 'icon': '🛒'},
+    {'value': 'services', 'label': 'Services', 'icon': '🔧'},
+  ];
+
+  static const List<Map<String, dynamic>> _statusOptions = [
+    {
+      'value': 'open',
+      'label': 'Open for Service',
+      'description': 'Currently serving customers',
+      'icon': Icons.store_rounded,
+      'color': Color(0xFF2E7D32),
+      'bgColor': Color(0xFFE8F5E9),
+    },
+    {
+      'value': 'closed',
+      'label': 'Closed',
+      'description': 'Not open today',
+      'icon': Icons.storefront_outlined,
+      'color': Color(0xFFC62828),
+      'bgColor': Color(0xFFFFEBEE),
+    },
+    {
+      'value': 'temporarily_closed',
+      'label': 'Temporarily Closed',
+      'description': 'Will reopen soon',
+      'icon': Icons.pause_circle_outline_rounded,
+      'color': Color(0xFFE65100),
+      'bgColor': Color(0xFFFFF3E0),
+    },
+    {
+      'value': 'renovation',
+      'label': 'Under Renovation',
+      'description': 'Stall is being renovated',
+      'icon': Icons.construction_rounded,
+      'color': Color(0xFF6A1B9A),
+      'bgColor': Color(0xFFF3E5F5),
+    },
+    {
+      'value': 'coming_soon',
+      'label': 'Coming Soon',
+      'description': 'New stall opening soon',
+      'icon': Icons.new_releases_outlined,
+      'color': Color(0xFF1565C0),
+      'bgColor': Color(0xFFE3F2FD),
+    },
+  ];
+
+  static const List<Map<String, dynamic>> _marketSections = [
+    {
+      'value': 'dry_goods_section',
+      'label': 'Dry Goods Section',
+      'description': 'Rice, dried fish, grains, condiments',
+    },
+    {
+      'value': 'fruit_section',
+      'label': 'Fruit Section',
+      'description': 'Fresh fruits and produce',
+    },
+    {
+      'value': 'vegetable_section',
+      'label': 'Vegetable Section',
+      'description': 'Fresh vegetables and greens',
+    },
+    {
+      'value': 'rice_section',
+      'label': 'Rice Section',
+      'description': 'Rice dealers and grain sellers',
+    },
+    {
+      'value': 'fish_chicken_section',
+      'label': 'Fish & Chicken Section',
+      'description': 'Fresh seafood and dressed poultry',
+    },
+    {
+      'value': 'meat_section',
+      'label': 'Meat Section',
+      'description': 'Pork, beef, and carabao meat',
+    },
+    {
+      'value': 'cooked_food_section',
+      'label': 'Food Section',
+      'description': 'Carinderia, eateries, and food stalls',
+    },
   ];
 
   // Tag options
@@ -114,9 +187,246 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     {'value': 'Sun', 'label': 'Sun'},
   ];
 
+  bool get _hasFoodSelected => _selectedCategories
+      .any((c) => _foodCategories.any((f) => f['value'] == c));
+
+  bool get _hasNonFoodSelected => _selectedCategories
+      .any((c) => _nonFoodCategories.any((nf) => nf['value'] == c));
+
+  List<String> get _productSuggestions {
+    final suggestions = <String>[];
+
+    if (_selectedCategories.contains('seafood') ||
+        _selectedCategories.contains('fresh')) {
+      suggestions.addAll([
+        'Bangus',
+        'Tilapia',
+        'Galunggong',
+        'Pusit',
+        'Hipon',
+        'Alimango',
+        'Tahong',
+        'Tulingan',
+      ]);
+    }
+    if (_selectedCategories.contains('meat')) {
+      suggestions.addAll([
+        'Pork',
+        'Beef',
+        'Carabao',
+        'Pork Liempo',
+        'Pork Ribs',
+        'Ground Pork',
+        'Beef Bulalo',
+      ]);
+    }
+    if (_selectedCategories.contains('poultry')) {
+      suggestions.addAll([
+        'Whole Chicken',
+        'Chicken Parts',
+        'Native Chicken',
+        'Duck',
+        'Eggs',
+        'Dressed Chicken',
+      ]);
+    }
+    if (_selectedCategories.contains('vegetables')) {
+      suggestions.addAll([
+        'Ampalaya',
+        'Sitaw',
+        'Kangkong',
+        'Pechay',
+        'Kamote',
+        'Gabi',
+        'Talong',
+        'Kamatis',
+        'Sibuyas',
+      ]);
+    }
+    if (_selectedCategories.contains('fruits')) {
+      suggestions.addAll([
+        'Mangga',
+        'Saging',
+        'Papaya',
+        'Lansones',
+        'Santol',
+        'Suha',
+        'Pineapple',
+        'Watermelon',
+      ]);
+    }
+    if (_selectedCategories.contains('cooked') ||
+        _selectedCategories.contains('carinderia')) {
+      suggestions.addAll([
+        'Sinangag',
+        'Adobo',
+        'Sinigang',
+        'Kare-kare',
+        'Menudo',
+        'Giniling',
+        'Tinola',
+        'Bulalo',
+        'Breakfast Meal',
+        'Lunch Special',
+      ]);
+    }
+    if (_selectedCategories.contains('rice') ||
+        _selectedCategories.contains('dry_goods')) {
+      suggestions.addAll([
+        'Dinorado',
+        'Sinandomeng',
+        'Jasmine Rice',
+        'Brown Rice',
+        'Malagkit',
+        'Special Rice',
+      ]);
+    }
+    if (_selectedCategories.contains('bakery')) {
+      suggestions.addAll([
+        'Pandesal',
+        'Tasty Bread',
+        'Ensaymada',
+        'Monay',
+        'Espasol',
+        'Puto',
+      ]);
+    }
+    if (_selectedCategories.contains('sari_sari')) {
+      suggestions.addAll([
+        'Canned Goods',
+        'Softdrinks',
+        'Snacks',
+        'Instant Noodles',
+        'Coffee',
+        'Detergent',
+        'Toiletries',
+        'Candies',
+      ]);
+    }
+    if (_selectedCategories.contains('retail')) {
+      suggestions.addAll([
+        'T-shirts',
+        'Pants',
+        'Dresses',
+        'Ukay-Ukay',
+        'School Uniforms',
+        'Sandals',
+        'Bags',
+      ]);
+    }
+    if (_selectedCategories.contains('services')) {
+      suggestions.addAll([
+        'Haircut',
+        'Hair Color',
+        'Phone Repair',
+        'Gadget Repair',
+        'Alterations',
+        'Tailoring',
+      ]);
+    }
+
+    return suggestions.where((s) => !_products.contains(s)).toList();
+  }
+
+  String _normalizeCategoryValue(String value) {
+    final v = value.toLowerCase().trim();
+    switch (v) {
+      case 'fish':
+      case 'isda':
+        return 'seafood';
+      case 'beef':
+      case 'pork':
+      case 'karne':
+        return 'meat';
+      case 'chicken':
+      case 'manok':
+        return 'poultry';
+      case 'gulay':
+        return 'vegetables';
+      case 'prutas':
+        return 'fruits';
+      case 'processed':
+      case 'processed_foods':
+      case 'frozen_goods':
+      case 'spices':
+      case 'pampalasa':
+        return 'frozen';
+      case 'drygoods':
+        return 'dry_goods';
+      case 'rice_dealer':
+      case 'bigas':
+        return 'rice';
+      case 'cooked_food':
+      case 'carinderia':
+      case 'eatery':
+      case 'bakery':
+      case 'kakanin':
+      case 'snack_stand':
+        return 'cooked';
+      case 'sarisari':
+      case 'sari-sari':
+      case 'sari_sari_store':
+        return 'sari_sari';
+      case 'clothing':
+      case 'ukay_ukay':
+      case 'tailor_shop':
+        return 'retail';
+      case 'hardware':
+      case 'school_supplies':
+      case 'home_supplies':
+      case 'agrivet':
+        return 'general';
+      case 'electronics_repair':
+      case 'barber_salon':
+        return 'services';
+      default:
+        return v;
+    }
+  }
+
+  void _addProduct(String value) {
+    final parts = value
+        .split(',')
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+
+    if (parts.isEmpty) {
+      _productController.clear();
+      return;
+    }
+
+    final existingLower = _products.map((p) => p.toLowerCase()).toSet();
+    final toAdd = <String>[];
+
+    for (final part in parts) {
+      if (part.length > 40) continue;
+      final lower = part.toLowerCase();
+      if (existingLower.contains(lower) ||
+          toAdd.any((item) => item.toLowerCase() == lower)) {
+        continue;
+      }
+      toAdd.add(part);
+    }
+
+    setState(() {
+      _products.addAll(toAdd);
+      _productController.clear();
+    });
+  }
+
+  void _removeProduct(String product) {
+    setState(() {
+      _products.remove(product);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _productFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
     if (widget.stallId != null) {
       _loadStallData();
     } else {
@@ -130,12 +440,13 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
+    _productController.dispose();
     _stallNumberController.dispose();
     _openTimeController.dispose();
     _closeTimeController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    _productFocusNode.dispose();
     super.dispose();
   }
 
@@ -150,16 +461,18 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       if (doc.exists && mounted) {
         final stall = StallModel.fromFirestore(doc);
         _nameController.text = stall.name;
-        _descriptionController.text = stall.products.join(', ');
+        _products = List<String>.from(stall.products);
         _stallNumberController.text = stall.address;
         
         // Load categories (multi-select)
-        _selectedCategories.clear();
-        _selectedCategories.addAll(stall.categories);
+        _selectedCategories
+          ..clear()
+          ..addAll(stall.categories.map(_normalizeCategoryValue).toSet());
         
         // Load tags
         _selectedTags.clear();
         _selectedTags.addAll(stall.tags);
+        _selectedSection = stall.section?.isNotEmpty == true ? stall.section : null;
         
         _openTimeController.text = stall.openTime;
         _closeTimeController.text = stall.closeTime;
@@ -167,7 +480,9 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         // Parse operating days
         _parseOperatingDays(stall.daysOpen);
         
-        _isOpen = stall.isActive;
+        _stallStatus = stall.status.isNotEmpty
+          ? stall.status
+          : (stall.isActive ? 'open' : 'closed');
         _latitudeController.text = stall.latitude.toString();
         _longitudeController.text = stall.longitude.toString();
         
@@ -178,7 +493,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
           if (_existingPhotoUrl != null &&
               (_existingPhotoUrl!.isEmpty ||
                _existingPhotoUrl!.contains('demo') ||
-               _existingPhotoUrl!.contains('samples/food'))) {
+               _existingPhotoUrl!.contains('placeholder'))) {
             _existingPhotoUrl = null;
           }
         }
@@ -447,11 +762,14 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         );
       }
 
+      final normalizedCategories =
+          _selectedCategories.map(_normalizeCategoryValue).toSet().toList();
+
       final stallData = {
         'name': _nameController.text.trim(),
-        'category': _selectedCategories.first, // First category for backward compatibility
-        'categories': _selectedCategories, // Multi-category array
-        'products': _descriptionController.text.trim().split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList(),
+        'category': normalizedCategories.first,
+        'categories': normalizedCategories,
+        'products': _products,
         'address': _stallNumberController.text.trim(),
         'photoUrls': photoUrl != null ? [photoUrl] : [],
         'openTime': _openTimeController.text.trim(),
@@ -459,7 +777,10 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         'daysOpen': _getDaysOpenArray(),
         'latitude': double.tryParse(_latitudeController.text) ?? 13.4144,
         'longitude': double.tryParse(_longitudeController.text) ?? 123.5244,
-        'isActive': _isOpen,
+        'status': _stallStatus,
+        'isOpen': _stallStatus == 'open',
+        'isActive': _stallStatus == 'open',
+        'section': _selectedSection ?? '',
         'updatedAt': FieldValue.serverTimestamp(),
         'tags': _selectedTags,
       };
@@ -660,65 +981,473 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 2. Categories (Multi-select chips)
+              // 2. Category
               Text(
-                'Categories *',
+                'Category',
                 style: GoogleFonts.poppins(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF212121),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Select all that apply',
+                'Food stalls can select multiple. Non-food stalls select one only.',
                 style: GoogleFonts.poppins(
                   fontSize: 11,
-                  color: const Color(0xFF666666),
+                  color: const Color(0xFF9E9E9E),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Food & Market Products',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2E7D32),
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE0E0E0)),
-                ),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _categories.map((cat) {
-                    final isSelected = _selectedCategories.contains(cat['value']);
-                    return _buildStableChip(
-                      label: cat['label']!,
-                      isSelected: isSelected,
-                      onTap: () {
-                        setState(() {
-                          if (isSelected) {
-                            _selectedCategories.remove(cat['value']);
-                          } else {
-                            _selectedCategories.add(cat['value']!);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _foodCategories.map((cat) {
+                  final value = cat['value'] as String;
+                  final isSelected = _selectedCategories.contains(value);
+                  final isDisabled = _hasNonFoodSelected;
+
+                  return GestureDetector(
+                    onTap: isDisabled
+                        ? null
+                        : () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedCategories.remove(value);
+                              } else {
+                                _selectedCategories.add(value);
+                              }
+                            });
+                          },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDisabled
+                            ? const Color(0xFFF5F5F5)
+                            : isSelected
+                                ? const Color(0xFF1B5E20)
+                                : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDisabled
+                              ? const Color(0xFFE0E0E0)
+                              : isSelected
+                                  ? const Color(0xFF1B5E20)
+                                  : const Color(0xFFE0E0E0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            cat['icon'] as String,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDisabled ? Colors.grey : null,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            cat['label'] as String,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              color: isDisabled
+                                  ? const Color(0xFFBDBDBD)
+                                  : isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF212121),
+                            ),
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Expanded(child: Divider(color: Color(0xFFE0E0E0))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'OR',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: const Color(0xFF9E9E9E),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const Expanded(child: Divider(color: Color(0xFFE0E0E0))),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Non-Food / Services',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1565C0),
                 ),
               ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _nonFoodCategories.map((cat) {
+                  final value = cat['value'] as String;
+                  final isSelected = _selectedCategories.contains(value);
+                  final isDisabled = _hasFoodSelected;
+
+                  return GestureDetector(
+                    onTap: isDisabled
+                        ? null
+                        : () {
+                            setState(() {
+                              _selectedCategories.removeWhere(
+                                (c) => _nonFoodCategories.any((nf) => nf['value'] == c),
+                              );
+                              if (!isSelected) {
+                                _selectedCategories.add(value);
+                              }
+                            });
+                          },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDisabled
+                            ? const Color(0xFFF5F5F5)
+                            : isSelected
+                                ? const Color(0xFF1565C0)
+                                : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDisabled
+                              ? const Color(0xFFE0E0E0)
+                              : isSelected
+                                  ? const Color(0xFF1565C0)
+                                  : const Color(0xFFE0E0E0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            cat['icon'] as String,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDisabled ? Colors.grey : null,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            cat['label'] as String,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              color: isDisabled
+                                  ? const Color(0xFFBDBDBD)
+                                  : isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF212121),
+                            ),
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              if (_hasFoodSelected)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Remove food categories to select non-food',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: const Color(0xFF9E9E9E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (_hasNonFoodSelected)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Remove non-food category to select food categories',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: const Color(0xFF9E9E9E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 20),
 
-              // 3. Tags (Multi-select chips)
+              // 3. Market Section (Optional)
+              Row(
+                children: [
+                  Text(
+                    'Market Section',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF212121),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E5F5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Optional',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: const Color(0xFF6A1B9A),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
               Text(
-                'Tags (Optional)',
+                'Select the physical section where this stall is located in the market.',
                 style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF212121),
+                  fontSize: 11,
+                  color: const Color(0xFF9E9E9E),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedSection = null;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _selectedSection == null
+                            ? const Color(0xFF424242)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _selectedSection == null
+                              ? const Color(0xFF424242)
+                              : const Color(0xFFE0E0E0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'None',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: _selectedSection == null
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: _selectedSection == null
+                                  ? Colors.white
+                                  : const Color(0xFF9E9E9E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  ..._marketSections.map((section) {
+                    final isSelected = _selectedSection == section['value'];
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedSection = isSelected ? null : section['value'] as String;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF1B5E20)
+                                : const Color(0xFFE0E0E0),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              section['label'] as String,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                color: isSelected ? Colors.white : const Color(0xFF212121),
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.check_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+              if (_selectedSection != null) ...[
+                const SizedBox(height: 8),
+                Builder(
+                  builder: (context) {
+                    final selected = _marketSections.firstWhere(
+                      (s) => s['value'] == _selectedSection,
+                    );
+                    return Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF4CAF50)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 16,
+                            color: Color(0xFF2E7D32),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  selected['label'] as String,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF2E7D32),
+                                  ),
+                                ),
+                                Text(
+                                  selected['description'] as String,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: const Color(0xFF4CAF50),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+              const SizedBox(height: 20),
+
+              // 4. Tags (Optional)
+              Row(
+                children: [
+                  Text(
+                    'Tags',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF212121),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E5F5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Optional',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: const Color(0xFF6A1B9A),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Select additional attributes for better stall visibility.',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: const Color(0xFF9E9E9E),
+                ),
+              ),
+              const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -750,16 +1479,205 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 4. Description
-              TextFormField(
-                controller: _descriptionController,
-                decoration: _buildInputDecoration(
-                  label: 'Description',
-                  hint: 'Enter products/services (comma-separated)',
-                  icon: Icons.description_rounded,
+              // 4. Products / Services Sold
+              Text(
+                'Products / Services Sold',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF212121),
                 ),
-                style: GoogleFonts.poppins(fontSize: 14),
-                maxLines: 3,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Add what this stall sells or offers',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: const Color(0xFF9E9E9E),
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (_productSuggestions.isNotEmpty) ...[
+                Text(
+                  'Suggestions',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: const Color(0xFF666666),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _productSuggestions.take(8).map((s) {
+                      return GestureDetector(
+                        onTap: () => _addProduct(s),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFE0E0E0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.add_rounded,
+                                size: 14,
+                                color: Color(0xFF666666),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                s,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              if (_products.isNotEmpty) ...[
+                Text(
+                  'Added',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: const Color(0xFF666666),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _products.map((p) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1B5E20),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            p,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => _removeProduct(p),
+                            child: Container(
+                              padding: const EdgeInsets.all(1),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.3),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
+              ],
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDFEFE),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(left: 2, right: 8),
+                      child: Icon(
+                        Icons.shopping_basket_outlined,
+                        size: 18,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _productController,
+                        focusNode: _productFocusNode,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF212121),
+                          height: 1.25,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Pork, Adobo, Haircut...',
+                          hintStyle: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: const Color(0xFF9E9E9E),
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 0,
+                            vertical: 10,
+                          ),
+                        ),
+                        textInputAction: TextInputAction.done,
+                        onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                        onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Material(
+                      color: const Color(0xFF1B5E20),
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _addProduct(_productController.text),
+                        child: const SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: Icon(
+                            Icons.add_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Only + adds items. Use commas to split multiple items (e.g. Pork, Chicken).',
+                style: GoogleFonts.poppins(
+                  fontSize: 10.5,
+                  color: const Color(0xFF9E9E9E),
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -1120,36 +2038,114 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               ],
               const SizedBox(height: 20),
 
-              // 9. Status Toggle
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE0E0E0)),
+              // 9. Stall Status
+              Text(
+                'Stall Status',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF212121),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Stall is Open',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF212121),
+              ),
+              const SizedBox(height: 10),
+              Column(
+                children: _statusOptions.map((status) {
+                  final isSelected = _stallStatus == status['value'];
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _stallStatus = status['value'] as String;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? (status['bgColor'] as Color)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected
+                              ? (status['color'] as Color)
+                              : const Color(0xFFE0E0E0),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? (status['color'] as Color).withOpacity(0.15)
+                                  : const Color(0xFFF5F5F5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              status['icon'] as IconData,
+                              size: 20,
+                              color: isSelected
+                                  ? status['color'] as Color
+                                  : const Color(0xFF9E9E9E),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  status['label'] as String,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? status['color'] as Color
+                                        : const Color(0xFF212121),
+                                  ),
+                                ),
+                                Text(
+                                  status['description'] as String,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: const Color(0xFF9E9E9E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? status['color'] as Color
+                                    : const Color(0xFFE0E0E0),
+                                width: 2,
+                              ),
+                              color: isSelected
+                                  ? status['color'] as Color
+                                  : Colors.transparent,
+                            ),
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    size: 12,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ],
                       ),
                     ),
-                    Switch(
-                      value: _isOpen,
-                      onChanged: (value) {
-                        setState(() {
-                          _isOpen = value;
-                        });
-                      },
-                      activeColor: const Color(0xFF1B5E20),
-                    ),
-                  ],
-                ),
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 24),
 

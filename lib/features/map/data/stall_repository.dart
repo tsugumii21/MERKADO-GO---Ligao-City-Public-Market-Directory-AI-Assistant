@@ -1,4 +1,4 @@
-// TODO: Implement Stall Repository
+// Planned: Implement Stall Repository
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StallRepository {
@@ -6,14 +6,14 @@ class StallRepository {
 
   StallRepository(this._firestore);
 
-  // TODO: Implement stall CRUD methods
+  // Planned: Implement stall CRUD methods
   Stream<List<Map<String, dynamic>>> getStalls() {
-    // TODO: Get all stalls from Firestore
+    // Planned: Get all stalls from Firestore
     throw UnimplementedError();
   }
   
   Future<void> addStall(Map<String, dynamic> stallData) async {
-    // TODO: Add new stall
+    // Planned: Add new stall
     throw UnimplementedError();
   }
 }

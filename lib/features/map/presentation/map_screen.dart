@@ -544,8 +544,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   // Capture initial zoom level after first map load for reference
                   if (!_initialZoomCaptured && _mapController != null) {
                     _initialZoomCaptured = true;
-                    final zoom = await _mapController!.getZoomLevel();
-                    debugPrint('📍 Map opening zoom level: $zoom (min locked at $_minZoom)');
+                    await _mapController!.getZoomLevel();
                   }
                   
                   // Debounce marker rebuilding to avoid lag

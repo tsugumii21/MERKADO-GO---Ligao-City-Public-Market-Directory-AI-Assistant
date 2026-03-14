@@ -1,4 +1,4 @@
-// TODO: Implement custom bottom navigation bar
+// Planned: Implement custom bottom navigation bar
 import 'package:flutter/material.dart';
 
 class CustomBottomNav extends StatelessWidget {
@@ -13,7 +13,7 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement bottom navigation UI
+    // Planned: Implement bottom navigation UI
     return const Placeholder();
   }
 }

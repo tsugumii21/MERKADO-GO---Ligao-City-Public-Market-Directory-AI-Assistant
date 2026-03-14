@@ -72,7 +72,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
         await _createMarkers();
       }
     } catch (e) {
-      debugPrint('Error loading stalls: $e');
+        debugPrint('❌ Error: Failed to load stalls: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

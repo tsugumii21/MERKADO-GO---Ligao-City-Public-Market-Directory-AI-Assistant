@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
-import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
 import '../../../providers/user_provider.dart';
 

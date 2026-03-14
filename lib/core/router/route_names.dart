@@ -1,4 +1,4 @@
-// TODO: Implement route name constants
+// Planned: Implement route name constants
 class RouteNames {
   // Auth routes
   static const String splash = '/';

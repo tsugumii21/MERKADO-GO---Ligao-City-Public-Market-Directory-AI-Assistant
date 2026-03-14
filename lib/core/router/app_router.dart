@@ -22,23 +22,17 @@ import '../../features/admin/presentation/admin_map_screen.dart';
 import '../../features/admin/presentation/manage_stalls_screen.dart';
 import '../../features/admin/presentation/add_edit_stall_screen.dart';
 import '../../features/admin/presentation/reports_screen.dart';
-import '../widgets/main_shell.dart';
 import 'route_names.dart';
 
 // Import GlobalKeys for page state management
-import '../widgets/main_shell.dart' show mapPageKey, stallsPageKey, profilePageKey;
+import '../widgets/main_shell.dart'
+  show MainShell, mapPageKey, stallsPageKey, profilePageKey;
 
 class AppRouter {
-  // Store ProviderContainer reference for accessing state
-  static ProviderContainer? _container;
-  
-  static void setContainer(ProviderContainer container) {
-    _container = container;
-  }
+  static void setContainer(ProviderContainer _) {}
   
   static GoRouter router() {
     try {
-      debugPrint('🔍 Creating GoRouter...');
       return GoRouter(
         initialLocation: RouteNames.splash,
       routes: [
@@ -61,6 +55,10 @@ class AppRouter {
         ),
         GoRoute(
           path: RouteNames.signup,
+          builder: (context, state) => const SignupScreen(),
+        ),
+        GoRoute(
+          path: '/register',
           builder: (context, state) => const SignupScreen(),
         ),
         GoRoute(
@@ -170,13 +168,19 @@ class AppRouter {
           },
         ),
         GoRoute(
+          path: '/admin/stalls/edit/:id',
+          builder: (context, state) {
+            final stallId = state.pathParameters['id'];
+            return AddEditStallScreen(stallId: stallId);
+          },
+        ),
+        GoRoute(
           path: RouteNames.adminReports,
           builder: (context, state) => const ReportsScreen(),
         ),
       ],
       redirect: (context, state) async {
         try {
-          debugPrint('🔍 GoRouter redirect called for: ${state.uri}');
           final user = FirebaseAuth.instance.currentUser;
           final isLoggingIn = state.uri.toString() == RouteNames.login;
           final isSigningUp = state.uri.toString() == RouteNames.signup;
@@ -187,25 +191,21 @@ class AppRouter {
 
           // Allow splash, get started, login, signup, forgot password without redirect
           if (isOnSplash || isGetStarted || isLoggingIn || isSigningUp || isForgotPassword) {
-            debugPrint('✅ Allowing auth/splash route');
             return null;
           }
 
           // Not authenticated -> get started
           if (user == null) {
-            debugPrint('✅ No user, redirect to GetStarted');
-            return RouteNames.getStarted;
+            return RouteNames.login;
           }
 
           // Email not verified -> verify screen
           if (!user.emailVerified && !isVerifyingEmail) {
-            debugPrint('✅ Email not verified, redirect to VerifyEmail');
             return RouteNames.verifyEmail;
           }
 
           // Check user role from Firestore
           try {
-            debugPrint('🔍 Fetching user role from Firestore...');
             final userDoc = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(user.uid)
@@ -213,45 +213,37 @@ class AppRouter {
 
             if (userDoc.exists) {
               final role = userDoc.data()?['role'] as String?;
-              debugPrint('✅ User role: $role');
 
               // Admin role -> admin dashboard
               if (role == 'admin' && !state.uri.toString().startsWith('/admin')) {
-                debugPrint('✅ Admin user, redirect to Dashboard');
                 return RouteNames.admin;
               }
 
               // Regular user trying to access admin routes -> redirect to home
               if (role == 'user' && state.uri.toString().startsWith('/admin')) {
-                debugPrint('✅ Regular user trying admin route, redirect to Home');
                 return RouteNames.home;
               }
               
               // Non-admin trying to access admin routes -> redirect to home
               if (role != 'admin' && state.uri.toString().startsWith('/admin')) {
-                debugPrint('⚠️ Non-admin user trying admin route, redirect to Home');
                 return RouteNames.home;
               }
             }
-          } catch (e, stack) {
+          } catch (e) {
             // Error fetching role, default to home
-            debugPrint('🔴 Error fetching user role: $e');
-            debugPrint('🔴 STACK: $stack');
+            debugPrint('❌ Error: Failed to fetch user role: $e');
             return RouteNames.home;
           }
 
-          debugPrint('✅ No redirect needed');
           return null;
-        } catch (e, stack) {
-          debugPrint('🔴 CRITICAL: GoRouter redirect crashed: $e');
-          debugPrint('🔴 STACK: $stack');
+        } catch (e) {
+          debugPrint('❌ Failed: GoRouter redirect crashed: $e');
           return RouteNames.splash;
         }
       },
     );
-    } catch (e, stack) {
-      debugPrint('🔴 CRITICAL: Failed to create GoRouter: $e');
-      debugPrint('🔴 STACK: $stack');
+    } catch (e) {
+      debugPrint('❌ Failed: Failed to create GoRouter: $e');
       // Return a minimal fallback router
       return GoRouter(
         initialLocation: RouteNames.splash,

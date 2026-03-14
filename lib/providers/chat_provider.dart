@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/services/gemini_service.dart';
 import '../features/chat/domain/chat_message.dart';
@@ -93,7 +94,7 @@ final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref
     final gemini = ref.watch(geminiServiceProvider);
     return ChatNotifier(gemini);
   } catch (e) {
-    print('🔴 Failed to create ChatNotifier: $e');
+    debugPrint('❌ Failed: Failed to create ChatNotifier: $e');
     // Return a safe default - the service will handle errors gracefully
     final gemini = ref.read(geminiServiceProvider);
     return ChatNotifier(gemini);

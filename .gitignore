@@ -45,6 +45,8 @@ app.*.map.json
 
 # Environment variables - NEVER COMMIT THIS
 .env
+*.env
+.env.*
 
 # Coverage
 coverage/

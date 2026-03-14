@@ -37,194 +37,178 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   bool _filterOpenOnly = false; // Filter to show only currently open stalls
   Timer? _statusTimer;
 
-  // Stall type groups mapping
-  // New unified stall type map with categories and subcategories
-  static const Map<String, dynamic> stallTypeMap = {
+  final Map<String, Map<String, dynamic>> _categoryMap = {
     'all': {
       'label': 'All',
       'icon': Icons.store_rounded,
       'hasSubcategories': false,
       'categories': <String>[],
-      'subcategories': <Map>[],
-    },
-    'favorites': {
-      'label': 'Favorites',
-      'icon': Icons.favorite_rounded,
-      'hasSubcategories': false,
-      'categories': <String>[],
-      'subcategories': <Map>[],
     },
     'fresh': {
       'label': 'Fresh Produce',
       'icon': Icons.eco_rounded,
       'hasSubcategories': true,
       'categories': [
-        'fresh','seafood','fish','meat','beef',
-        'pork','karne','poultry','chicken','manok',
-        'vegetables','gulay','fruits','prutas',
+        'fresh',
+        'seafood',
+        'meat',
+        'poultry',
+        'vegetables',
+        'fruits',
       ],
       'subcategories': [
         {
           'label': 'All Fresh',
-          'tag': null,
           'categories': [
-            'fresh','seafood','fish','meat','beef',
-            'pork','karne','poultry','chicken','manok',
-            'vegetables','gulay','fruits','prutas',
+            'fresh',
+            'seafood',
+            'meat',
+            'poultry',
+            'vegetables',
+            'fruits',
           ],
         },
         {
-          'label': 'Seafood',
-          'tag': null,
-          'categories': ['seafood','fish'],
+          'label': '🐟 Seafood & Fish',
+          'categories': ['seafood', 'fish'],
         },
         {
-          'label': 'Meat',
-          'tag': null,
-          'categories': ['meat','beef','pork','karne'],
+          'label': '🥩 Meat',
+          'categories': ['meat', 'beef', 'pork', 'karne'],
         },
         {
-          'label': 'Poultry',
-          'tag': null,
-          'categories': ['poultry','chicken','manok'],
+          'label': '🐔 Poultry',
+          'categories': ['poultry', 'chicken', 'manok'],
         },
         {
-          'label': 'Vegetables',
-          'tag': null,
-          'categories': ['vegetables','gulay'],
+          'label': '🥬 Vegetables',
+          'categories': ['vegetables', 'gulay'],
         },
         {
-          'label': 'Fruits',
-          'tag': null,
-          'categories': ['fruits','prutas'],
+          'label': '🍎 Fruits',
+          'categories': ['fruits', 'prutas'],
         },
       ],
     },
-    'processed': {
+    'seafood': {
+      'label': '🐟 Seafood & Fish',
+      'icon': Icons.set_meal_rounded,
+      'hasSubcategories': false,
+      'categories': ['seafood', 'fish', 'isda'],
+    },
+    'meat': {
+      'label': '🥩 Meat',
+      'icon': Icons.lunch_dining_rounded,
+      'hasSubcategories': false,
+      'categories': ['meat', 'beef', 'pork', 'karne'],
+    },
+    'poultry': {
+      'label': '🐔 Poultry & Chicken',
+      'icon': Icons.egg_rounded,
+      'hasSubcategories': false,
+      'categories': ['poultry', 'chicken', 'manok'],
+    },
+    'vegetables': {
+      'label': '🥬 Vegetables',
+      'icon': Icons.grass_rounded,
+      'hasSubcategories': false,
+      'categories': ['vegetables', 'gulay'],
+    },
+    'fruits': {
+      'label': '🍎 Fruits',
+      'icon': Icons.spa_rounded,
+      'hasSubcategories': false,
+      'categories': ['fruits', 'prutas'],
+    },
+    'frozen': {
       'label': 'Frozen & Processed',
       'icon': Icons.kitchen_rounded,
       'hasSubcategories': true,
       'categories': [
-        'frozen','frozen_goods','processed',
-        'processed_foods','spices','pampalasa',
+        'frozen',
+        'frozen_goods',
+        'processed',
+        'processed_foods',
+        'spices',
       ],
       'subcategories': [
         {
           'label': 'All Processed',
-          'tag': null,
           'categories': [
-            'frozen','frozen_goods','processed',
-            'processed_foods','spices','pampalasa',
+            'frozen',
+            'frozen_goods',
+            'processed',
+            'processed_foods',
+            'spices',
           ],
         },
         {
           'label': 'Frozen Goods',
-          'tag': null,
-          'categories': ['frozen','frozen_goods'],
+          'categories': ['frozen', 'frozen_goods'],
         },
         {
           'label': 'Processed Foods',
-          'tag': null,
-          'categories': ['processed','processed_foods'],
+          'categories': ['processed', 'processed_foods'],
         },
         {
           'label': 'Spices',
-          'tag': null,
-          'categories': ['spices','pampalasa'],
+          'categories': ['spices', 'pampalasa'],
         },
       ],
     },
     'dry_goods': {
-      'label': 'Dry Goods',
+      'label': '🌾 Dry Goods',
       'icon': Icons.inventory_2_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'dry_goods','drygoods','rice','rice_dealer',
-        'bigas','dried_fish','bulad','daing',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Dry Goods',
-          'tag': null,
-          'categories': [
-            'dry_goods','drygoods','rice',
-            'rice_dealer','bigas','dried_fish',
-            'bulad','daing',
-          ],
-        },
-        {
-          'label': 'Rice Dealer',
-          'tag': 'rice_dealer',
-          'categories': [
-            'dry_goods','drygoods','rice',
-            'rice_dealer','bigas','dried_fish',
-            'bulad','daing',
-          ],
-        },
-        {
-          'label': 'Dried Fish',
-          'tag': 'dried_fish',
-          'categories': [
-            'dry_goods','drygoods','rice',
-            'rice_dealer','bigas','dried_fish',
-            'bulad','daing',
-          ],
-        },
-      ],
+      'hasSubcategories': false,
+      'categories': ['dry_goods', 'drygoods'],
+    },
+    'rice': {
+      'label': '🍚 Rice',
+      'icon': Icons.rice_bowl_rounded,
+      'hasSubcategories': false,
+      'categories': ['rice', 'rice_dealer', 'bigas'],
     },
     'cooked': {
       'label': 'Cooked Food',
       'icon': Icons.restaurant_rounded,
       'hasSubcategories': true,
       'categories': [
-        'eatery','carinderia','cooked','cooked_food',
-        'bakery','kakanin','snack_stand','lutong_ulam',
+        'cooked',
+        'cooked_food',
+        'carinderia',
+        'eatery',
+        'bakery',
+        'kakanin',
+        'snack_stand',
       ],
       'subcategories': [
         {
           'label': 'All Cooked',
-          'tag': null,
           'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
+            'cooked',
+            'cooked_food',
+            'carinderia',
+            'eatery',
+            'bakery',
+            'kakanin',
+            'snack_stand',
           ],
         },
         {
           'label': 'Carinderia',
-          'tag': 'carinderia',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
+          'categories': ['carinderia', 'eatery'],
         },
         {
           'label': 'Bakery',
-          'tag': 'bakery',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
+          'categories': ['bakery'],
         },
         {
           'label': 'Kakanin',
-          'tag': 'kakanin',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
+          'categories': ['kakanin'],
         },
         {
           'label': 'Snack Stand',
-          'tag': 'snack_stand',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
+          'categories': ['snack_stand'],
         },
       ],
     },
@@ -233,43 +217,29 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       'icon': Icons.storefront_rounded,
       'hasSubcategories': false,
       'categories': [
-        'sari_sari','sarisari','sari-sari',
+        'sari_sari',
+        'sarisari',
+        'sari-sari',
         'sari_sari_store',
       ],
-      'subcategories': <Map>[],
     },
     'retail': {
       'label': 'Retail / Clothing',
       'icon': Icons.checkroom_rounded,
       'hasSubcategories': true,
-      'categories': [
-        'retail','clothing','ukay_ukay',
-        'ukay-ukay','ukay','tailor','tailor_shop',
-      ],
+      'categories': ['retail', 'clothing', 'ukay_ukay', 'tailor_shop'],
       'subcategories': [
         {
           'label': 'All Retail',
-          'tag': null,
-          'categories': [
-            'retail','clothing','ukay_ukay',
-            'ukay-ukay','ukay','tailor','tailor_shop',
-          ],
+          'categories': ['retail', 'clothing', 'ukay_ukay', 'tailor_shop'],
         },
         {
           'label': 'Ukay-Ukay',
-          'tag': 'ukay_ukay',
-          'categories': [
-            'retail','clothing','ukay_ukay',
-            'ukay-ukay','ukay','tailor','tailor_shop',
-          ],
+          'categories': ['ukay_ukay'],
         },
         {
           'label': 'Tailor Shop',
-          'tag': 'tailor_shop',
-          'categories': [
-            'retail','clothing','ukay_ukay',
-            'ukay-ukay','ukay','tailor','tailor_shop',
-          ],
+          'categories': ['tailor_shop'],
         },
       ],
     },
@@ -278,60 +248,38 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       'icon': Icons.shopping_bag_rounded,
       'hasSubcategories': true,
       'categories': [
-        'general','hardware','tools','hardware_tools',
-        'school_supplies','school','home_supplies',
-        'home','agrivet','agrivet_supplies',
+        'general',
+        'hardware',
+        'school_supplies',
+        'home_supplies',
+        'agrivet',
       ],
       'subcategories': [
         {
           'label': 'All General',
-          'tag': null,
           'categories': [
-            'general','hardware','tools',
-            'hardware_tools','school_supplies',
-            'school','home_supplies','home',
-            'agrivet','agrivet_supplies',
+            'general',
+            'hardware',
+            'school_supplies',
+            'home_supplies',
+            'agrivet',
           ],
         },
         {
           'label': 'Hardware & Tools',
-          'tag': 'hardware',
-          'categories': [
-            'general','hardware','tools',
-            'hardware_tools','school_supplies',
-            'school','home_supplies','home',
-            'agrivet','agrivet_supplies',
-          ],
+          'categories': ['hardware'],
         },
         {
           'label': 'School Supplies',
-          'tag': 'school_supplies',
-          'categories': [
-            'general','hardware','tools',
-            'hardware_tools','school_supplies',
-            'school','home_supplies','home',
-            'agrivet','agrivet_supplies',
-          ],
+          'categories': ['school_supplies'],
         },
         {
           'label': 'Home Supplies',
-          'tag': 'home_supplies',
-          'categories': [
-            'general','hardware','tools',
-            'hardware_tools','school_supplies',
-            'school','home_supplies','home',
-            'agrivet','agrivet_supplies',
-          ],
+          'categories': ['home_supplies'],
         },
         {
-          'label': 'Agrivet Supplies',
-          'tag': 'agrivet',
-          'categories': [
-            'general','hardware','tools',
-            'hardware_tools','school_supplies',
-            'school','home_supplies','home',
-            'agrivet','agrivet_supplies',
-          ],
+          'label': 'Agrivet',
+          'categories': ['agrivet'],
         },
       ],
     },
@@ -339,50 +287,35 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       'label': 'Services',
       'icon': Icons.build_rounded,
       'hasSubcategories': true,
-      'categories': [
-        'services','electronics','repair',
-        'electronics_repair','barber',
-        'salon','barber_salon',
-      ],
+      'categories': ['services', 'electronics_repair', 'barber_salon'],
       'subcategories': [
         {
           'label': 'All Services',
-          'tag': null,
-          'categories': [
-            'services','electronics','repair',
-            'electronics_repair','barber',
-            'salon','barber_salon',
-          ],
+          'categories': ['services', 'electronics_repair', 'barber_salon'],
         },
         {
           'label': 'Electronics & Repair',
-          'tag': 'electronics_repair',
-          'categories': [
-            'services','electronics','repair',
-            'electronics_repair','barber',
-            'salon','barber_salon',
-          ],
+          'categories': ['electronics_repair'],
         },
         {
           'label': 'Barber / Salon',
-          'tag': 'barber_salon',
-          'categories': [
-            'services','electronics','repair',
-            'electronics_repair','barber',
-            'salon','barber_salon',
-          ],
+          'categories': ['barber_salon'],
         },
       ],
     },
   };
 
-  // Filter chips order - derived from stallTypeMap keys
   final List<String> filterChipKeys = [
     'all',
-    'favorites',
     'fresh',
-    'processed',
+    'seafood',
+    'meat',
+    'poultry',
+    'vegetables',
+    'fruits',
+    'frozen',
     'dry_goods',
+    'rice',
     'cooked',
     'sari_sari',
     'retail',
@@ -482,7 +415,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading recently viewed: $e');
+      debugPrint('❌ Error: Failed to load recently viewed stalls: $e');
     }
   }
 
@@ -507,7 +440,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error saving recently viewed: $e');
+      debugPrint('❌ Error: Failed to save recently viewed stalls: $e');
     }
   }
 
@@ -521,7 +454,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error clearing recently viewed: $e');
+      debugPrint('❌ Error: Failed to clear recently viewed stalls: $e');
     }
   }
 
@@ -558,53 +491,30 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       }).toList();
     }
 
-    // 2. Apply stall type group filter with subcategory support
-    if (_selectedType == 'favorites') {
-      final favState = ref.watch(favoriteProvider);
-      result = result.where((s) => favState.isFavorite(s.stallId)).toList();
-    } else if (_selectedType != 'all') {
-      final typeData = stallTypeMap[_selectedType];
+    // 2. Apply category filter with subcategory support and multi-category stall matching
+    if (_selectedType != 'all') {
+      final typeData = _categoryMap[_selectedType];
       if (typeData != null) {
-        // If subcategory is selected, filter by subcategory
+        List<String> cats;
         if (_selectedSubcategory != null) {
-          final subcategories = typeData['subcategories'] as List<Map>? ?? [];
-          final selectedSubcat = subcategories.firstWhere(
+          final subcategories = (typeData['subcategories'] as List?)?.cast<Map>() ?? [];
+          final selectedSubcat = subcategories.where(
             (sub) => sub['label'] == _selectedSubcategory,
-            orElse: () => {'label': '', 'categories': <String>[], 'tag': null},
           );
-          final subcatCategories =
-              (selectedSubcat['categories'] as List?)?.cast<String>() ?? [];
-          if (subcatCategories.isNotEmpty) {
-            result = result.where((stall) {
-              final matchesCategory = subcatCategories
-                  .contains(stall.category.toLowerCase().trim());
-              
-              // For dry_goods, cooked, retail, general, and services with tag filtering
-              if ((_selectedType == 'dry_goods' ||
-                   _selectedType == 'cooked' || 
-                   _selectedType == 'retail' || 
-                   _selectedType == 'general' || 
-                   _selectedType == 'services') && 
-                  _selectedTag != null) {
-                return matchesCategory && 
-                       (stall.tags)
-                           .map((t) => t.toLowerCase())
-                           .contains(_selectedTag!.toLowerCase());
-              }
-              
-              return matchesCategory;
-            }).toList();
+          if (selectedSubcat.isNotEmpty) {
+            cats = List<String>.from(selectedSubcat.first['categories'] as List);
+          } else {
+            cats = List<String>.from(typeData['categories'] as List);
           }
         } else {
-          // No subcategory selected, show all categories in the type group
-          final groupCategories = (typeData['categories'] as List?)?.cast<String>() ?? [];
-          if (groupCategories.isNotEmpty) {
-            result = result.where((stall) {
-              return groupCategories
-                  .contains(stall.category.toLowerCase().trim());
-            }).toList();
-          }
+          cats = List<String>.from(typeData['categories'] as List);
         }
+
+        result = result.where((s) {
+          final stallCats = s.categories.map((c) => c.toLowerCase().trim()).toList();
+          final singleCat = s.category.toLowerCase().trim();
+          return stallCats.any((c) => cats.contains(c)) || cats.contains(singleCat);
+        }).toList();
       }
     }
 
@@ -821,7 +731,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   String _getGroupDisplayName(String groupKey) {
     // For filter chip group labels
-    final typeData = stallTypeMap[groupKey];
+    final typeData = _categoryMap[groupKey];
     if (typeData != null && typeData['label'] != null) {
       return typeData['label'] as String;
     }
@@ -1003,7 +913,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           itemCount: filterChipKeys.length,
                           itemBuilder: (context, index) {
                             final chipKey = filterChipKeys[index];
-                            final typeData = stallTypeMap[chipKey];
+                            final typeData = _categoryMap[chipKey];
                             final chipLabel = (typeData?['label'] ?? chipKey) as String;
                             final chipIcon = (typeData?['icon'] ?? Icons.store_rounded) as IconData;
                             final isSelected = _selectedType == chipKey;
@@ -1090,13 +1000,11 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeInOut,
                         child: () {
-                          final typeData = stallTypeMap[_selectedType];
+                            final typeData = _categoryMap[_selectedType];
                           final hasSubcategories = (typeData?['hasSubcategories'] ?? false) as bool;
                           final subcategories = (typeData?['subcategories'] as List<Map>?) ?? [];
                           
-                          return hasSubcategories &&
-                                  _selectedType != 'all' &&
-                                  _selectedType != 'favorites'
+                          return hasSubcategories && _selectedType != 'all'
                             ? Container(
                                 decoration: const BoxDecoration(
                                   color: Color(0xFFF8F9FA),
@@ -1287,7 +1195,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${_getDisplayNameForCount()} ${_selectedType == 'favorites' ? '' : 'Stalls'} (${filteredStalls.length})',
+                              '${_getDisplayNameForCount()} Stalls (${filteredStalls.length})',
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1661,52 +1569,31 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Open/Closed badge
+                      // Status badge
                       Builder(
                         builder: (context) {
-                          final isOpen = StallUtils.isStallOpenNow(stall);
+                          final status = stall.status;
+                          final statusColor = Color(StallUtils.getStatusColorHex(status));
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: isOpen
-                                  ? const Color(0xFFE8F5E9)
-                                  : const Color(0xFFFFEBEE),
+                              color: statusColor.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: isOpen
-                                    ? const Color(0xFF4CAF50)
-                                    : const Color(0xFFE53935),
+                                color: statusColor,
                                 width: 1,
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isOpen
-                                        ? const Color(0xFF4CAF50)
-                                        : const Color(0xFFE53935),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  isOpen ? 'Open' : 'Closed',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: isOpen
-                                        ? const Color(0xFF2E7D32)
-                                        : const Color(0xFFC62828),
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              StallUtils.getStatusLabel(status),
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: statusColor,
+                              ),
                             ),
                           );
                         },

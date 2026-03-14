@@ -1,4 +1,4 @@
-// TODO: Implement Stall Category Screen
+// Planned: Implement Stall Category Screen
 import 'package:flutter/material.dart';
 
 class StallCategoryScreen extends StatelessWidget {
@@ -8,11 +8,11 @@ class StallCategoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement category filtering UI
+    // Planned: Implement category filtering UI
     return Scaffold(
       appBar: AppBar(title: Text('$category Stalls')),
       body: const Center(
-        child: Text('📂 Category Screen - TODO'),
+        child: Text('📂 Category Screen - Planned'),
       ),
     );
   }

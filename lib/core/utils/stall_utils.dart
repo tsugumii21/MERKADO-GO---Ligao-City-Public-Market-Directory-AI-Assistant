@@ -132,15 +132,15 @@ class StallUtils {
   /// Category display labels
   static const Map<String, String> categoryLabels = {
     'fresh': 'Fresh Produce',
-    'seafood': 'Seafood',
-    'fish': 'Seafood',
-    'meat': 'Pork',
-    'beef': 'Beef',
-    'pork': 'Pork',
-    'karne': 'Pork',
-    'poultry': 'Poultry',
-    'chicken': 'Poultry',
-    'manok': 'Poultry',
+    'seafood': 'Seafood & Fish',
+    'fish': 'Seafood & Fish',
+    'meat': 'Meat',
+    'beef': 'Meat',
+    'pork': 'Meat',
+    'karne': 'Meat',
+    'poultry': 'Poultry & Chicken',
+    'chicken': 'Poultry & Chicken',
+    'manok': 'Poultry & Chicken',
     'vegetables': 'Vegetables',
     'gulay': 'Vegetables',
     'fruits': 'Fruits',
@@ -196,6 +196,38 @@ class StallUtils {
     'salon': 'Barber / Salon',
     'barber_salon': 'Barber / Salon',
   };
+
+  static String getStatusLabel(String status) {
+    switch (status) {
+      case 'open':
+        return '● Open';
+      case 'closed':
+        return '● Closed';
+      case 'temporarily_closed':
+        return '⏸ Temp. Closed';
+      case 'renovation':
+        return '🔧 Renovation';
+      case 'coming_soon':
+        return '🆕 Coming Soon';
+      default:
+        return '● Closed';
+    }
+  }
+
+  static int getStatusColorHex(String status) {
+    switch (status) {
+      case 'open':
+        return 0xFF2E7D32;
+      case 'temporarily_closed':
+        return 0xFFE65100;
+      case 'renovation':
+        return 0xFF6A1B9A;
+      case 'coming_soon':
+        return 0xFF1565C0;
+      default:
+        return 0xFFC62828;
+    }
+  }
 
   /// Helper to get display label for tags
   static String getTagLabel(String tag) {

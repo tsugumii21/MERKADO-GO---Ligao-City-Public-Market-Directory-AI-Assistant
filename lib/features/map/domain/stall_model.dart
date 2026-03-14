@@ -1,4 +1,4 @@
-// TODO: Define Stall Model
+// Planned: Define Stall Model
 class StallModel {
   final String stallId;
   final String name;
@@ -28,5 +28,5 @@ class StallModel {
     required this.isActive,
   });
 
-  // TODO: Add fromJson, toJson methods
+  // Planned: Add fromJson, toJson methods
 }

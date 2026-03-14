@@ -32,7 +32,7 @@ final userDataStreamProvider = StreamProvider<UserModel?>((ref) {
         return UserModel.fromFirestore(doc);
       })
       .handleError((e) {
-        debugPrint('⚠️ User stream error: $e');
+        debugPrint('❌ Failed: User stream error: $e');
       });
 });
 

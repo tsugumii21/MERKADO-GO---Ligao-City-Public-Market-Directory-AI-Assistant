@@ -14,6 +14,8 @@ class StallModel {
   final double latitude;
   final double longitude;
   final bool isActive;
+  final String status;
+  final String? section;
   final DateTime updatedAt;
   final List<String> tags;
 
@@ -31,6 +33,8 @@ class StallModel {
     required this.latitude,
     required this.longitude,
     required this.isActive,
+    this.status = 'open',
+    this.section,
     required this.updatedAt,
     this.tags = const [],
   }) : categories = categories ?? [category];
@@ -57,7 +61,14 @@ class StallModel {
       daysOpen: List<String>.from(data['daysOpen'] as List<dynamic>? ?? []),
       latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
-      isActive: data['isActive'] as bool? ?? true,
+        isActive: data['isActive'] as bool? ??
+          data['isOpen'] as bool? ??
+          ((data['status'] as String?) == 'open'),
+        status: data['status'] as String? ??
+          ((data['isOpen'] == true || data['isActive'] == true)
+            ? 'open'
+            : 'closed'),
+      section: data['section'] as String?,
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       tags: data['tags'] != null 
           ? List<String>.from(data['tags'] as List) 
@@ -80,6 +91,9 @@ class StallModel {
       'latitude': latitude,
       'longitude': longitude,
       'isActive': isActive,
+      'isOpen': status == 'open',
+      'status': status,
+      'section': section ?? '',
       'updatedAt': Timestamp.fromDate(updatedAt),
       'tags': tags,
     };
@@ -100,6 +114,8 @@ class StallModel {
     double? latitude,
     double? longitude,
     bool? isActive,
+    String? status,
+    String? section,
     DateTime? updatedAt,
     List<String>? tags,
   }) {
@@ -117,6 +133,8 @@ class StallModel {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       isActive: isActive ?? this.isActive,
+      status: status ?? this.status,
+      section: section ?? this.section,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,
     );

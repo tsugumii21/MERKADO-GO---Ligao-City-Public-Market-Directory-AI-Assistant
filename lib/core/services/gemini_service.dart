@@ -1,8 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/stall_model.dart';
-import '../../providers/stall_provider.dart';
 import '../constants/app_secrets.dart';
 
 class GeminiService {
@@ -10,11 +9,10 @@ class GeminiService {
   
   GenerativeModel? _model;
   ChatSession? _chat;
-  final Ref _ref;
   bool _isInitialized = false;
   String _stallsContext = '';
   
-  GeminiService(this._ref);
+  GeminiService(Ref _);
   
   String _getCurrentPhilippineTime() {
     // Get current Philippine time (UTC+8)
@@ -86,7 +84,7 @@ Products: ${(data['products'] as List?)?.join(', ') ?? 'N/A'}
       
       return stallsData;
     } catch (e) {
-      print('🔴 Error fetching stalls: $e');
+      debugPrint('❌ Error: Failed to fetch stalls context: $e');
       return 'Hindi makuha ang stall data sa ngayon.';
     }
   }
@@ -95,9 +93,7 @@ Products: ${(data['products'] as List?)?.join(', ') ?? 'N/A'}
     if (_isInitialized) return;
     
     try {
-      print('🔍 Fetching stalls from Firestore...');
       _stallsContext = await _fetchStallsContext();
-      print('✅ Fetched ${_stallsContext.split('---').length} stalls');
       
       // Get current Philippine time
       final currentTimeInfo = _getCurrentPhilippineTime();
@@ -148,10 +144,8 @@ FORMATTING RULES:
       
       _chat = _model!.startChat();
       _isInitialized = true;
-      
-      print('✅ Aling Suki initialized successfully with model: $_modelName');
     } catch (e) {
-      print('🔴 Failed to initialize Aling Suki: $e');
+      debugPrint('❌ Failed: Gemini initialization failed: $e');
       _model = null;
       _chat = null;
       _isInitialized = false;
@@ -159,14 +153,11 @@ FORMATTING RULES:
   }
   
   Future<void> refreshStalls() async {
-    print('🔄 Refreshing stall data...');
     _stallsContext = await _fetchStallsContext();
     
     // Reinitialize the model with fresh data
     _isInitialized = false;
     await _initializeModel();
-    
-    print('✅ Stall data refreshed');
   }
   
   Stream<String> sendMessage(String message) async* {
@@ -193,7 +184,7 @@ FORMATTING RULES:
         }
       }
     } catch (e) {
-      print('🔴 Gemini API Error: $e');
+      debugPrint('❌ Error: Gemini API error: $e');
       yield 'Ay naku, may error po! Pakisubukan ulit. Salamat po! 😊';
     }
   }

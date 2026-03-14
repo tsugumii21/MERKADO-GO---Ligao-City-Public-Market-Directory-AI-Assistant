@@ -5,10 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/router/route_names.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/favorite_provider.dart';
-import '../../../core/exceptions/auth_exception.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -41,52 +39,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     
     final username = trimmed.toLowerCase();
-    debugPrint('🔍 Looking up username: $username');
     
     try {
       // STEP 1: Read usernames collection
       // This collection allows public read so no auth needed
-      debugPrint('📖 Reading usernames/$username');
       
       final usernameDoc = await FirebaseFirestore.instance
           .collection('usernames')  // ← MUST be usernames
           .doc(username)
           .get(const GetOptions(source: Source.server));
       
-      debugPrint('📄 Username doc exists: ${usernameDoc.exists}');
       
       if (!usernameDoc.exists) {
-        debugPrint('❌ Username not found: $username');
         return null;
       }
       
       final uid = usernameDoc.data()?['uid'] as String?;
-      debugPrint('👤 Found UID: $uid');
       
       if (uid == null || uid.isEmpty) {
-        debugPrint('❌ UID is null or empty');
         return null;
       }
       
       // STEP 2: Read users collection to get email
       // This also allows public read for the email field lookup
-      debugPrint('📖 Reading users/$uid for email');
       
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .get(const GetOptions(source: Source.server));
       
-      debugPrint('📄 User doc exists: ${userDoc.exists}');
       
       final email = userDoc.data()?['email'] as String?;
-      debugPrint('📧 Found email: $email');
       
       return email;
       
     } catch (e) {
-      debugPrint('❌ Username lookup error: $e');
-      debugPrint('❌ Error type: ${e.runtimeType}');
+      debugPrint('❌ Error: Username lookup failed: $e');
       return null;
     }
   }
@@ -105,15 +93,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      debugPrint('🚀 Login started');
-      debugPrint('📝 Input: ${_usernameOrEmailController.text}');
-      debugPrint('🔍 Getting email...');
       
       // Get email (works for both email and username)
       final email = await _getEmailFromUsername(
           _usernameOrEmailController.text.trim());
       
-      debugPrint('📧 Email resolved: $email');
       
       if (email == null) {
         if (mounted) {
@@ -134,10 +118,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: _passwordController.text,
           );
 
-      debugPrint('✅ Firebase Auth success');
       
       final user = userCredential.user;
-      debugPrint('👤 User UID: ${user?.uid}');
       
       if (user != null && !user.emailVerified) {
         if (mounted) context.go(RouteNames.verifyEmail);
@@ -156,14 +138,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await ref.read(favoriteProvider.notifier).loadFavorites();
         } catch (e) {
           // Non-critical - favorites can load later
-          debugPrint('Favorites load error: $e');
+          debugPrint('❌ Error: Favorites load failed: $e');
         }
         
         // Now safe to read Firestore
         final authRepo = ref.read(authRepositoryProvider);
         final userData = await authRepo.getUserData(user.uid);
         
-        debugPrint('📊 User data: ${userData?.role}');
         
         if (userData?.role == 'admin') {
           if (mounted) context.go(RouteNames.admin);
@@ -190,8 +171,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         });
       }
     } catch (e) {
-      debugPrint('❌ Login error: $e');
-      debugPrint('❌ Login error type: ${e.runtimeType}');
+      debugPrint('❌ Error: Login failed: $e');
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().contains('permission-denied')

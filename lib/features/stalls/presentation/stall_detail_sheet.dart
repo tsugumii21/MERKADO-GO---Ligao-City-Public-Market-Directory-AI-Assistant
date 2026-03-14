@@ -1,10 +1,10 @@
 // Part 7: Redesigned Stall Detail Bottom Sheet - Clean, Modern, Minimal Green Theme
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../models/stall_model.dart';
-import '../../../providers/stall_provider.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../report/presentation/report_screen.dart';
 import '../../../core/utils/stall_utils.dart';
@@ -202,6 +202,24 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
     }
   }
 
+  String _getSectionLabel(String value) {
+    const labels = {
+      'dry_goods_section': 'Dry Goods Section',
+      'fruit_section': 'Fruit Section',
+      'vegetable_section': 'Vegetable Section',
+      'rice_section': 'Rice Section',
+      'fish_chicken_section': 'Fish & Chicken Section',
+      'meat_section': 'Meat Section',
+      'cooked_food_section': 'Food Section',
+    };
+    return labels[value] ??
+        value
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
+            .join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasPhotos = widget.stall.photoUrls.isNotEmpty;
@@ -375,7 +393,9 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
                                   scale: _favoriteScaleAnimation,
                                   child: IconButton(
                                     onPressed: () async {
-                                      _favoriteAnimationController.forward(from: 0);
+                                      unawaited(
+                                        _favoriteAnimationController.forward(from: 0),
+                                      );
                                       await ref.read(favoriteProvider.notifier)
                                          .toggleFavorite(widget.stall.stallId);
                                     },
@@ -524,6 +544,28 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
                         ),
 
                         const SizedBox(height: 16),
+
+                        if (widget.stall.section != null &&
+                            widget.stall.section!.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.store_mall_directory_rounded,
+                                size: 14,
+                                color: Color(0xFF666666),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _getSectionLabel(widget.stall.section!),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
                         // Products section
                         Text(

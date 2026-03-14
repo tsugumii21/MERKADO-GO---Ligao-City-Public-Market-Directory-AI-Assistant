@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,7 +82,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
 
     if (!mounted) return;
-    _fadeController.forward();
+    unawaited(_fadeController.forward());
     _startSplashTimer();
   }
 
@@ -103,37 +104,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Future<void> _checkAuthAndNavigate() async {
     try {
-      debugPrint('🔍 Checking auth status...');
       final authRepo = ref.read(authRepositoryProvider);
       final user = authRepo.currentUser;
 
       if (user == null) {
-        debugPrint('✅ No user, going to GetStarted');
         if (mounted) context.go(RouteNames.getStarted);
         return;
       }
 
       if (!user.emailVerified) {
-        debugPrint('✅ User not verified, going to VerifyEmail');
         if (mounted) context.go(RouteNames.verifyEmail);
         return;
       }
 
-      debugPrint('🔍 Fetching user data...');
       final userData = await authRepo.getUserData(user.uid);
 
       if (mounted) {
         if (userData?.role == 'admin') {
-          debugPrint('✅ Admin user, going to Dashboard');
           context.go(RouteNames.admin);
         } else {
-          debugPrint('✅ Regular user, going to Home');
           context.go(RouteNames.home);
         }
       }
-    } catch (e, stack) {
-      debugPrint('🔴 Error in _checkAuthAndNavigate: $e');
-      debugPrint('🔴 STACK: $stack');
+    } catch (e) {
+      debugPrint('❌ Error: Splash auth check failed: $e');
       if (mounted) {
         context.go(RouteNames.getStarted);
       }

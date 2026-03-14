@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../../../models/stall_model.dart';
 
@@ -23,21 +22,15 @@ class FirestoreStallRepository implements StallRepository {
 
   @override
   Stream<List<StallModel>> getAllStalls() {
-    debugPrint('🗺️ Fetching all stalls...');
-    debugPrint('👤 Current user: ${FirebaseAuth.instance.currentUser?.uid}');
-    debugPrint('✅ Auth token valid: ${FirebaseAuth.instance.currentUser != null}');
-    
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
         .orderBy('name')
         .snapshots()
         .handleError((error) {
-          debugPrint('❌ Stalls query error: $error');
-          debugPrint('❌ Error type: ${error.runtimeType}');
+          debugPrint('❌ Error: Stalls query failed: $error');
         })
         .map((snapshot) {
-          debugPrint('📄 Stalls fetched: ${snapshot.docs.length}');
           return snapshot.docs
               .map((doc) => StallModel.fromFirestore(doc))
               .toList();
@@ -64,7 +57,6 @@ class FirestoreStallRepository implements StallRepository {
     }
 
     final queryLower = query.toLowerCase();
-    debugPrint('🔍 Searching stalls by name: $queryLower');
     
     return _firestore
         .collection(_collection)
@@ -72,7 +64,7 @@ class FirestoreStallRepository implements StallRepository {
         .orderBy('name')
         .snapshots()
         .handleError((error) {
-          debugPrint('❌ Search by name error: $error');
+          debugPrint('❌ Error: Search by name failed: $error');
         })
         .map((snapshot) {
       return snapshot.docs
@@ -89,14 +81,13 @@ class FirestoreStallRepository implements StallRepository {
     }
 
     final ingredientLower = ingredient.toLowerCase();
-    debugPrint('🔍 Searching stalls by product: $ingredientLower');
     
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
         .snapshots()
         .handleError((error) {
-          debugPrint('❌ Search by product error: $error');
+          debugPrint('❌ Error: Search by product failed: $error');
         })
         .map((snapshot) {
       return snapshot.docs
@@ -109,8 +100,6 @@ class FirestoreStallRepository implements StallRepository {
 
   @override
   Stream<List<StallModel>> getStallsByCategory(String category) {
-    debugPrint('🔍 Fetching stalls by category: $category');
-    
     return _firestore
         .collection(_collection)
         .where('category', isEqualTo: category)
@@ -118,10 +107,9 @@ class FirestoreStallRepository implements StallRepository {
         .orderBy('name')
         .snapshots()
         .handleError((error) {
-          debugPrint('❌ Category query error: $error');
+          debugPrint('❌ Error: Category query failed: $error');
         })
         .map((snapshot) {
-          debugPrint('📄 Category stalls fetched: ${snapshot.docs.length}');
           return snapshot.docs
               .map((doc) => StallModel.fromFirestore(doc))
               .toList();

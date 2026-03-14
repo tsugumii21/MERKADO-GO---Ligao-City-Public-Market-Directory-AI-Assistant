@@ -6,13 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../providers/auth_provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../../core/services/cloudinary_service.dart';
-import '../../../core/exceptions/auth_exception.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -125,7 +122,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
         // Show info dialog
         if (mounted) {
-          showDialog(
+          await showDialog(
             context: context,
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -12,13 +11,11 @@ import 'providers/theme_provider.dart';
 void main() async {
   // CRITICAL: Catch all Flutter errors before anything else
   FlutterError.onError = (details) {
-    debugPrint('🔴 FLUTTER ERROR: ${details.exceptionAsString()}');
-    debugPrint('🔴 STACK: ${details.stack}');
+    debugPrint('❌ Error: ${details.exceptionAsString()}');
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('🔴 PLATFORM ERROR: $error');
-    debugPrint('🔴 STACK: $stack');
+    debugPrint('❌ Error: $error');
     return true;
   };
 
@@ -26,20 +23,16 @@ void main() async {
   
   try {
     await dotenv.load(fileName: '.env');
-    debugPrint('✅ dotenv loaded successfully');
-  } catch (e, stack) {
-    debugPrint('🔴 dotenv load failed: $e');
-    debugPrint('🔴 STACK: $stack');
+  } catch (e) {
+    debugPrint('❌ Failed: dotenv load failed: $e');
   }
   
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint('✅ Firebase initialized successfully');
-  } catch (e, stack) {
-    debugPrint('🔴 Firebase init failed: $e');
-    debugPrint('🔴 STACK: $stack');
+  } catch (e) {
+    debugPrint('❌ Failed: Firebase init failed: $e');
   }
   
   // Create ProviderContainer and set it for AppRouter

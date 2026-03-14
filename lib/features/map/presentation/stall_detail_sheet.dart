@@ -1,4 +1,4 @@
-// TODO: Implement Stall Detail Bottom Sheet
+// Planned: Implement Stall Detail Bottom Sheet
 import 'package:flutter/material.dart';
 
 class StallDetailSheet extends StatelessWidget {
@@ -8,7 +8,7 @@ class StallDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement stall detail UI
+    // Planned: Implement stall detail UI
     return const Placeholder();
   }
 }

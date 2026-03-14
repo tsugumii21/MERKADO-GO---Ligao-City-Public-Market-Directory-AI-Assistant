@@ -10,8 +10,6 @@ class CloudinaryService {
   static Future<String?> uploadProfileImage(
       File imageFile, String userId) async {
     try {
-      debugPrint('📤 Starting Cloudinary upload...');
-
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
       final dataUri = 'data:image/jpeg;base64,$base64Image';
@@ -27,20 +25,16 @@ class CloudinaryService {
         }),
       );
 
-      debugPrint('📥 Status: ${response.statusCode}');
-      debugPrint('📥 Body: ${response.body}');
-
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         final secureUrl = json['secure_url'] as String;
-        debugPrint('✅ Upload success: $secureUrl');
         return secureUrl;
       } else {
-        debugPrint('❌ Upload failed: ${response.body}');
+        debugPrint('❌ Failed: Cloudinary profile upload failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      debugPrint('❌ Upload error: $e');
+      debugPrint('❌ Error: Cloudinary profile upload error: $e');
       return null;
     }
   }
@@ -52,8 +46,6 @@ class CloudinaryService {
     Function(int sent, int total)? onProgress,
   }) async {
     try {
-      debugPrint('📤 Starting stall image upload...');
-
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
       final dataUri = 'data:image/jpeg;base64,$base64Image';
@@ -78,19 +70,16 @@ class CloudinaryService {
         onProgress(100, 100); // Upload complete
       }
 
-      debugPrint('📥 Status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         final secureUrl = json['secure_url'] as String;
-        debugPrint('✅ Stall image upload success: $secureUrl');
         return secureUrl;
       } else {
-        debugPrint('❌ Stall image upload failed: ${response.body}');
+        debugPrint('❌ Failed: Cloudinary stall image upload failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      debugPrint('❌ Stall image upload error: $e');
+      debugPrint('❌ Error: Cloudinary stall image upload error: $e');
       return null;
     }
   }

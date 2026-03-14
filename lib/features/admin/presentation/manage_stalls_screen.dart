@@ -385,10 +385,11 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     final categories = List<String>.from(
         typeData['categories'] as List);
     
-    List<StallModel> filtered = stalls
-        .where((s) => categories.contains(
-          s.category.toLowerCase().trim()))
-        .toList();
+    List<StallModel> filtered = stalls.where((s) {
+      final stallCats = s.categories.map((c) => c.toLowerCase().trim()).toList();
+      final singleCat = s.category.toLowerCase().trim();
+      return stallCats.any((c) => categories.contains(c)) || categories.contains(singleCat);
+    }).toList();
     
     // Apply subcategory tag filter
     if (_selectedTag != null) {
@@ -909,8 +910,26 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     return chips;
   }
 
+  String _getSectionLabel(String value) {
+    const labels = {
+      'dry_goods_section': 'Dry Goods Section',
+      'fruit_section': 'Fruit Section',
+      'vegetable_section': 'Vegetable Section',
+      'rice_section': 'Rice Section',
+      'fish_chicken_section': 'Fish & Chicken Section',
+      'meat_section': 'Meat Section',
+      'cooked_food_section': 'Food Section',
+    };
+    return labels[value] ??
+        value
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
+            .join(' ');
+  }
+
   Widget _buildStallCard(BuildContext context, StallModel stall) {
-    final isOpen = StallUtils.isStallOpenNow(stall);
+    final statusColor = Color(StallUtils.getStatusColorHex(stall.status));
     
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -974,7 +993,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Row 2: Category chip + Open/Closed badge
+          // Row 2: Category chip + status badge
           Row(
             children: [
               Container(
@@ -997,47 +1016,48 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isOpen
-                      ? const Color(0xFFE8F5E9)
-                      : const Color(0xFFFFEBEE),
+                  color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isOpen
-                        ? const Color(0xFF4CAF50)
-                        : const Color(0xFFE53935),
+                    color: statusColor,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: isOpen
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFFC62828),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isOpen ? 'Open' : 'Closed',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: isOpen
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFFC62828),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  StallUtils.getStatusLabel(stall.status),
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: statusColor,
+                  ),
                 ),
               ),
             ],
           ),
           
           // Row 3: Tags (limit to 3)
+          if (stall.section != null && stall.section!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_rounded,
+                    size: 12,
+                    color: Color(0xFF9E9E9E),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getSectionLabel(stall.section!),
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: const Color(0xFF9E9E9E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Row 4: Tags (limit to 3)
           if (stall.tags.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
@@ -1081,7 +1101,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
             ),
           ],
 
-          // Row 4: Operating hours + days
+          // Row 5: Operating hours + days
           const SizedBox(height: 8),
           Row(
             children: [

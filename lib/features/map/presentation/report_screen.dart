@@ -1,4 +1,4 @@
-// TODO: Implement Report Screen
+// Planned: Implement Report Screen
 import 'package:flutter/material.dart';
 
 class ReportScreen extends StatelessWidget {
@@ -8,11 +8,11 @@ class ReportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement report submission UI
+    // Planned: Implement report submission UI
     return Scaffold(
       appBar: AppBar(title: const Text('Report Stall')),
       body: const Center(
-        child: Text('🚨 Report Screen - TODO'),
+        child: Text('🚨 Report Screen - Planned'),
       ),
     );
   }

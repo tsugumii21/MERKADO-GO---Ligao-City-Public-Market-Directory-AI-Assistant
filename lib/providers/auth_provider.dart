@@ -27,7 +27,7 @@ final currentUserProvider = StreamProvider<User?>((ref) {
           await user.getIdToken(true);
           return user;
         } catch (e) {
-          debugPrint('⚠️ Token refresh failed: $e');
+          debugPrint('❌ Failed: Token refresh failed: $e');
           return null;
         }
       });

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Seed data for Ligao City Public Market stalls
@@ -27,8 +28,8 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section A, Stall 12, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/meat.jpg',
-        'https://res.cloudinary.com/demo/image/upload/samples/food/pork.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '5:00 AM',
       'closeTime': '5:00 PM',
@@ -52,8 +53,8 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section B, Stall 08, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/chicken.jpg',
-        'https://res.cloudinary.com/demo/image/upload/samples/food/poultry.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '5:30 AM',
       'closeTime': '6:00 PM',
@@ -81,8 +82,8 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section C, Stall 15, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/vegetables.jpg',
-        'https://res.cloudinary.com/demo/image/upload/samples/food/veggie-stand.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '4:00 AM',
       'closeTime': '4:00 PM',
@@ -108,8 +109,8 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section D, Stall 22, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/fish-market.jpg',
-        'https://res.cloudinary.com/demo/image/upload/samples/food/seafood.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '4:30 AM',
       'closeTime': '12:00 PM',
@@ -133,8 +134,8 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section A, Stall 18, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/beef.jpg',
-        'https://res.cloudinary.com/demo/image/upload/samples/food/meat-market.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '5:00 AM',
       'closeTime': '5:00 PM',
@@ -156,7 +157,7 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section D, Stall 1, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/restaurant.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '6:00 AM',
       'closeTime': '2:00 PM',
@@ -178,7 +179,7 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section B, Stall 12, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/rice.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '5:00 AM',
       'closeTime': '12:00 PM',
@@ -200,7 +201,7 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section A, Stall 8, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/grocery.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '5:00 AM',
       'closeTime': '6:00 PM',
@@ -222,7 +223,7 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section E, Stall 3, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/ecommerce/clothing.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '7:00 AM',
       'closeTime': '5:00 PM',
@@ -246,7 +247,7 @@ Future<void> seedStallData() async {
       ],
       'address': 'Section C, Stall 5, Ligao City Public Market',
       'photoUrls': [
-        'https://res.cloudinary.com/demo/image/upload/samples/food/fruit.jpg',
+        'https://images.example.com/market/stall-placeholder.jpg',
       ],
       'openTime': '5:00 AM',
       'closeTime': '11:00 AM',
@@ -259,18 +260,13 @@ Future<void> seedStallData() async {
   ];
 
   // Add stalls to Firestore
-  print('🌱 Seeding stall data to Firestore...');
-  
   for (final stall in stalls) {
     try {
       await firestore.collection('stalls').add(stall);
-      print('✅ Added: ${stall['name']}');
     } catch (e) {
-      print('❌ Error adding ${stall['name']}: $e');
+      debugPrint('❌ Error: Failed to seed stall ${stall['name']}: $e');
     }
   }
-  
-  print('🎉 Seed data complete! Check Firestore console.');
 }
 
 /// Instructions to run this seed script:
@@ -286,3 +282,4 @@ Future<void> seedStallData() async {
 /// - Go to Firestore Database
 /// - Create 'stalls' collection
 /// - Add documents with the data above
+

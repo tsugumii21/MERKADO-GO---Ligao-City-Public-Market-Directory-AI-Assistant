@@ -1,4 +1,4 @@
-// TODO: Implement loading overlay widget
+// Planned: Implement loading overlay widget
 import 'package:flutter/material.dart';
 
 class LoadingOverlay extends StatelessWidget {
@@ -13,7 +13,7 @@ class LoadingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement loading overlay UI
+    // Planned: Implement loading overlay UI
     return const Placeholder();
   }
 }

@@ -1,4 +1,4 @@
-// TODO: Define User entity model
+// Planned: Define User entity model
 class UserEntity {
   final String uid;
   final String username;
@@ -20,5 +20,5 @@ class UserEntity {
     required this.createdAt,
   });
 
-  // TODO: Add fromJson, toJson, copyWith methods
+  // Planned: Add fromJson, toJson, copyWith methods
 }

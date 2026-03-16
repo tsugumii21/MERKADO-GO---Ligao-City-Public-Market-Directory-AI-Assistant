@@ -1,3 +1,4 @@
+import '../../features/map/indoor_map_screen.dart';
 // GoRouter configuration with role-based routing
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
@@ -36,6 +37,11 @@ class AppRouter {
       return GoRouter(
         initialLocation: RouteNames.splash,
       routes: [
+        // Indoor Map Screen (user)
+        GoRoute(
+          path: '/indoor-map',
+          builder: (context, state) => const IndoorMapScreen(),
+        ),
         // Splash Screen
         GoRoute(
           path: RouteNames.splash,

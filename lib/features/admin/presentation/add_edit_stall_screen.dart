@@ -1598,78 +1598,71 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                 ),
                 const SizedBox(height: 10),
               ],
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFDFEFE),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(left: 2, right: 8),
-                      child: Icon(
-                        Icons.shopping_basket_outlined,
-                        size: 18,
-                        color: Color(0xFF9E9E9E),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _productController,
+                      focusNode: _productFocusNode,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: const Color(0xFF212121),
                       ),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _productController,
-                        focusNode: _productFocusNode,
-                        style: GoogleFonts.poppins(
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Pork, Adobo, Haircut...',
+                        hintStyle: GoogleFonts.poppins(
                           fontSize: 13,
-                          color: const Color(0xFF212121),
-                          height: 1.25,
+                          color: const Color(0xFF9E9E9E),
                         ),
-                        decoration: InputDecoration(
-                          hintText: 'e.g. Pork, Adobo, Haircut...',
-                          hintStyle: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: const Color(0xFF9E9E9E),
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 0,
-                            vertical: 10,
-                          ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        prefixIcon: const Icon(
+                          Icons.shopping_basket_outlined,
+                          size: 18,
+                          color: Color(0xFF9E9E9E),
                         ),
-                        textInputAction: TextInputAction.done,
-                        onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                        onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                       ),
+                      textInputAction: TextInputAction.done,
+                      onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
                     ),
-                    const SizedBox(width: 8),
-                    Material(
-                      color: const Color(0xFF1B5E20),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: const Color(0xFF1B5E20),
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(10),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () => _addProduct(_productController.text),
-                        child: const SizedBox(
-                          width: 34,
-                          height: 34,
-                          child: Icon(
-                            Icons.add_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                      onTap: () => _addProduct(_productController.text),
+                      child: const SizedBox(
+                        width: 46,
+                        height: 46,
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: Colors.white,
+                          size: 22,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(

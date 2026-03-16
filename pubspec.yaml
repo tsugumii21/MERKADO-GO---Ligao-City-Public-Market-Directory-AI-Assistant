@@ -26,7 +26,7 @@ dependencies:
   # Google Services
   google_generative_ai: ^0.4.6
   google_maps_flutter: ^2.9.0
-  geolocator: ^13.0.2
+  geolocator: ^11.0.0
 
   # Image Handling
   image_picker: ^1.1.2

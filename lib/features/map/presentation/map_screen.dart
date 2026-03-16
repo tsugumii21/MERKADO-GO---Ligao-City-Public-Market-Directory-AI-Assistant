@@ -15,7 +15,10 @@ import '../../../providers/stall_provider.dart';
 import '../../../providers/chat_provider.dart';
 import '../../../features/chat/domain/chat_message.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/utils/stall_utils.dart';
+import '../indoor_map_screen.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -33,9 +36,9 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   late Animation<double> _pulseAnimation;
   bool _isChatOpen = false;
   
-  // Manual clustering state
+  // Camera state
   double? _currentZoom = 19.0;
-  static const double _clusterRadius = 0.0003; // ~30 meters at market zoom level
+  static const double _stallVisibilityZoomThreshold = 20.0;
   
   // Zoom limit tracking (prevent zooming out past opening view)
   bool _initialZoomCaptured = false;
@@ -43,9 +46,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   
   // Map initialization tracking (prevent repeated camera animations)
   bool _mapInitialized = false;
-  
-  // Performance optimization: Cache cluster bitmaps
-  final Map<int, BitmapDescriptor> _clusterBitmapCache = {};
+
   Timer? _markerDebounce;
   
   // Ligao City Public Market coordinates (exact location from Google Maps)
@@ -65,12 +66,19 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   String _searchMode = ''; // 'name' or 'ingredient'
   MapType _currentMapType = MapType.hybrid; // Default to hybrid mode
 
+  // GPS & live location
+  Position? _currentPosition;
+  bool _locationPermissionGranted = false;
+  bool _isLoadingLocation = false;
+  StreamSubscription<Position>? _positionStream;
+
+  // Indoor map trigger
+  static const double _indoorZoomThreshold = 20.0;
+  bool _showIndoorButton = false;
+
   @override
   void initState() {
     super.initState();
-    
-    // Clear marker bitmap cache to ensure new small markers are used
-    _clusterBitmapCache.clear();
     
     // Initialize pulse animation for Aling Suki button
     _pulseController = AnimationController(
@@ -81,6 +89,9 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Init GPS
+    _initLocationService();
   }
 
   // Reset UI state when user leaves this tab
@@ -119,6 +130,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     _mapController?.dispose();
     _searchController.dispose();
     _pulseController.dispose();
+    _positionStream?.cancel();
     super.dispose();
   }
 
@@ -147,7 +159,15 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   }
 
   void _onCameraMove(CameraPosition position) {
-    // No bounds restriction - users can pan freely
+    // Indoor button appears only when sufficiently zoomed in
+    final showIndoor = position.zoom >= _indoorZoomThreshold;
+    // Only call setState if something actually changed to avoid jank
+    if (_currentZoom != position.zoom || _showIndoorButton != showIndoor) {
+      setState(() {
+        _currentZoom = position.zoom;
+        _showIndoorButton = showIndoor;
+      });
+    }
   }
 
   void _toggleMapType() {
@@ -169,81 +189,28 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     );
   }
 
-  Map<String, List<StallModel>> _clusterStalls(
-      List<StallModel> stalls, double zoom) {
-    // At high zoom (20+), don't cluster — show all individually
-    if (zoom >= 20.0) {
-      return {
-        for (var s in stalls) s.stallId: [s]
-      };
-    }
-
-    final Map<String, List<StallModel>> clusters = {};
-    final List<StallModel> assigned = [];
-
-    for (final stall in stalls) {
-      if (assigned.contains(stall)) continue;
-      
-      final nearby = stalls.where((other) {
-        if (assigned.contains(other)) return false;
-        final latDiff = (stall.latitude - other.latitude).abs();
-        final lngDiff = (stall.longitude - other.longitude).abs();
-        return latDiff < _clusterRadius && lngDiff < _clusterRadius;
-      }).toList();
-
-      final clusterId = 'cluster_${stall.stallId}';
-      clusters[clusterId] = nearby;
-      assigned.addAll(nearby);
-    }
-
-    return clusters;
-  }
-
   Future<void> _buildMarkers(
       List<StallModel> stalls, double zoom) async {
-    final clusters = _clusterStalls(stalls, zoom);
-    final Set<Marker> newMarkers = {};
-
-    for (final entry in clusters.entries) {
-      final clusterStalls = entry.value;
-
-      if (clusterStalls.length == 1) {
-        // Single stall — show small custom green marker
-        final stall = clusterStalls.first;
-        newMarkers.add(Marker(
-          markerId: MarkerId(stall.stallId),
-          position: LatLng(stall.latitude, stall.longitude),
-          icon: await _createSmallMarker(),
-          anchor: const Offset(0.5, 0.5),
-          infoWindow: InfoWindow(
-            title: stall.name,
-            snippet: '${_getCategoryLabel(stall.category)} • ${stall.openTime}',
-          ),
-          onTap: () => _onStallMarkerTapped(stall),
-        ));
-      } else {
-        // Multiple stalls — show cluster bubble
-        final center = LatLng(
-          clusterStalls.map((s) => s.latitude)
-              .reduce((a, b) => a + b) / clusterStalls.length,
-          clusterStalls.map((s) => s.longitude)
-              .reduce((a, b) => a + b) / clusterStalls.length,
-        );
-
-        newMarkers.add(Marker(
-          markerId: MarkerId(entry.key),
-          position: center,
-          icon: await _buildClusterBitmap(clusterStalls.length),
-          onTap: () {
-            _mapController?.animateCamera(
-              CameraUpdate.newLatLngZoom(
-                center,
-                (zoom + 1.5).clamp(18.0, 21.0),
-              ),
-            );
-          },
-        ));
+    if (zoom < _stallVisibilityZoomThreshold) {
+      if (mounted && _markers.isNotEmpty) {
+        setState(() => _markers = {});
       }
+      return;
+    }
+
+    final Set<Marker> newMarkers = {};
+    for (final stall in stalls) {
+      newMarkers.add(Marker(
+        markerId: MarkerId(stall.stallId),
+        position: LatLng(stall.latitude, stall.longitude),
+        icon: await _createSmallMarker(),
+        anchor: const Offset(0.5, 0.5),
+        infoWindow: InfoWindow(
+          title: stall.name,
+          snippet: '${_getCategoryLabel(stall.category)} • ${stall.openTime}',
+        ),
+        onTap: () => _onStallMarkerTapped(stall),
+      ));
     }
 
     if (mounted) {
@@ -278,65 +245,6 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     
     return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
-  }
-
-  // Create small cluster marker (44x44px)
-  Future<BitmapDescriptor> _buildClusterBitmap(int clusterSize) async {
-    // Return cached version if exists
-    if (_clusterBitmapCache.containsKey(clusterSize)) {
-      return _clusterBitmapCache[clusterSize]!;
-    }
-
-    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(pictureRecorder);
-    const double size = 32.0;
-    const double radius = 16.0;
-    
-    // Dark green circle background
-    final paint = Paint()..color = const Color(0xFF1B5E20);
-    canvas.drawCircle(const Offset(radius, radius), radius, paint);
-
-    // White border ring
-    canvas.drawCircle(
-      const Offset(radius, radius),
-      radius,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0,
-    );
-
-    // White count text
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: clusterSize.toString(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        radius - textPainter.width / 2,
-        radius - textPainter.height / 2,
-      ),
-    );
-
-    final img = await pictureRecorder
-        .endRecording()
-        .toImage(size.toInt(), size.toInt());
-    final data = await img.toByteData(format: ui.ImageByteFormat.png);
-
-    final bitmap = BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
-    
-    // Save to cache before returning
-    _clusterBitmapCache[clusterSize] = bitmap;
-    return bitmap;
   }
 
   String _getCategoryLabel(String category) {
@@ -530,16 +438,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
               // Google Map with strict camera bounds (hybrid mode)
               GoogleMap(
                 onMapCreated: _onMapCreated,
-                onCameraMove: (position) {
-                  _currentZoom = position.zoom;
-                  
-                  // Prevent zooming out beyond opening view (software limit)
-                  if (position.zoom < _minZoom && _mapController != null) {
-                    _mapController!.moveCamera(
-                      CameraUpdate.zoomTo(_minZoom),
-                    );
-                  }
-                },
+                onCameraMove: _onCameraMove,
                 onCameraIdle: () async {
                   // Capture initial zoom level after first map load for reference
                   if (!_initialZoomCaptured && _mapController != null) {
@@ -562,7 +461,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   zoom: 17.0, // matches opening view zoom level
                 ),
                 markers: _markers,
-                myLocationEnabled: false,
+                myLocationEnabled: _locationPermissionGranted,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
@@ -632,53 +531,86 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                 top: MediaQuery.of(context).padding.top + 16,
                 left: 16,
                 right: 64,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Material(
+                    color: const Color(0xFFFFFFFF),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFFFF),
+                        border: Border.all(
+                          color: const Color(0xFFE5E7EB),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0x1A000000),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: const Color(0xFF212121),
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Search stalls or ingredients...',
-                      hintStyle: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: const Color(0xFF9E9E9E),
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: Color(0xFF9E9E9E),
-                        size: 20,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                color: Color(0xFF9E9E9E),
-                                size: 20,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.search_rounded,
+                            color: Color(0xFF9E9E9E),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: _onSearchChanged,
+                              cursorColor: const Color(0xFF212121),
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: const Color(0xFF212121),
                               ),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                              decoration: InputDecoration(
+                                hintText: 'Search stalls or ingredients...',
+                                hintStyle: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: const Color(0xFF9E9E9E),
+                                ),
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                isCollapsed: true,
+                                filled: true,
+                                fillColor: const Color(0xFFFFFFFF),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (_searchController.text.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  _searchController.clear();
+                                  _onSearchChanged('');
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    color: Color(0xFF9E9E9E),
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -692,12 +624,13 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                 child: Tooltip(
                   message: _currentMapType == MapType.hybrid ? 'Satellite View' : 'Map View',
                   child: Container(
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFF1B5E20),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
+                          color: Colors.black.withOpacity(0.18),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -714,7 +647,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                           alignment: Alignment.center,
                           child: const Icon(
                             Icons.layers_rounded,
-                            color: Color(0xFF1B5E20),
+                            color: Colors.white,
                             size: 22,
                           ),
                         ),
@@ -816,6 +749,118 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                 ),
               ),
               
+              // My Location button (above recenter, bottom right)
+              Positioned(
+                bottom: 162,
+                right: 16,
+                child: Tooltip(
+                  message: 'My Location',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _goToMyLocation,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          alignment: Alignment.center,
+                          child: _isLoadingLocation
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Color(0xFF1B5E20),
+                                  ),
+                                )
+                              : Icon(
+                                  _locationPermissionGranted
+                                      ? Icons.my_location_rounded
+                                      : Icons.location_disabled_rounded,
+                                  color: _locationPermissionGranted
+                                      ? const Color(0xFF1B5E20)
+                                      : const Color(0xFF9E9E9E),
+                                  size: 24,
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Indoor Map button (fixed position; visible only at zoom >= 20)
+              Positioned(
+                bottom: 162,
+                left: 0,
+                right: 0,
+                child: AnimatedOpacity(
+                  opacity: _showIndoorButton ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 400),
+                  child: IgnorePointer(
+                    ignoring: !_showIndoorButton,
+                    child: Center(
+                      child: GestureDetector(
+                          onTap: _openIndoorMap,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF2E7D32).withOpacity(0.5),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.map_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'View Indoor Map',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ),
+                  ),
+                ),
+              ),
+
               // Recenter button (bottom right)
               Positioned(
                 bottom: 100,
@@ -863,7 +908,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   animation: _pulseAnimation,
                   builder: (context, child) {
                     return Transform.scale(
-                      scale: _isChatOpen ? 1.0 : _pulseAnimation.value,
+                      scale: 1.0,
                       child: child,
                     );
                   },
@@ -1006,6 +1051,79 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
       });
     });
   }
+
+  // ── GPS / Location ─────────────────────────────────────────────────────────
+
+  Future<void> _initLocationService() async {
+    final permission = await Permission.locationWhenInUse.request();
+    if (permission.isGranted) {
+      if (mounted) {
+        setState(() {
+          _locationPermissionGranted = true;
+          _isLoadingLocation = true;
+        });
+      }
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+            _isLoadingLocation = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isLoadingLocation = false);
+      }
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 5,
+        ),
+      ).listen((position) {
+        if (mounted) setState(() => _currentPosition = position);
+      });
+    } else if (permission.isPermanentlyDenied) {
+      openAppSettings();
+    }
+  }
+
+  void _goToMyLocation() async {
+    if (!_locationPermissionGranted) {
+      final permission = await Permission.locationWhenInUse.request();
+      if (!permission.isGranted) return;
+    }
+    if (_currentPosition != null) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          16.0,
+        ),
+      );
+    } else {
+      _initLocationService();
+    }
+  }
+
+  void _openIndoorMap() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const IndoorMapScreen(),
+        transitionsBuilder: (_, anim, __, child) => SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
 }
 
 // Aling Suki Chat Overlay Widget

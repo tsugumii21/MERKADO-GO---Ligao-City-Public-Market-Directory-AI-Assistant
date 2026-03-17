@@ -248,8 +248,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               allStallsAsync.when(
                 data: (stalls) {
                   // Real-time open/closed calculation
-                  final openStalls = stalls.where((s) => StallUtils.isStallOpenNow(s)).toList();
-                  final closedStalls = stalls.length - openStalls.length;
+                    final openCount = stalls
+                        .where((s) => StallUtils.isStallOpenNow(s))
+                        .length;
+                    final closedCount = stalls.length - openCount;
 
                   return StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -303,7 +305,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                         icon: Icons.check_circle_rounded,
                                         iconColor: const Color(0xFF2E7D32),
                                         bgColor: const Color(0xFFE8F5E9),
-                                        count: openStalls.length.toString(),
+                                          count: openCount.toString(),
                                         label: 'Open Now',
                                       ),
                                     ),
@@ -313,7 +315,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                         icon: Icons.cancel_rounded,
                                         iconColor: const Color(0xFFC62828),
                                         bgColor: const Color(0xFFFFEBEE),
-                                        count: closedStalls.toString(),
+                                          count: closedCount.toString(),
                                         label: 'Closed Now',
                                       ),
                                     ),

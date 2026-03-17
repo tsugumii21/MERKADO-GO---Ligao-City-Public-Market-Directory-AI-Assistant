@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
 import '../../../providers/chat_provider.dart';
@@ -30,6 +31,7 @@ class MapScreen extends ConsumerStatefulWidget {
 class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMixin {
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   
   // Animation for floating Aling Suki button
   late AnimationController _pulseController;
@@ -59,11 +61,16 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   );
   
   Set<Marker> _markers = {};
+  BitmapDescriptor? _openMarkerIcon;
+  BitmapDescriptor? _closedMarkerIcon;
+  StreamSubscription<QuerySnapshot>? _stallsSubscription;
   List<StallModel> _allStalls = [];
   List<StallModel> _filteredStalls = [];
+  List<StallModel> _searchResults = [];
   StallModel? _selectedStall;
+  bool _showDropdown = false;
   bool _isSearching = false;
-  String _searchMode = ''; // 'name' or 'ingredient'
+  String _searchQuery = '';
   MapType _currentMapType = MapType.hybrid; // Default to hybrid mode
 
   // GPS & live location
@@ -79,6 +86,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   @override
   void initState() {
     super.initState();
+    _loadStalls();
     
     // Initialize pulse animation for Aling Suki button
     _pulseController = AnimationController(
@@ -89,6 +97,13 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _searchFocusNode.addListener(() {
+      if (!mounted) return;
+      setState(() {
+        _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
+      });
+    });
 
     // Init GPS
     _initLocationService();
@@ -128,10 +143,33 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   void dispose() {
     _markerDebounce?.cancel();
     _mapController?.dispose();
+    _stallsSubscription?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _pulseController.dispose();
     _positionStream?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadStalls() async {
+    _stallsSubscription?.cancel();
+    _stallsSubscription = FirebaseFirestore.instance
+        .collection('stalls')
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+
+      final stalls = snap.docs.map((d) => StallModel.fromFirestore(d)).toList();
+      setState(() {
+        _allStalls = stalls;
+      });
+
+      if (_isSearching && _searchQuery.isNotEmpty) {
+        _onSearchChanged(_searchQuery);
+      } else {
+        _buildMarkers(stalls, _currentZoom ?? 18.0);
+      }
+    });
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -200,10 +238,11 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
 
     final Set<Marker> newMarkers = {};
     for (final stall in stalls) {
+      final isOpen = StallUtils.isStallOpenNow(stall);
       newMarkers.add(Marker(
         markerId: MarkerId(stall.stallId),
         position: LatLng(stall.latitude, stall.longitude),
-        icon: await _createSmallMarker(),
+        icon: await _getSmallMarkerIcon(isOpen),
         anchor: const Offset(0.5, 0.5),
         infoWindow: InfoWindow(
           title: stall.name,
@@ -218,15 +257,25 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     }
   }
 
+  Future<BitmapDescriptor> _getSmallMarkerIcon(bool isOpen) async {
+    if (isOpen) {
+      _openMarkerIcon ??= await _createSmallMarker(const Color(0xFF2E7D32));
+      return _openMarkerIcon!;
+    }
+
+    _closedMarkerIcon ??= await _createSmallMarker(const Color(0xFFC62828));
+    return _closedMarkerIcon!;
+  }
+
   // Create small custom marker for individual stalls (44x44px)
-  Future<BitmapDescriptor> _createSmallMarker() async {
+  Future<BitmapDescriptor> _createSmallMarker(Color markerColor) async {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     const double size = 32.0;
     const double radius = 16.0;
     
-    // Dark green circle background
-    final paint = Paint()..color = const Color(0xFF1B5E20);
+    // Marker circle background (green=open, red=closed)
+    final paint = Paint()..color = markerColor;
     canvas.drawCircle(const Offset(radius, radius), radius, paint);
     
     // White border
@@ -311,66 +360,181 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   }
 
   void _onSearchChanged(String query) {
-    // Trim whitespace to prevent empty-space searches
     final trimmedQuery = query.trim();
-    
+    setState(() {
+      _searchQuery = trimmedQuery;
+    });
+
     if (trimmedQuery.isEmpty) {
       setState(() {
         _isSearching = false;
         _filteredStalls = [];
-        _searchMode = '';
+        _searchResults = [];
+        _showDropdown = false;
       });
       _buildMarkers(_allStalls, _currentZoom ?? 18.0);
-      // Return to initial market view when search is cleared
-      if (_mapInitialized) {
-        _initMapView();
-      }
       return;
     }
 
     final queryLower = trimmedQuery.toLowerCase();
-    
-    // Mode A: Search by stall name
-    final nameMatches = _allStalls.where((stall) {
-      return stall.name.toLowerCase().contains(queryLower);
+    final allMatches = _allStalls.where((stall) {
+      if (stall.name.toLowerCase().contains(queryLower)) return true;
+      if (stall.category.toLowerCase().contains(queryLower)) return true;
+      if (stall.categories.any((c) => c.toLowerCase().contains(queryLower))) {
+        return true;
+      }
+      if (stall.tags.any((t) =>
+          t.toLowerCase().contains(queryLower) ||
+          StallUtils.getTagLabel(t).toLowerCase().contains(queryLower))) {
+        return true;
+      }
+      if (stall.products.any((p) => p.toLowerCase().contains(queryLower))) {
+        return true;
+      }
+      if (stall.section != null &&
+          stall.section!.toLowerCase().contains(queryLower)) {
+        return true;
+      }
+      return false;
     }).toList();
-    
-    // Mode B: Search by ingredient/product
-    final productMatches = _allStalls.where((stall) {
-      return stall.products.any((product) => 
-        product.toLowerCase().contains(queryLower)
-      );
-    }).toList();
-    
-    List<StallModel> results;
-    String mode;
-    
-    if (nameMatches.isNotEmpty) {
-      // Prefer name matches (Mode A)
-      results = nameMatches;
-      mode = 'name';
-    } else if (productMatches.isNotEmpty) {
-      // Fall back to ingredient matches (Mode B)
-      results = productMatches;
-      mode = 'ingredient';
-    } else {
-      // No matches
-      results = [];
-      mode = '';
-    }
     
     setState(() {
       _isSearching = true;
-      _filteredStalls = results;
-      _searchMode = mode;
+      _filteredStalls = allMatches;
+      _searchResults = allMatches.take(8).toList();
+      _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
     });
-    
-    // Update markers to show only search results
-    // DO NOT animate camera while user is typing (prevents unwanted zoom/pan)
-    if (results.isNotEmpty) {
-      _buildMarkers(results, _currentZoom ?? 18.0);
+
+    if (allMatches.isNotEmpty) {
+      _buildMarkers(allMatches, _currentZoom ?? 18.0);
     } else {
       _buildMarkers([], _currentZoom ?? 18.0);
+    }
+  }
+
+  void _onStallSelected(StallModel stall) {
+    _searchFocusNode.unfocus();
+    setState(() {
+      _showDropdown = false;
+      _searchController.text = stall.name;
+      _searchQuery = stall.name;
+    });
+
+    if (stall.latitude != 0.0 || stall.longitude != 0.0) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(stall.latitude, stall.longitude),
+          20.0,
+        ),
+      );
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          _openStallDetail(stall);
+        }
+      });
+    } else {
+      _openStallDetail(stall);
+    }
+  }
+
+  void _openStallDetail(StallModel stall) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StallDetailSheet(
+        stall: stall,
+        onClose: () {
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _searchResults = [];
+      _filteredStalls = [];
+      _showDropdown = false;
+      _isSearching = false;
+    });
+    _buildMarkers(_allStalls, _currentZoom ?? 18.0);
+    _searchFocusNode.unfocus();
+  }
+
+  Widget _buildHighlightedText(String text, String query) {
+    if (query.isEmpty) {
+      return Text(
+        text,
+        style: GoogleFonts.poppins(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF212121),
+        ),
+      );
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final matchIndex = lowerText.indexOf(lowerQuery);
+
+    if (matchIndex == -1) {
+      return Text(
+        text,
+        style: GoogleFonts.poppins(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF212121),
+        ),
+      );
+    }
+
+    return RichText(
+      text: TextSpan(
+        children: [
+          if (matchIndex > 0)
+            TextSpan(
+              text: text.substring(0, matchIndex),
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF212121),
+              ),
+            ),
+          TextSpan(
+            text: text.substring(matchIndex, matchIndex + query.length),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1B5E20),
+              backgroundColor: const Color(0xFFE8F5E9),
+            ),
+          ),
+          if (matchIndex + query.length < text.length)
+            TextSpan(
+              text: text.substring(matchIndex + query.length),
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF212121),
+              ),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  String? _getMatchedProduct(StallModel stall) {
+    final q = _searchQuery.toLowerCase();
+    if (q.isEmpty) return null;
+    try {
+      return stall.products.firstWhere((p) => p.toLowerCase().contains(q));
+    } catch (_) {
+      return null;
     }
   }
 
@@ -429,15 +593,26 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
             _allStalls = stalls;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _buildMarkers(stalls, _currentZoom ?? 18.0);
-              _initMapView();
             });
           }
+
+          final double dropdownListHeight =
+              ((_searchResults.length * 72.0) + 8.0).clamp(72.0, 260.0).toDouble();
           
           return Stack(
             children: [
               // Google Map with strict camera bounds (hybrid mode)
               GoogleMap(
                 onMapCreated: _onMapCreated,
+                onTap: (latLng) {
+                  if (_showDropdown) {
+                    setState(() {
+                      _showDropdown = false;
+                    });
+                    _searchFocusNode.unfocus();
+                    return;
+                  }
+                },
                 onCameraMove: _onCameraMove,
                 onCameraIdle: () async {
                   // Capture initial zoom level after first map load for reference
@@ -526,52 +701,55 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   ),
                 ),
               
-              // Search bar overlay
+              // Search bar overlay + live dropdown
               Positioned(
-                top: MediaQuery.of(context).padding.top + 16,
+                top: MediaQuery.of(context).viewPadding.top + 12,
                 left: 16,
                 right: 64,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Material(
-                    color: const Color(0xFFFFFFFF),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 50,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF),
-                        border: Border.all(
-                          color: const Color(0xFFE5E7EB),
-                          width: 1,
-                        ),
+                        color: Colors.white,
+                        borderRadius: _showDropdown
+                            ? const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                topRight: Radius.circular(12),
+                              )
+                            : BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0x1A000000),
-                            blurRadius: 8,
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          const SizedBox(width: 12),
+                          Icon(
                             Icons.search_rounded,
-                            color: Color(0xFF9E9E9E),
-                            size: 20,
+                            color: _searchQuery.isNotEmpty
+                                ? const Color(0xFF1B5E20)
+                                : const Color(0xFF9E9E9E),
+                            size: 22,
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
                               controller: _searchController,
-                              onChanged: _onSearchChanged,
-                              cursorColor: const Color(0xFF212121),
+                              focusNode: _searchFocusNode,
+                              cursorColor: const Color(0xFF1B5E20),
                               style: GoogleFonts.poppins(
-                                fontSize: 14,
+                                fontSize: 13,
                                 color: const Color(0xFF212121),
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Search stalls or ingredients...',
+                                hintText: 'Search stalls, products...',
                                 hintStyle: GoogleFonts.poppins(
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   color: const Color(0xFF9E9E9E),
                                 ),
                                 border: InputBorder.none,
@@ -580,40 +758,192 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                                 disabledBorder: InputBorder.none,
                                 errorBorder: InputBorder.none,
                                 focusedErrorBorder: InputBorder.none,
-                                isCollapsed: true,
-                                filled: true,
-                                fillColor: const Color(0xFFFFFFFF),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
+                                filled: false,
+                                fillColor: Colors.white,
+                                contentPadding: EdgeInsets.zero,
+                                isDense: true,
                               ),
+                              onChanged: _onSearchChanged,
+                              textInputAction: TextInputAction.search,
+                              onSubmitted: (_) {
+                                if (_searchResults.isNotEmpty) {
+                                  _onStallSelected(_searchResults.first);
+                                }
+                              },
                             ),
                           ),
-                          if (_searchController.text.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  _searchController.clear();
-                                  _onSearchChanged('');
-                                },
-                                borderRadius: BorderRadius.circular(16),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(4),
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    color: Color(0xFF9E9E9E),
-                                    size: 20,
-                                  ),
+                          if (_searchQuery.isNotEmpty)
+                            GestureDetector(
+                              onTap: _clearSearch,
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: Color(0xFF9E9E9E),
+                                  size: 18,
                                 ),
                               ),
-                            ),
-                          ],
+                            )
+                          else
+                            const SizedBox(width: 12),
                         ],
                       ),
                     ),
-                  ),
+                    if (_showDropdown)
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 320),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(12),
+                            bottomRight: Radius.circular(12),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              height: 1,
+                              color: const Color(0xFFE0E0E0),
+                              margin: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            if (_searchResults.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'No stalls found for "$_searchQuery"',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: const Color(0xFF9E9E9E),
+                                  ),
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                height: dropdownListHeight,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  itemCount: _searchResults.length,
+                                  itemBuilder: (_, i) {
+                                    final stall = _searchResults[i];
+                                    final isOpen = StallUtils.isStallOpenNow(stall);
+                                    final matchedProduct = _getMatchedProduct(stall);
+
+                                    return GestureDetector(
+                                      onTap: () => _onStallSelected(stall),
+                                      child: Container(
+                                        color: Colors.transparent,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 40,
+                                              height: 40,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFE8F5E9),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: stall.photoUrls.isNotEmpty
+                                                  ? ClipRRect(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      child: Image.network(
+                                                        stall.photoUrls.first,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (_, __, ___) => const Icon(
+                                                          Icons.store_rounded,
+                                                          color: Color(0xFF4CAF50),
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : const Icon(
+                                                      Icons.store_rounded,
+                                                      color: Color(0xFF4CAF50),
+                                                      size: 20,
+                                                    ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  _buildHighlightedText(stall.name, _searchQuery),
+                                                  const SizedBox(height: 2),
+                                                  Row(
+                                                    children: [
+                                                      Flexible(
+                                                        child: Text(
+                                                          StallUtils.getCategoryLabel(stall.category),
+                                                          style: GoogleFonts.poppins(
+                                                            fontSize: 11,
+                                                            color: const Color(0xFF666666),
+                                                          ),
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Container(
+                                                        width: 3,
+                                                        height: 3,
+                                                        decoration: const BoxDecoration(
+                                                          color: Color(0xFF9E9E9E),
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        isOpen ? 'Open' : 'Closed',
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 11,
+                                                          color: isOpen
+                                                              ? const Color(0xFF2E7D32)
+                                                              : const Color(0xFFC62828),
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  if (matchedProduct != null)
+                                                    Text(
+                                                      'Sells: $matchedProduct',
+                                                      style: GoogleFonts.poppins(
+                                                        fontSize: 10,
+                                                        color: const Color(0xFF1B5E20),
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (stall.latitude != 0.0 || stall.longitude != 0.0)
+                                              const Icon(
+                                                Icons.location_on_rounded,
+                                                size: 16,
+                                                color: Color(0xFF9E9E9E),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
               

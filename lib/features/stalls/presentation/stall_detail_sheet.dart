@@ -225,7 +225,6 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
     final hasPhotos = widget.stall.photoUrls.isNotEmpty;
     final categoryColors = _getCategoryColors(widget.stall.category);
     final categoryIcon = _getCategoryIcon(widget.stall.category);
-    final isOpen = StallUtils.isStallOpenNow(widget.stall);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
@@ -453,94 +452,68 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
 
                         const SizedBox(height: 16),
 
-                        // Operating hours card
-                        Stack(
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8F9FA),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFFF0F0F0),
-                                ),
-                              ),
-                              child: Row(
+                        // Operating details + status
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFF0F0F0),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              StallUtils.buildStatusBadge(widget.stall),
+                              const SizedBox(height: 8),
+                              Row(
                                 children: [
-                                  // Icon container
-                                  Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE8F5E9),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.access_time_rounded,
-                                      size: 18,
-                                      color: Color(0xFF2E7D32),
+                                  const Icon(
+                                    Icons.access_time_rounded,
+                                    size: 14,
+                                    color: Color(0xFF666666),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      widget.stall.openTime.isNotEmpty &&
+                                              widget.stall.closeTime.isNotEmpty
+                                          ? '${_formatTime12Hour(widget.stall.openTime)} - ${_formatTime12Hour(widget.stall.closeTime)}'
+                                          : 'Hours not specified',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: const Color(0xFF666666),
+                                      ),
                                     ),
                                   ),
-
-                                  const SizedBox(width: 12),
-
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '${_formatTime12Hour(widget.stall.openTime)} - ${_formatTime12Hour(widget.stall.closeTime)}',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: const Color(0xFF212121),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              widget.stall.daysOpen.join(', '),
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 12,
-                                                color: const Color(0xFF9E9E9E),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
                                 ],
                               ),
-                            ),
-
-                            // Open/Closed badge
-                            Positioned(
-                              top: 14,
-                              right: 14,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isOpen
-                                      ? const Color(0xFFE8F5E9)
-                                      : const Color(0xFFFFEBEE),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  isOpen ? 'OPEN' : 'CLOSED',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: isOpen
-                                        ? const Color(0xFF2E7D32)
-                                        : const Color(0xFFE53935),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_today_rounded,
+                                    size: 14,
+                                    color: Color(0xFF666666),
                                   ),
-                                ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      widget.stall.daysOpen.isNotEmpty
+                                          ? widget.stall.daysOpen.join(', ')
+                                          : 'Days not specified',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: const Color(0xFF666666),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
 
                         const SizedBox(height: 16),

@@ -110,7 +110,9 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
             title: stall.name,
             snippet: '${stall.category.replaceAll('_', ' ')} - Tap to edit',
           ),
-          icon: stall.isActive ? _activeMarkerIcon! : _inactiveMarkerIcon!,
+          icon: StallUtils.isStallOpenNow(stall)
+              ? _activeMarkerIcon!
+              : _inactiveMarkerIcon!,
           anchor: const Offset(0.5, 0.5),
           onTap: () => _onMarkerTapped(stall),
         ),

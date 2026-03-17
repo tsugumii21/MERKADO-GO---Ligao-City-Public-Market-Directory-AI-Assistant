@@ -21,11 +21,17 @@ class StallListScreen extends ConsumerStatefulWidget {
 
 class StallListScreenState extends ConsumerState<StallListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   String _selectedType = 'all';
-  String? _selectedSubcategory; // null means 'All' of that type
+  String? _selectedSubLabel;
   String? _selectedTag; // for product-level filtering (sari_sari only)
+  bool _subcategoryRowVisible = false;
   String _searchQuery = '';
+  List<StallModel> _allStalls = [];
+  List<StallModel> _searchResults = [];
+  bool _showDropdown = false;
+  bool _isSearching = false;
   List<String> _recentlyViewedIds = [];
 
   // Sort/Filter state variables
@@ -43,172 +49,199 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       'icon': Icons.store_rounded,
       'hasSubcategories': false,
       'categories': <String>[],
+      'subcategories': <Map>[],
     },
     'fresh': {
       'label': 'Fresh Produce',
       'icon': Icons.eco_rounded,
       'hasSubcategories': true,
       'categories': [
-        'fresh',
-        'seafood',
-        'meat',
-        'poultry',
-        'vegetables',
-        'fruits',
+        'fresh','seafood','fish','meat',
+        'beef','pork','karne','poultry',
+        'chicken','manok','vegetables',
+        'gulay','fruits','prutas',
       ],
       'subcategories': [
         {
           'label': 'All Fresh',
+          'tag': null,
           'categories': [
-            'fresh',
-            'seafood',
-            'meat',
-            'poultry',
-            'vegetables',
-            'fruits',
+            'fresh','seafood','fish',
+            'meat','beef','pork','karne',
+            'poultry','chicken','manok',
+            'vegetables','gulay',
+            'fruits','prutas',
           ],
         },
         {
-          'label': '🐟 Seafood & Fish',
-          'categories': ['seafood', 'fish'],
+          'label': 'Seafood',
+          'tag': null,
+          'categories': [
+            'seafood','fish'],
         },
         {
-          'label': '🥩 Meat',
-          'categories': ['meat', 'beef', 'pork', 'karne'],
+          'label': 'Meat',
+          'tag': null,
+          'categories': [
+            'meat','beef','pork','karne'],
         },
         {
-          'label': '🐔 Poultry',
-          'categories': ['poultry', 'chicken', 'manok'],
+          'label': 'Poultry',
+          'tag': null,
+          'categories': [
+            'poultry','chicken','manok'],
         },
         {
-          'label': '🥬 Vegetables',
-          'categories': ['vegetables', 'gulay'],
+          'label': 'Vegetables',
+          'tag': null,
+          'categories': [
+            'vegetables','gulay'],
         },
         {
-          'label': '🍎 Fruits',
-          'categories': ['fruits', 'prutas'],
+          'label': 'Fruits',
+          'tag': null,
+          'categories': [
+            'fruits','prutas'],
         },
       ],
     },
-    'seafood': {
-      'label': '🐟 Seafood & Fish',
-      'icon': Icons.set_meal_rounded,
-      'hasSubcategories': false,
-      'categories': ['seafood', 'fish', 'isda'],
-    },
-    'meat': {
-      'label': '🥩 Meat',
-      'icon': Icons.lunch_dining_rounded,
-      'hasSubcategories': false,
-      'categories': ['meat', 'beef', 'pork', 'karne'],
-    },
-    'poultry': {
-      'label': '🐔 Poultry & Chicken',
-      'icon': Icons.egg_rounded,
-      'hasSubcategories': false,
-      'categories': ['poultry', 'chicken', 'manok'],
-    },
-    'vegetables': {
-      'label': '🥬 Vegetables',
-      'icon': Icons.grass_rounded,
-      'hasSubcategories': false,
-      'categories': ['vegetables', 'gulay'],
-    },
-    'fruits': {
-      'label': '🍎 Fruits',
-      'icon': Icons.spa_rounded,
-      'hasSubcategories': false,
-      'categories': ['fruits', 'prutas'],
-    },
-    'frozen': {
+    'processed': {
       'label': 'Frozen & Processed',
       'icon': Icons.kitchen_rounded,
       'hasSubcategories': true,
       'categories': [
-        'frozen',
-        'frozen_goods',
-        'processed',
-        'processed_foods',
-        'spices',
+        'frozen','frozen_goods',
+        'processed','processed_foods',
+        'spices','pampalasa',
       ],
       'subcategories': [
         {
           'label': 'All Processed',
+          'tag': null,
           'categories': [
-            'frozen',
-            'frozen_goods',
-            'processed',
-            'processed_foods',
-            'spices',
+            'frozen','frozen_goods',
+            'processed','processed_foods',
+            'spices','pampalasa',
           ],
         },
         {
           'label': 'Frozen Goods',
-          'categories': ['frozen', 'frozen_goods'],
+          'tag': null,
+          'categories': [
+            'frozen','frozen_goods'],
         },
         {
           'label': 'Processed Foods',
-          'categories': ['processed', 'processed_foods'],
+          'tag': null,
+          'categories': [
+            'processed','processed_foods'],
         },
         {
           'label': 'Spices',
-          'categories': ['spices', 'pampalasa'],
+          'tag': null,
+          'categories': [
+            'spices','pampalasa'],
         },
       ],
     },
     'dry_goods': {
-      'label': '🌾 Dry Goods',
+      'label': 'Dry Goods',
       'icon': Icons.inventory_2_rounded,
-      'hasSubcategories': false,
-      'categories': ['dry_goods', 'drygoods'],
-    },
-    'rice': {
-      'label': '🍚 Rice',
-      'icon': Icons.rice_bowl_rounded,
-      'hasSubcategories': false,
-      'categories': ['rice', 'rice_dealer', 'bigas'],
+      'hasSubcategories': true,
+      'categories': [
+        'dry_goods','drygoods','rice',
+        'rice_dealer','bigas',
+        'dried_fish','bulad','daing',
+      ],
+      'subcategories': [
+        {
+          'label': 'All Dry Goods',
+          'tag': null,
+          'categories': [
+            'dry_goods','drygoods','rice',
+            'rice_dealer','bigas',
+            'dried_fish','bulad','daing',
+          ],
+        },
+        {
+          'label': 'Rice Dealer',
+          'tag': 'rice_dealer',
+          'categories': [
+            'dry_goods','drygoods','rice',
+            'rice_dealer','bigas',
+            'dried_fish','bulad','daing',
+          ],
+        },
+        {
+          'label': 'Dried Fish',
+          'tag': 'dried_fish',
+          'categories': [
+            'dry_goods','drygoods','rice',
+            'rice_dealer','bigas',
+            'dried_fish','bulad','daing',
+          ],
+        },
+      ],
     },
     'cooked': {
       'label': 'Cooked Food',
       'icon': Icons.restaurant_rounded,
       'hasSubcategories': true,
       'categories': [
-        'cooked',
-        'cooked_food',
-        'carinderia',
-        'eatery',
-        'bakery',
-        'kakanin',
-        'snack_stand',
+        'eatery','carinderia','cooked',
+        'cooked_food','bakery','kakanin',
+        'snack_stand','lutong_ulam',
       ],
       'subcategories': [
         {
           'label': 'All Cooked',
+          'tag': null,
           'categories': [
-            'cooked',
-            'cooked_food',
-            'carinderia',
-            'eatery',
-            'bakery',
-            'kakanin',
-            'snack_stand',
+            'eatery','carinderia',
+            'cooked','cooked_food',
+            'bakery','kakanin',
+            'snack_stand','lutong_ulam',
           ],
         },
         {
           'label': 'Carinderia',
-          'categories': ['carinderia', 'eatery'],
+          'tag': 'carinderia',
+          'categories': [
+            'eatery','carinderia',
+            'cooked','cooked_food',
+            'bakery','kakanin',
+            'snack_stand','lutong_ulam',
+          ],
         },
         {
           'label': 'Bakery',
-          'categories': ['bakery'],
+          'tag': 'bakery',
+          'categories': [
+            'eatery','carinderia',
+            'cooked','cooked_food',
+            'bakery','kakanin',
+            'snack_stand','lutong_ulam',
+          ],
         },
         {
           'label': 'Kakanin',
-          'categories': ['kakanin'],
+          'tag': 'kakanin',
+          'categories': [
+            'eatery','carinderia',
+            'cooked','cooked_food',
+            'bakery','kakanin',
+            'snack_stand','lutong_ulam',
+          ],
         },
         {
           'label': 'Snack Stand',
-          'categories': ['snack_stand'],
+          'tag': 'snack_stand',
+          'categories': [
+            'eatery','carinderia',
+            'cooked','cooked_food',
+            'bakery','kakanin',
+            'snack_stand','lutong_ulam',
+          ],
         },
       ],
     },
@@ -217,29 +250,47 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       'icon': Icons.storefront_rounded,
       'hasSubcategories': false,
       'categories': [
-        'sari_sari',
-        'sarisari',
-        'sari-sari',
-        'sari_sari_store',
+        'sari_sari','sarisari',
+        'sari-sari','sari_sari_store',
       ],
+      'subcategories': <Map>[],
     },
     'retail': {
       'label': 'Retail / Clothing',
       'icon': Icons.checkroom_rounded,
       'hasSubcategories': true,
-      'categories': ['retail', 'clothing', 'ukay_ukay', 'tailor_shop'],
+      'categories': [
+        'retail','clothing','ukay_ukay',
+        'ukay-ukay','ukay','tailor',
+        'tailor_shop',
+      ],
       'subcategories': [
         {
           'label': 'All Retail',
-          'categories': ['retail', 'clothing', 'ukay_ukay', 'tailor_shop'],
+          'tag': null,
+          'categories': [
+            'retail','clothing',
+            'ukay_ukay','ukay-ukay',
+            'ukay','tailor','tailor_shop',
+          ],
         },
         {
           'label': 'Ukay-Ukay',
-          'categories': ['ukay_ukay'],
+          'tag': 'ukay_ukay',
+          'categories': [
+            'retail','clothing',
+            'ukay_ukay','ukay-ukay',
+            'ukay','tailor','tailor_shop',
+          ],
         },
         {
           'label': 'Tailor Shop',
-          'categories': ['tailor_shop'],
+          'tag': 'tailor_shop',
+          'categories': [
+            'retail','clothing',
+            'ukay_ukay','ukay-ukay',
+            'ukay','tailor','tailor_shop',
+          ],
         },
       ],
     },
@@ -248,38 +299,67 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       'icon': Icons.shopping_bag_rounded,
       'hasSubcategories': true,
       'categories': [
-        'general',
-        'hardware',
-        'school_supplies',
-        'home_supplies',
-        'agrivet',
+        'general','hardware','tools',
+        'hardware_tools',
+        'school_supplies','school',
+        'home_supplies','home',
+        'agrivet','agrivet_supplies',
       ],
       'subcategories': [
         {
           'label': 'All General',
+          'tag': null,
           'categories': [
-            'general',
-            'hardware',
-            'school_supplies',
-            'home_supplies',
-            'agrivet',
+            'general','hardware','tools',
+            'hardware_tools',
+            'school_supplies','school',
+            'home_supplies','home',
+            'agrivet','agrivet_supplies',
           ],
         },
         {
           'label': 'Hardware & Tools',
-          'categories': ['hardware'],
+          'tag': 'hardware',
+          'categories': [
+            'general','hardware','tools',
+            'hardware_tools',
+            'school_supplies','school',
+            'home_supplies','home',
+            'agrivet','agrivet_supplies',
+          ],
         },
         {
           'label': 'School Supplies',
-          'categories': ['school_supplies'],
+          'tag': 'school_supplies',
+          'categories': [
+            'general','hardware','tools',
+            'hardware_tools',
+            'school_supplies','school',
+            'home_supplies','home',
+            'agrivet','agrivet_supplies',
+          ],
         },
         {
           'label': 'Home Supplies',
-          'categories': ['home_supplies'],
+          'tag': 'home_supplies',
+          'categories': [
+            'general','hardware','tools',
+            'hardware_tools',
+            'school_supplies','school',
+            'home_supplies','home',
+            'agrivet','agrivet_supplies',
+          ],
         },
         {
-          'label': 'Agrivet',
-          'categories': ['agrivet'],
+          'label': 'Agrivet Supplies',
+          'tag': 'agrivet',
+          'categories': [
+            'general','hardware','tools',
+            'hardware_tools',
+            'school_supplies','school',
+            'home_supplies','home',
+            'agrivet','agrivet_supplies',
+          ],
         },
       ],
     },
@@ -287,19 +367,38 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       'label': 'Services',
       'icon': Icons.build_rounded,
       'hasSubcategories': true,
-      'categories': ['services', 'electronics_repair', 'barber_salon'],
+      'categories': [
+        'services','electronics',
+        'repair','electronics_repair',
+        'barber','salon','barber_salon',
+      ],
       'subcategories': [
         {
           'label': 'All Services',
-          'categories': ['services', 'electronics_repair', 'barber_salon'],
+          'tag': null,
+          'categories': [
+            'services','electronics',
+            'repair','electronics_repair',
+            'barber','salon','barber_salon',
+          ],
         },
         {
           'label': 'Electronics & Repair',
-          'categories': ['electronics_repair'],
+          'tag': 'electronics_repair',
+          'categories': [
+            'services','electronics',
+            'repair','electronics_repair',
+            'barber','salon','barber_salon',
+          ],
         },
         {
           'label': 'Barber / Salon',
-          'categories': ['barber_salon'],
+          'tag': 'barber_salon',
+          'categories': [
+            'services','electronics',
+            'repair','electronics_repair',
+            'barber','salon','barber_salon',
+          ],
         },
       ],
     },
@@ -307,15 +406,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   final List<String> filterChipKeys = [
     'all',
+    'favorites',
     'fresh',
-    'seafood',
-    'meat',
-    'poultry',
-    'vegetables',
-    'fruits',
-    'frozen',
+    'processed',
     'dry_goods',
-    'rice',
     'cooked',
     'sari_sari',
     'retail',
@@ -348,8 +442,9 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
     // Close subcategory row
     setState(() {
-      _selectedSubcategory = null;
+      _selectedSubLabel = null;
       _selectedTag = null;
+      _subcategoryRowVisible = false;
     });
 
     // Clear search
@@ -370,8 +465,9 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     
     // Reset all filter and search state to initial values
     _selectedType = 'all';
-    _selectedSubcategory = null;
+    _selectedSubLabel = null;
     _selectedTag = null;
+    _subcategoryRowVisible = false;
     _searchQuery = '';
     _searchController.clear();
     
@@ -387,6 +483,13 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(favoriteProvider.notifier).loadFavorites();
     });
+
+    _searchFocusNode.addListener(() {
+      if (!mounted) return;
+      setState(() {
+        _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
+      });
+    });
     
     // Refresh open/closed status every 60 seconds
     _statusTimer = Timer.periodic(
@@ -401,8 +504,144 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   void dispose() {
     _statusTimer?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChangedLive(String query) {
+    final trimmedQuery = query.trim();
+
+    setState(() {
+      _searchQuery = trimmedQuery;
+      _isSearching = trimmedQuery.isNotEmpty;
+    });
+
+    if (trimmedQuery.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _showDropdown = false;
+      });
+      return;
+    }
+
+    final q = trimmedQuery.toLowerCase();
+    final matches = _allStalls.where((s) {
+      if (s.name.toLowerCase().contains(q)) return true;
+      if (s.category.toLowerCase().contains(q)) return true;
+      if (s.categories.any((c) => c.toLowerCase().contains(q))) return true;
+      if (s.tags.any((t) =>
+          t.toLowerCase().contains(q) ||
+          StallUtils.getTagLabel(t).toLowerCase().contains(q))) {
+        return true;
+      }
+      if (s.products.any((p) => p.toLowerCase().contains(q))) return true;
+      if (s.section != null && s.section!.toLowerCase().contains(q)) {
+        return true;
+      }
+      return false;
+    }).take(8).toList();
+
+    setState(() {
+      _searchResults = matches;
+      _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
+    });
+  }
+
+  void _onStallSelectedFromSearch(StallModel stall) {
+    _searchFocusNode.unfocus();
+    setState(() {
+      _showDropdown = false;
+      _searchController.text = stall.name;
+      _searchQuery = stall.name;
+    });
+
+    _openStallDetail(stall);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _searchResults = [];
+      _showDropdown = false;
+      _isSearching = false;
+    });
+    _searchFocusNode.unfocus();
+  }
+
+  Widget _buildHighlightedText(String text, String query) {
+    if (query.isEmpty) {
+      return Text(
+        text,
+        style: GoogleFonts.poppins(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF212121),
+        ),
+      );
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final matchIndex = lowerText.indexOf(lowerQuery);
+
+    if (matchIndex == -1) {
+      return Text(
+        text,
+        style: GoogleFonts.poppins(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF212121),
+        ),
+      );
+    }
+
+    return RichText(
+      text: TextSpan(
+        children: [
+          if (matchIndex > 0)
+            TextSpan(
+              text: text.substring(0, matchIndex),
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF212121),
+              ),
+            ),
+          TextSpan(
+            text: text.substring(matchIndex, matchIndex + query.length),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1B5E20),
+              backgroundColor: const Color(0xFFE8F5E9),
+            ),
+          ),
+          if (matchIndex + query.length < text.length)
+            TextSpan(
+              text: text.substring(matchIndex + query.length),
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF212121),
+              ),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  String? _getMatchedProduct(StallModel stall) {
+    final q = _searchQuery.toLowerCase();
+    if (q.isEmpty) return null;
+    try {
+      return stall.products.firstWhere((p) => p.toLowerCase().contains(q));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _loadRecentlyViewed() async {
@@ -477,7 +716,146 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         dayVariants.any((v) => d.toLowerCase().contains(v.toLowerCase())));
   }
 
-  List<StallModel> applyFilters(List<StallModel> stalls) {
+  List<String> _keywordsForFilterKeys(List<String> keys) {
+    const keywordMap = {
+      'seafood': ['fish', 'isda', 'tilapia', 'bangus', 'galunggong', 'tuna', 'shrimp', 'hipon', 'crab', 'squid', 'pusit', 'mussels', 'tahong'],
+      'fish': ['fish', 'isda', 'tilapia', 'bangus', 'galunggong', 'tuna'],
+      'meat': ['meat', 'karne', 'pork', 'baboy', 'beef', 'baka', 'carabao', 'chicken', 'manok'],
+      'beef': ['beef', 'baka', 'carabao'],
+      'pork': ['pork', 'baboy', 'liempo', 'ribs'],
+      'poultry': ['chicken', 'manok', 'duck', 'itlog', 'eggs', 'poultry'],
+      'chicken': ['chicken', 'manok'],
+      'vegetables': ['vegetable', 'gulay', 'tomato', 'onion', 'garlic', 'eggplant', 'kangkong', 'sitaw', 'okra', 'pechay', 'cabbage', 'carrot'],
+      'gulay': ['vegetable', 'gulay', 'tomato', 'onion', 'garlic', 'eggplant', 'kangkong', 'sitaw', 'okra', 'pechay', 'cabbage', 'carrot'],
+      'fruits': ['fruit', 'prutas', 'mango', 'mangga', 'banana', 'saging', 'papaya', 'watermelon', 'pakwan', 'rambutan', 'lansones'],
+      'prutas': ['fruit', 'prutas', 'mango', 'mangga', 'banana', 'saging', 'papaya', 'watermelon', 'pakwan', 'rambutan', 'lansones'],
+      'frozen': ['frozen', 'processed', 'tocino', 'longganisa', 'hotdog', 'ham'],
+      'frozen_goods': ['frozen', 'processed', 'tocino', 'longganisa', 'hotdog', 'ham'],
+      'processed': ['processed', 'canned', 'de lata', 'instant'],
+      'processed_foods': ['processed', 'canned', 'de lata', 'instant'],
+      'spices': ['spice', 'pampalasa', 'seasoning', 'pepper', 'asin', 'toyo', 'suka'],
+      'pampalasa': ['spice', 'pampalasa', 'seasoning', 'pepper', 'asin', 'toyo', 'suka'],
+      'dry_goods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
+      'drygoods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
+      'rice': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'rice_dealer': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'bigas': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'bulad': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'daing': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'eatery': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'carinderia': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'cooked': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'cooked_food': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'lutong_ulam': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'lutong'],
+      'bakery': ['bread', 'tinapay', 'pan', 'cake', 'pastry', 'bakery'],
+      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
+      'snack_stand': ['snack', 'merienda', 'street food'],
+      'sari_sari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'sarisari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'sari-sari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'sari_sari_store': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'retail': ['clothes', 'clothing', 'ukay', 'shirt', 'pants', 'dress', 'tailor', 'tela'],
+      'clothing': ['clothes', 'clothing', 'ukay', 'shirt', 'pants', 'dress', 'tailor', 'tela'],
+      'ukay_ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
+      'ukay-ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
+      'ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
+      'tailor': ['tailor', 'repair', 'alter'],
+      'tailor_shop': ['tailor', 'repair', 'alter'],
+      'general': ['hardware', 'tools', 'school', 'home', 'agrivet', 'merchandise'],
+      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
+      'tools': ['hardware', 'tools', 'martilyo', 'pako'],
+      'hardware_tools': ['hardware', 'tools', 'martilyo', 'pako'],
+      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
+      'school': ['notebook', 'paper', 'ballpen', 'school'],
+      'home_supplies': ['home', 'cleaner', 'household'],
+      'home': ['home', 'cleaner', 'household'],
+      'agrivet': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
+      'agrivet_supplies': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
+      'services': ['repair', 'barber', 'salon', 'service'],
+      'electronics': ['electronics', 'cellphone', 'repair'],
+      'repair': ['repair', 'fix'],
+      'electronics_repair': ['electronics', 'cellphone', 'repair'],
+      'barber': ['barber', 'gupit', 'haircut', 'salon'],
+      'salon': ['barber', 'gupit', 'haircut', 'salon'],
+      'barber_salon': ['barber', 'gupit', 'haircut', 'salon'],
+    };
+
+    final all = <String>{};
+    for (final key in keys) {
+      all.addAll(keywordMap[key.toLowerCase()] ?? const <String>[]);
+    }
+    return all.toList();
+  }
+
+  String _normalizeFilterKey(String value) {
+    return value
+        .toLowerCase()
+        .trim()
+        .replaceAll('-', '_')
+        .replaceAll(' ', '_');
+  }
+
+  bool _containsKeyword(String text, String keyword) {
+    final cleanKeyword = keyword.toLowerCase().trim();
+    if (cleanKeyword.isEmpty) return false;
+
+    // Multi-word keywords should stay phrase-based, while single words use boundaries.
+    if (cleanKeyword.contains(' ')) {
+      return text.contains(cleanKeyword);
+    }
+
+    final pattern = RegExp(
+      '(^|[^a-z0-9])' + RegExp.escape(cleanKeyword) + r'([^a-z0-9]|$)',
+    );
+    return pattern.hasMatch(text);
+  }
+
+  bool _matchesSellingData(StallModel stall, List<String> filterKeys) {
+    final productText = stall.products.join(' ').toLowerCase();
+    final tagSet = stall.tags.map((t) => _normalizeFilterKey(t)).toSet();
+    final keySet = filterKeys.map((k) => _normalizeFilterKey(k)).toSet();
+    const strictSubcategoryKeywords = {
+      'rice_dealer': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'carinderia': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong'],
+      'bakery': ['bread', 'tinapay', 'cake', 'pastry', 'bakery', 'pan de'],
+      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
+      'snack_stand': ['snack', 'merienda', 'street food'],
+      'ukay_ukay': ['ukay', 'secondhand', 'clothes'],
+      'tailor_shop': ['tailor', 'alter', 'repair'],
+      'electronics_repair': ['electronics', 'cellphone', 'repair'],
+      'barber_salon': ['barber', 'haircut', 'gupit', 'salon'],
+      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
+      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
+      'home_supplies': ['household', 'cleaner', 'home'],
+      'agrivet': ['agrivet', 'feed', 'veterinary', 'fertilizer'],
+    };
+
+    if (tagSet.intersection(keySet).isNotEmpty) {
+      return true;
+    }
+
+    final strictKeys =
+        keySet.where((k) => strictSubcategoryKeywords.containsKey(k)).toList();
+    if (strictKeys.isNotEmpty) {
+      final strictMatched = strictKeys.any((key) {
+        final words = strictSubcategoryKeywords[key] ?? const <String>[];
+        return words.any((word) => _containsKeyword(productText, word));
+      });
+      if (strictMatched) {
+        return true;
+      }
+      if (keySet.length == 1) {
+        return false;
+      }
+    }
+
+    final keywords = _keywordsForFilterKeys(filterKeys);
+    return keywords.any((kw) => _containsKeyword(productText, kw));
+  }
+
+  List<StallModel> applyFilters(List<StallModel> stalls, List<String> favoriteIds) {
     var result = List<StallModel>.from(stalls);
 
     // 1. Apply search query
@@ -491,15 +869,17 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       }).toList();
     }
 
-    // 2. Apply category filter with subcategory support and multi-category stall matching
-    if (_selectedType != 'all') {
+    // 2. Apply favorites/category filter
+    if (_selectedType == 'favorites') {
+      result = result.where((s) => favoriteIds.contains(s.stallId)).toList();
+    } else if (_selectedType != 'all') {
       final typeData = _categoryMap[_selectedType];
       if (typeData != null) {
         List<String> cats;
-        if (_selectedSubcategory != null) {
+        if (_selectedSubLabel != null) {
           final subcategories = (typeData['subcategories'] as List?)?.cast<Map>() ?? [];
           final selectedSubcat = subcategories.where(
-            (sub) => sub['label'] == _selectedSubcategory,
+            (sub) => sub['label'] == _selectedSubLabel,
           );
           if (selectedSubcat.isNotEmpty) {
             cats = List<String>.from(selectedSubcat.first['categories'] as List);
@@ -513,9 +893,22 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         result = result.where((s) {
           final stallCats = s.categories.map((c) => c.toLowerCase().trim()).toList();
           final singleCat = s.category.toLowerCase().trim();
-          return stallCats.any((c) => cats.contains(c)) || cats.contains(singleCat);
+          final categoryMatch =
+              stallCats.any((c) => cats.contains(c)) || cats.contains(singleCat);
+          final sellingMatch = _matchesSellingData(s, cats);
+          return categoryMatch || sellingMatch;
         }).toList();
       }
+    }
+
+    // 2.1 Apply selected subcategory tag using both explicit tags and sold products
+    if (_selectedTag != null) {
+      result = result.where((s) {
+        final tagMatch = s.tags
+            .map((t) => t.toLowerCase().trim())
+            .contains(_selectedTag!.toLowerCase().trim());
+        return tagMatch || _matchesSellingData(s, <String>[_selectedTag!]);
+      }).toList();
     }
 
     // 3. Apply time range filter
@@ -744,22 +1137,22 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       return 'Search Results';
     }
     
-    if (_selectedSubcategory != null) {
+    if (_selectedSubLabel != null) {
       // For dry_goods, cooked, retail, general, and services with tag filtering, show "Tag - Type" format
       if (_selectedTag != null) {
         if (_selectedType == 'dry_goods') {
-          return '$_selectedSubcategory - Dry Goods';
+          return '$_selectedSubLabel - Dry Goods';
         } else if (_selectedType == 'cooked') {
-          return '$_selectedSubcategory - Cooked Food';
+          return '$_selectedSubLabel - Cooked Food';
         } else if (_selectedType == 'retail') {
-          return '$_selectedSubcategory - Retail';
+          return '$_selectedSubLabel - Retail';
         } else if (_selectedType == 'general') {
-          return '$_selectedSubcategory - General Merchandise';
+          return '$_selectedSubLabel - General Merchandise';
         } else if (_selectedType == 'services') {
-          return '$_selectedSubcategory - Services';
+          return '$_selectedSubLabel - Services';
         }
       }
-      return _selectedSubcategory!;
+      return _selectedSubLabel!;
     }
     
     return _getGroupDisplayName(_selectedType);
@@ -775,6 +1168,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   @override
   Widget build(BuildContext context) {
     final stallsAsync = ref.watch(allStallsProvider);
+    final favoriteState = ref.watch(favoriteProvider);
     final activeFilterCount = getActiveFilterCount();
 
     return Scaffold(
@@ -796,104 +1190,258 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       ),
       body: stallsAsync.when(
         data: (allStalls) {
-          final filteredStalls = applyFilters(allStalls);
+          _allStalls = allStalls;
+          final filteredStalls = applyFilters(allStalls, favoriteState.favoriteIds);
           final recentlyViewed = _getRecentlyViewedStalls(allStalls);
 
           return Column(
             children: [
               // Search bar
               Container(
-                height: 46,
                 margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFFE0E0E0),
-                    width: 1.5,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
+                child: Column(
                   children: [
-                    const SizedBox(width: 12),
-                    
-                    // Search icon — plain, no container, no circle
-                    const Icon(
-                      Icons.search_rounded,
-                      color: Color(0xFF9E9E9E),
-                      size: 18,
-                    ),
-                    
-                    const SizedBox(width: 8),
-                    
-                    // Text field
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: const Color(0xFF212121),
-                          fontWeight: FontWeight.w400,
+                    Container(
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: _showDropdown
+                            ? const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                topRight: Radius.circular(12),
+                              )
+                            : BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFE0E0E0),
+                          width: 1.5,
                         ),
-                        decoration: InputDecoration(
-                          hintText: 'Search stalls or products...',
-                          hintStyle: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: const Color(0xFFBDBDBD),
-                            fontWeight: FontWeight.w400,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0A000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
                           ),
-                          // Remove ALL borders
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          // Remove ALL default decorations
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          // NO prefixIcon here — icon is outside
-                          prefixIcon: null,
-                          suffixIcon: null,
-                          filled: false,
-                          // Remove counter and helper
-                          counterText: '',
-                          helperText: null,
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.search_rounded,
+                            color: _searchQuery.isNotEmpty
+                                ? const Color(0xFF1B5E20)
+                                : const Color(0xFF9E9E9E),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: const Color(0xFF212121),
+                                fontWeight: FontWeight.w400,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Search stalls, products...',
+                                hintStyle: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  color: const Color(0xFFBDBDBD),
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                                counterText: '',
+                                helperText: null,
+                              ),
+                              onChanged: _onSearchChangedLive,
+                              textInputAction: TextInputAction.search,
+                              onSubmitted: (_) {
+                                if (_searchResults.isNotEmpty) {
+                                  _onStallSelectedFromSearch(_searchResults.first);
+                                }
+                              },
+                            ),
+                          ),
+                          if (_searchQuery.isNotEmpty)
+                            GestureDetector(
+                              onTap: _clearSearch,
+                              child: const Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: Color(0xFF9E9E9E),
+                                  size: 16,
+                                ),
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 12),
+                        ],
                       ),
                     ),
-                    
-                    // Clear button — only when typing
-                    if (_searchController.text.isNotEmpty)
-                      GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.all(10),
-                          child: Icon(
-                            Icons.close_rounded,
-                            color: Color(0xFF9E9E9E),
-                            size: 16,
+                    if (_showDropdown)
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 320),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(12),
+                            bottomRight: Radius.circular(12),
                           ),
+                          border: Border.all(
+                            color: const Color(0xFFE0E0E0),
+                            width: 1.5,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x0A000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      )
-                    else
-                      const SizedBox(width: 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              height: 1,
+                              color: const Color(0xFFE0E0E0),
+                              margin: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            if (_searchResults.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'No stalls found for "$_searchQuery"',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: const Color(0xFF9E9E9E),
+                                  ),
+                                ),
+                              )
+                            else
+                              ListView.builder(
+                                shrinkWrap: true,
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                itemCount: _searchResults.length,
+                                itemBuilder: (_, i) {
+                                  final stall = _searchResults[i];
+                                  final isOpen = StallUtils.isStallOpenNow(stall);
+                                  final matchedProduct = _getMatchedProduct(stall);
+
+                                  return GestureDetector(
+                                    onTap: () => _onStallSelectedFromSearch(stall),
+                                    child: Container(
+                                      color: Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFE8F5E9),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: stall.photoUrls.isNotEmpty
+                                                ? ClipRRect(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    child: CachedNetworkImage(
+                                                      imageUrl: stall.photoUrls.first,
+                                                      fit: BoxFit.cover,
+                                                      errorWidget: (_, __, ___) => const Icon(
+                                                        Icons.store_rounded,
+                                                        color: Color(0xFF4CAF50),
+                                                        size: 20,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : const Icon(
+                                                    Icons.store_rounded,
+                                                    color: Color(0xFF4CAF50),
+                                                    size: 20,
+                                                  ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                _buildHighlightedText(stall.name, _searchQuery),
+                                                const SizedBox(height: 2),
+                                                Row(
+                                                  children: [
+                                                    Flexible(
+                                                      child: Text(
+                                                        StallUtils.getCategoryLabel(stall.category),
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 11,
+                                                          color: const Color(0xFF666666),
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Container(
+                                                      width: 3,
+                                                      height: 3,
+                                                      decoration: const BoxDecoration(
+                                                        color: Color(0xFF9E9E9E),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      isOpen ? 'Open' : 'Closed',
+                                                      style: GoogleFonts.poppins(
+                                                        fontSize: 11,
+                                                        color: isOpen
+                                                            ? const Color(0xFF2E7D32)
+                                                            : const Color(0xFFC62828),
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                if (matchedProduct != null)
+                                                  Text(
+                                                    'Sells: $matchedProduct',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 10,
+                                                      color: const Color(0xFF1B5E20),
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (stall.latitude != 0.0 || stall.longitude != 0.0)
+                                            const Icon(
+                                              Icons.location_on_rounded,
+                                              size: 16,
+                                              color: Color(0xFF9E9E9E),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -914,21 +1462,38 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           itemBuilder: (context, index) {
                             final chipKey = filterChipKeys[index];
                             final typeData = _categoryMap[chipKey];
-                            final chipLabel = (typeData?['label'] ?? chipKey) as String;
-                            final chipIcon = (typeData?['icon'] ?? Icons.store_rounded) as IconData;
+                            final isFavoritesChip = chipKey == 'favorites';
+                            final chipLabel = isFavoritesChip
+                                ? 'Favorites'
+                                : (typeData?['label'] ?? chipKey) as String;
+                            final chipIcon = isFavoritesChip
+                                ? Icons.favorite_rounded
+                                : (typeData?['icon'] ?? Icons.store_rounded) as IconData;
                             final isSelected = _selectedType == chipKey;
-                            final hasSubcategories = (typeData?['hasSubcategories'] ?? false) as bool;
-                            final isSubcategoryOpen = isSelected && hasSubcategories;
+                            final hasSubcategories = !isFavoritesChip &&
+                                ((typeData?['hasSubcategories'] ?? false) as bool);
+                            final isSubcategoryOpen =
+                                isSelected && hasSubcategories && _subcategoryRowVisible;
+
+                            final selectedBgColor = isFavoritesChip
+                                ? const Color(0xFFE53935)
+                                : const Color(0xFF1B5E20);
+                            final unselectedTextColor = isFavoritesChip
+                                ? const Color(0xFFE53935)
+                                : const Color(0xFF1B5E20);
+                            final borderColor = isFavoritesChip
+                                ? const Color(0xFFE53935)
+                                : const Color(0xFF1B5E20);
 
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: InkWell(
                                 onTap: () {
                                   setState(() {
-                                    _selectedType = isSelected ? 'all' : chipKey;
-                                    // Reset subcategory and tag when changing type
-                                    _selectedSubcategory = null;
+                                    _selectedType = chipKey;
+                                    _selectedSubLabel = null;
                                     _selectedTag = null;
+                                    _subcategoryRowVisible = hasSubcategories;
                                   });
                                 },
                                 borderRadius: BorderRadius.circular(20),
@@ -939,14 +1504,12 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? const Color(0xFF1B5E20)
+                                        ? selectedBgColor
                                         : Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                      color: isSelected
-                                          ? const Color(0xFF1B5E20)
-                                          : const Color(0xFFE0E0E0),
-                                      width: isSelected ? 1.5 : 1,
+                                      color: borderColor,
+                                      width: 1,
                                     ),
                                   ),
                                   child: Row(
@@ -957,7 +1520,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                         size: 14,
                                         color: isSelected
                                             ? Colors.white
-                                            : const Color(0xFF757575),
+                                            : unselectedTextColor,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
@@ -967,7 +1530,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                           fontWeight: FontWeight.w500,
                                           color: isSelected
                                               ? Colors.white
-                                              : const Color(0xFF757575),
+                                              : unselectedTextColor,
                                         ),
                                       ),
                                       if (hasSubcategories) ...[
@@ -980,7 +1543,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             size: 14,
                                             color: isSelected
                                                 ? Colors.white
-                                                : const Color(0xFF757575),
+                                                : unselectedTextColor,
                                           ),
                                         ),
                                       ],
@@ -1004,7 +1567,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           final hasSubcategories = (typeData?['hasSubcategories'] ?? false) as bool;
                           final subcategories = (typeData?['subcategories'] as List<Map>?) ?? [];
                           
-                          return hasSubcategories && _selectedType != 'all'
+                          return hasSubcategories && _selectedType != 'all' && _subcategoryRowVisible
                             ? Container(
                                 decoration: const BoxDecoration(
                                   color: Color(0xFFF8F9FA),
@@ -1015,22 +1578,25 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                     ),
                                   ),
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
                                 child: SizedBox(
                                   height: 36,
                                   child: ListView.builder(
                                     scrollDirection: Axis.horizontal,
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 16),
+                                      horizontal: 8,
+                                    ),
                                     itemCount: subcategories.length,
                                     itemBuilder: (context, index) {
                                       final subcat = subcategories[index];
                                       final subcatLabel =
                                           subcat['label'] as String;
                                       final isSelected =
-                                          _selectedSubcategory == subcatLabel ||
-                                              (_selectedSubcategory == null &&
+                                          _selectedSubLabel == subcatLabel ||
+                                            (_selectedSubLabel == null &&
                                                   index == 0);
 
                                       return Padding(
@@ -1041,10 +1607,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             setState(() {
                                               // If tapping 'All [Type]' (first chip), set to null
                                               if (index == 0) {
-                                                _selectedSubcategory = null;
+                                                _selectedSubLabel = null;
                                                 _selectedTag = null;
                                               } else {
-                                                _selectedSubcategory =
+                                                _selectedSubLabel =
                                                     subcatLabel;
                                                 // Set tag if available (for tag-based filtering)
                                                 _selectedTag = subcat['tag'] as String?;
@@ -1065,16 +1631,14 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(18),
                                               border: Border.all(
-                                                color: isSelected
-                                                    ? const Color(0xFF1B5E20)
-                                                    : const Color(0xFFE0E0E0),
+                                                color: const Color(0xFF1B5E20),
                                                 width: 1,
                                               ),
                                             ),
                                             child: Text(
                                               subcatLabel,
                                               style: GoogleFonts.poppins(
-                                                fontSize: 11,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.w500,
                                                 color: isSelected
                                                     ? Colors.white
@@ -1569,35 +2133,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Status badge
-                      Builder(
-                        builder: (context) {
-                          final status = stall.status;
-                          final statusColor = Color(StallUtils.getStatusColorHex(status));
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: statusColor,
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              StallUtils.getStatusLabel(status),
-                              style: GoogleFonts.poppins(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: statusColor,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                      StallUtils.buildStatusBadge(stall),
                     ],
                   ),
                   const SizedBox(height: 6),

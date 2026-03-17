@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +16,7 @@ class ManageStallsScreen extends StatefulWidget {
 
 class _ManageStallsScreenState extends State<ManageStallsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _refreshTimer;
   String _searchQuery = '';
   String _selectedType = 'all';
   String? _selectedSubcategory;
@@ -57,14 +59,10 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
           'categories': ['seafood','fish'],
         },
         {
-          'label': 'Pork',
+          'label': 'Meat',
           'tag': null,
-          'categories': ['pork','meat','karne'],
-        },
-        {
-          'label': 'Beef',
-          'tag': null,
-          'categories': ['beef'],
+          'categories': [
+            'meat','beef','pork','karne'],
         },
         {
           'label': 'Poultry',
@@ -378,6 +376,145 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     },
   };
 
+  List<String> _keywordsForFilterKeys(List<String> keys) {
+    const keywordMap = {
+      'seafood': ['fish', 'isda', 'tilapia', 'bangus', 'galunggong', 'tuna', 'shrimp', 'hipon', 'crab', 'squid', 'pusit', 'mussels', 'tahong'],
+      'fish': ['fish', 'isda', 'tilapia', 'bangus', 'galunggong', 'tuna'],
+      'meat': ['meat', 'karne', 'pork', 'baboy', 'beef', 'baka', 'carabao', 'chicken', 'manok'],
+      'beef': ['beef', 'baka', 'carabao'],
+      'pork': ['pork', 'baboy', 'liempo', 'ribs'],
+      'poultry': ['chicken', 'manok', 'duck', 'itlog', 'eggs', 'poultry'],
+      'chicken': ['chicken', 'manok'],
+      'vegetables': ['vegetable', 'gulay', 'tomato', 'onion', 'garlic', 'eggplant', 'kangkong', 'sitaw', 'okra', 'pechay', 'cabbage', 'carrot'],
+      'gulay': ['vegetable', 'gulay', 'tomato', 'onion', 'garlic', 'eggplant', 'kangkong', 'sitaw', 'okra', 'pechay', 'cabbage', 'carrot'],
+      'fruits': ['fruit', 'prutas', 'mango', 'mangga', 'banana', 'saging', 'papaya', 'watermelon', 'pakwan', 'rambutan', 'lansones'],
+      'prutas': ['fruit', 'prutas', 'mango', 'mangga', 'banana', 'saging', 'papaya', 'watermelon', 'pakwan', 'rambutan', 'lansones'],
+      'frozen': ['frozen', 'processed', 'tocino', 'longganisa', 'hotdog', 'ham'],
+      'frozen_goods': ['frozen', 'processed', 'tocino', 'longganisa', 'hotdog', 'ham'],
+      'processed': ['processed', 'canned', 'de lata', 'instant'],
+      'processed_foods': ['processed', 'canned', 'de lata', 'instant'],
+      'spices': ['spice', 'pampalasa', 'seasoning', 'pepper', 'asin', 'toyo', 'suka'],
+      'pampalasa': ['spice', 'pampalasa', 'seasoning', 'pepper', 'asin', 'toyo', 'suka'],
+      'dry_goods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
+      'drygoods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
+      'rice': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'rice_dealer': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'bigas': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'bulad': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'daing': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'eatery': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'carinderia': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'cooked': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'cooked_food': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
+      'lutong_ulam': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'lutong'],
+      'bakery': ['bread', 'tinapay', 'pan', 'cake', 'pastry', 'bakery'],
+      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
+      'snack_stand': ['snack', 'merienda', 'street food'],
+      'sari_sari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'sarisari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'sari-sari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'sari_sari_store': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
+      'retail': ['clothes', 'clothing', 'ukay', 'shirt', 'pants', 'dress', 'tailor', 'tela'],
+      'clothing': ['clothes', 'clothing', 'ukay', 'shirt', 'pants', 'dress', 'tailor', 'tela'],
+      'ukay_ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
+      'ukay-ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
+      'ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
+      'tailor': ['tailor', 'repair', 'alter'],
+      'tailor_shop': ['tailor', 'repair', 'alter'],
+      'general': ['hardware', 'tools', 'school', 'home', 'agrivet', 'merchandise'],
+      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
+      'tools': ['hardware', 'tools', 'martilyo', 'pako'],
+      'hardware_tools': ['hardware', 'tools', 'martilyo', 'pako'],
+      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
+      'school': ['notebook', 'paper', 'ballpen', 'school'],
+      'home_supplies': ['home', 'cleaner', 'household'],
+      'home': ['home', 'cleaner', 'household'],
+      'agrivet': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
+      'agrivet_supplies': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
+      'services': ['repair', 'barber', 'salon', 'service'],
+      'electronics': ['electronics', 'cellphone', 'repair'],
+      'repair': ['repair', 'fix'],
+      'electronics_repair': ['electronics', 'cellphone', 'repair'],
+      'barber': ['barber', 'gupit', 'haircut', 'salon'],
+      'salon': ['barber', 'gupit', 'haircut', 'salon'],
+      'barber_salon': ['barber', 'gupit', 'haircut', 'salon'],
+    };
+
+    final all = <String>{};
+    for (final key in keys) {
+      all.addAll(keywordMap[key.toLowerCase()] ?? const <String>[]);
+    }
+    return all.toList();
+  }
+
+  String _normalizeFilterKey(String value) {
+    return value
+        .toLowerCase()
+        .trim()
+        .replaceAll('-', '_')
+        .replaceAll(' ', '_');
+  }
+
+  bool _containsKeyword(String text, String keyword) {
+    final cleanKeyword = keyword.toLowerCase().trim();
+    if (cleanKeyword.isEmpty) return false;
+
+    // Multi-word keywords should stay phrase-based, while single words use boundaries.
+    if (cleanKeyword.contains(' ')) {
+      return text.contains(cleanKeyword);
+    }
+
+    final pattern = RegExp(
+      '(^|[^a-z0-9])' + RegExp.escape(cleanKeyword) + r'([^a-z0-9]|$)',
+    );
+    return pattern.hasMatch(text);
+  }
+
+  bool _matchesSellingData(StallModel stall, List<String> filterKeys) {
+    final productText = stall.products.join(' ').toLowerCase();
+    final tagSet = stall.tags.map((t) => _normalizeFilterKey(t)).toSet();
+    final keySet = filterKeys.map((k) => _normalizeFilterKey(k)).toSet();
+    const strictSubcategoryKeywords = {
+      'rice_dealer': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
+      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
+      'carinderia': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong'],
+      'bakery': ['bread', 'tinapay', 'cake', 'pastry', 'bakery', 'pan de'],
+      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
+      'snack_stand': ['snack', 'merienda', 'street food'],
+      'ukay_ukay': ['ukay', 'secondhand', 'clothes'],
+      'tailor_shop': ['tailor', 'alter', 'repair'],
+      'electronics_repair': ['electronics', 'cellphone', 'repair'],
+      'barber_salon': ['barber', 'haircut', 'gupit', 'salon'],
+      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
+      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
+      'home_supplies': ['household', 'cleaner', 'home'],
+      'agrivet': ['agrivet', 'feed', 'veterinary', 'fertilizer'],
+    };
+
+    if (tagSet.intersection(keySet).isNotEmpty) {
+      return true;
+    }
+
+    final strictKeys =
+        keySet.where((k) => strictSubcategoryKeywords.containsKey(k)).toList();
+    if (strictKeys.isNotEmpty) {
+      final strictMatched = strictKeys.any((key) {
+        final words = strictSubcategoryKeywords[key] ?? const <String>[];
+        return words.any((word) => _containsKeyword(productText, word));
+      });
+      if (strictMatched) {
+        return true;
+      }
+      if (keySet.length == 1) {
+        return false;
+      }
+    }
+
+    final keywords = _keywordsForFilterKeys(filterKeys);
+    return keywords.any((kw) => _containsKeyword(productText, kw));
+  }
+
   List<StallModel> _filterStalls(List<StallModel> stalls) {
     if (_selectedType == 'all') return stalls;
     
@@ -388,15 +525,21 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     List<StallModel> filtered = stalls.where((s) {
       final stallCats = s.categories.map((c) => c.toLowerCase().trim()).toList();
       final singleCat = s.category.toLowerCase().trim();
-      return stallCats.any((c) => categories.contains(c)) || categories.contains(singleCat);
+      final categoryMatch =
+          stallCats.any((c) => categories.contains(c)) || categories.contains(singleCat);
+      final sellingMatch = _matchesSellingData(s, categories);
+      return categoryMatch || sellingMatch;
     }).toList();
     
     // Apply subcategory tag filter
     if (_selectedTag != null) {
       filtered = filtered
-          .where((s) => s.tags
-            .map((t) => t.toLowerCase())
-            .contains(_selectedTag))
+          .where((s) {
+            final tagMatch = s.tags
+                .map((t) => t.toLowerCase().trim())
+                .contains(_selectedTag!.toLowerCase().trim());
+            return tagMatch || _matchesSellingData(s, <String>[_selectedTag!]);
+          })
           .toList();
     }
     
@@ -404,7 +547,19 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -611,7 +766,10 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
             curve: Curves.easeInOut,
             child: _subcategoryRowOpen
                 ? Container(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
                     decoration: const BoxDecoration(
                       color: Color(0xFFF8F9FA),
                       border: Border(
@@ -929,8 +1087,6 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
   }
 
   Widget _buildStallCard(BuildContext context, StallModel stall) {
-    final statusColor = Color(StallUtils.getStatusColorHex(stall.status));
-    
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.all(16),
@@ -1013,24 +1169,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: statusColor,
-                  ),
-                ),
-                child: Text(
-                  StallUtils.getStatusLabel(stall.status),
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: statusColor,
-                  ),
-                ),
-              ),
+              StallUtils.buildStatusBadge(stall),
             ],
           ),
           

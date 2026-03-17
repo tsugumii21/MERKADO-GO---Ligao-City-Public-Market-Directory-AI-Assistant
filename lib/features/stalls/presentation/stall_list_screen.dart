@@ -839,6 +839,21 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     return pattern.hasMatch(text);
   }
 
+  void _onSubcategorySelected(Map<String, dynamic> subcategory) {
+    try {
+      setState(() {
+        _selectedSubLabel = subcategory['label'] as String?;
+        _selectedTag = subcategory['tag'] as String?;
+      });
+    } catch (e) {
+      debugPrint('❌ Subcategory select error: $e');
+      setState(() {
+        _selectedSubLabel = null;
+        _selectedTag = null;
+      });
+    }
+  }
+
   bool _matchesSellingData(StallModel stall, List<String> filterKeys) {
     final productText = stall.products.join(' ').toLowerCase();
     final tagSet = stall.tags.map((t) => _normalizeFilterKey(t)).toSet();
@@ -884,112 +899,155 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   }
 
   List<StallModel> applyFilters(List<StallModel> stalls, List<String> favoriteIds) {
-    var result = List<StallModel>.from(stalls);
+    try {
+      if (stalls.isEmpty) return [];
 
-    // 1. Apply search query
-    if (_searchQuery.isNotEmpty) {
-      final queryLower = _searchQuery.toLowerCase();
-      result = result.where((s) {
-        final nameMatch = s.name.toLowerCase().contains(queryLower);
-        final productMatch =
-            s.products.any((p) => p.toLowerCase().contains(queryLower));
-        return nameMatch || productMatch;
-      }).toList();
-    }
+      final favoriteSet = favoriteIds.toSet();
+      var result = List<StallModel>.from(stalls);
 
-    // 2. Apply favorites/category filter
-    if (_selectedType == 'favorites') {
-      result = result.where((s) => favoriteIds.contains(s.stallId)).toList();
-    } else if (_selectedType != 'all') {
-      final typeData = _categoryMap[_selectedType];
-      if (typeData != null) {
-        List<String> cats;
-        if (_selectedSubLabel != null) {
-          final subcategories = (typeData['subcategories'] as List?)?.cast<Map>() ?? [];
-          final selectedSubcat = subcategories.where(
-            (sub) => sub['label'] == _selectedSubLabel,
-          );
-          if (selectedSubcat.isNotEmpty) {
-            cats = List<String>.from(selectedSubcat.first['categories'] as List);
-          } else {
-            cats = List<String>.from(typeData['categories'] as List);
-          }
-        } else {
-          cats = List<String>.from(typeData['categories'] as List);
-        }
-
+      if (_searchQuery.isNotEmpty) {
+        final queryLower = _searchQuery.toLowerCase().trim();
         result = result.where((s) {
-          final stallCats = s.categories.map((c) => c.toLowerCase().trim()).toList();
-          final singleCat = s.category.toLowerCase().trim();
-          final categoryMatch =
-              stallCats.any((c) => cats.contains(c)) || cats.contains(singleCat);
-          final sellingMatch = _matchesSellingData(s, cats);
-          return categoryMatch || sellingMatch;
+          try {
+            final nameMatch = s.name.toLowerCase().contains(queryLower);
+            final productMatch = s.products.any(
+              (p) => p.toLowerCase().contains(queryLower),
+            );
+            return nameMatch || productMatch;
+          } catch (_) {
+            return false;
+          }
         }).toList();
       }
-    }
 
-    // 2.1 Apply selected subcategory tag using both explicit tags and sold products
-    if (_selectedTag != null) {
-      result = result.where((s) {
-        final tagMatch = s.tags
-            .map((t) => t.toLowerCase().trim())
-            .contains(_selectedTag!.toLowerCase().trim());
-        return tagMatch || _matchesSellingData(s, <String>[_selectedTag!]);
-      }).toList();
-    }
+      if (_selectedType == 'favorites') {
+        result = result.where((s) {
+          try {
+            return favoriteSet.contains(s.stallId);
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+      } else if (_selectedType != 'all') {
+        final typeData = _categoryMap[_selectedType];
+        if (typeData != null) {
+          final rawCats = typeData['categories'];
+          final baseCats = rawCats is List
+              ? rawCats
+                  .map((c) => (c ?? '').toString().toLowerCase().trim())
+                  .where((c) => c.isNotEmpty)
+                  .toList()
+              : <String>[];
 
-    // 3. Apply time range filter
-    // Logic: Include stall if stallOpenTime <= selectedOpenTime AND stallCloseTime >= selectedCloseTime
-    // Example: User picks 6:00 AM → 12:00 PM
-    // - Stall opens 5:30 AM closes 6:00 PM → INCLUDED (opens before 6AM ✓, closes after 12PM ✓)
-    // - Stall opens 8:00 AM closes 5:00 PM → EXCLUDED (opens after 6AM ✗)
-    // - Stall opens 4:00 AM closes 10:00 AM → EXCLUDED (closes before 12PM ✗)
-    if (filterOpenTime != null && filterCloseTime != null) {
-      result = result.where((s) {
-        try {
-          final stallOpen = parseTime(s.openTime);
-          final stallClose = parseTime(s.closeTime);
-          final toMinutes = (TimeOfDay t) => t.hour * 60 + t.minute;
-          
-          final stallOpenMinutes = toMinutes(stallOpen);
-          final stallCloseMinutes = toMinutes(stallClose);
-          final selectedOpenMinutes = toMinutes(filterOpenTime!);
-          final selectedCloseMinutes = toMinutes(filterCloseTime!);
-          
-          // Stall must open at or before selected open time
-          // AND close at or after selected close time
-          return stallOpenMinutes <= selectedOpenMinutes &&
-                 stallCloseMinutes >= selectedCloseMinutes;
-        } catch (e) {
-          return false;
+          var activeCats = List<String>.from(baseCats);
+          if (_selectedSubLabel != null) {
+            final subcategories = (typeData['subcategories'] is List)
+                ? (typeData['subcategories'] as List)
+                    .whereType<Map>()
+                    .toList()
+                : <Map>[];
+            final selectedSubcat = subcategories.where(
+              (sub) => sub['label'] == _selectedSubLabel,
+            );
+            if (selectedSubcat.isNotEmpty && selectedSubcat.first['categories'] is List) {
+              activeCats = (selectedSubcat.first['categories'] as List)
+                  .map((c) => (c ?? '').toString().toLowerCase().trim())
+                  .where((c) => c.isNotEmpty)
+                  .toList();
+            }
+          }
+
+          if (activeCats.isNotEmpty) {
+            result = result.where((s) {
+              try {
+                final singleCat = s.category.toLowerCase().trim();
+                final stallCats = s.categories
+                    .map((c) => c.toLowerCase().trim())
+                    .where((c) => c.isNotEmpty)
+                    .toList();
+
+                if (activeCats.contains(singleCat) ||
+                    stallCats.any((c) => activeCats.contains(c))) {
+                  return true;
+                }
+
+                return _matchesSellingData(s, activeCats);
+              } catch (_) {
+                return false;
+              }
+            }).toList();
+          }
         }
-      }).toList();
-    }
+      }
 
-    // 4. Apply day filter
-    if (selectedDay != null) {
-      result = result.where((s) {
-        final isOpen = stallOpenOnDay(s, selectedDay!);
-        return showOpenOnDay ? isOpen : !isOpen;
-      }).toList();
-    }
+      if (_selectedTag != null && _selectedTag!.isNotEmpty) {
+        final selectedTag = _selectedTag!.toLowerCase().trim();
+        result = result.where((s) {
+          try {
+            final stallTags = s.tags
+                .map((t) => t.toLowerCase().trim())
+                .where((t) => t.isNotEmpty)
+                .toList();
+            final tagMatch = stallTags.contains(selectedTag);
+            return tagMatch || _matchesSellingData(s, <String>[selectedTag]);
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+      }
 
-    // 5. Apply open now filter
-    if (_filterOpenOnly) {
-      result = result.where((s) => StallUtils.isStallOpenNow(s)).toList();
-    }
+      if (filterOpenTime != null && filterCloseTime != null) {
+        result = result.where((s) {
+          try {
+            final stallOpen = parseTime(s.openTime);
+            final stallClose = parseTime(s.closeTime);
+            final toMinutes = (TimeOfDay t) => t.hour * 60 + t.minute;
 
-    // 6. Apply alphabetical sort
-    if (sortAlpha == 'az') {
-      result.sort(
-          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    } else if (sortAlpha == 'za') {
-      result.sort(
-          (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
-    }
+            final stallOpenMinutes = toMinutes(stallOpen);
+            final stallCloseMinutes = toMinutes(stallClose);
+            final selectedOpenMinutes = toMinutes(filterOpenTime!);
+            final selectedCloseMinutes = toMinutes(filterCloseTime!);
 
-    return result;
+            return stallOpenMinutes <= selectedOpenMinutes &&
+                stallCloseMinutes >= selectedCloseMinutes;
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+      }
+
+      if (selectedDay != null) {
+        result = result.where((s) {
+          try {
+            final isOpen = stallOpenOnDay(s, selectedDay!);
+            return showOpenOnDay ? isOpen : !isOpen;
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+      }
+
+      if (_filterOpenOnly) {
+        result = result.where((s) {
+          try {
+            return StallUtils.isStallOpenNow(s);
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+      }
+
+      if (sortAlpha == 'az') {
+        result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      } else if (sortAlpha == 'za') {
+        result.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+      }
+
+      return result;
+    } catch (e) {
+      debugPrint('❌ Filter error: $e');
+      return List<StallModel>.from(stalls);
+    }
   }
 
   int getActiveFilterCount() {
@@ -1216,7 +1274,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
           ),
         ),
       ),
-      body: stallsAsync.when(
+      body: Builder(
+        builder: (context) {
+          try {
+            return stallsAsync.when(
         data: (allStalls) {
           _allStalls = allStalls;
           final filteredStalls = applyFilters(allStalls, favoriteState.favoriteIds);
@@ -1633,18 +1694,16 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             const EdgeInsets.only(right: 8),
                                         child: InkWell(
                                           onTap: () {
-                                            setState(() {
-                                              // If tapping 'All [Type]' (first chip), set to null
-                                              if (index == 0) {
+                                            if (index == 0) {
+                                              setState(() {
                                                 _selectedSubLabel = null;
                                                 _selectedTag = null;
-                                              } else {
-                                                _selectedSubLabel =
-                                                    subcatLabel;
-                                                // Set tag if available (for tag-based filtering)
-                                                _selectedTag = subcat['tag'] as String?;
-                                              }
-                                            });
+                                              });
+                                            } else {
+                                              _onSubcategorySelected(
+                                                Map<String, dynamic>.from(subcat),
+                                              );
+                                            }
                                           },
                                           borderRadius:
                                               BorderRadius.circular(18),
@@ -1848,8 +1907,12 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
-                              final stall = filteredStalls[index];
-                              return _buildStallCard(stall);
+                              try {
+                                final stall = filteredStalls[index];
+                                return _buildStallCard(stall);
+                              } catch (_) {
+                                return const SizedBox.shrink();
+                              }
                             },
                             childCount: filteredStalls.length,
                           ),
@@ -1899,6 +1962,48 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
             ),
           ),
         ),
+      );
+          } catch (e) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: Color(0xFFE53935),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Something went wrong',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF212121),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedType = 'all';
+                        _selectedSubLabel = null;
+                        _selectedTag = null;
+                        _subcategoryRowVisible = false;
+                      });
+                    },
+                    child: Text(
+                      'Reset filters',
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF1B5E20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        },
       ),
     );
   }
@@ -2028,7 +2133,16 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   }
 
   Widget _buildStallCard(StallModel stall) {
-    return GestureDetector(
+    try {
+      final name = stall.name.trim().isNotEmpty ? stall.name : 'Unknown Stall';
+      final categoryValue = stall.category.trim();
+      final category = categoryValue.isNotEmpty
+          ? StallUtils.getCategoryLabel(categoryValue)
+          : 'Uncategorized';
+      final photoUrls = stall.photoUrls;
+      final address = stall.address.trim().isNotEmpty ? stall.address : 'Location unavailable';
+
+      return GestureDetector(
       onTap: () => _openStallDetail(stall),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -2055,9 +2169,9 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 width: 80,
                 height: 80,
                 color: const Color(0xFFF1F8E9),
-                child: stall.photoUrls.isNotEmpty
+                child: photoUrls.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: stall.photoUrls.first,
+                    imageUrl: photoUrls.first,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => const Center(
                           child: CircularProgressIndicator(
@@ -2087,7 +2201,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          stall.name,
+                          name,
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -2153,7 +2267,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          StallUtils.getCategoryLabel(stall.category),
+                          category,
                           style: GoogleFonts.poppins(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
@@ -2205,7 +2319,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          stall.address,
+                          address,
                           style: GoogleFonts.poppins(
                             fontSize: 11,
                             color: const Color(0xFF9E9E9E),
@@ -2223,6 +2337,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         ),
       ),
     );
+    } catch (e) {
+      debugPrint('❌ Card build error: $e');
+      return const SizedBox.shrink();
+    }
   }
 
   Widget _buildEmptyState() {

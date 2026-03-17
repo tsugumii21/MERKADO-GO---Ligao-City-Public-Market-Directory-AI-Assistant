@@ -41,39 +41,82 @@ class StallModel {
 
   // Create StallModel from Firestore document
   factory StallModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    
-    // Backward compatibility: if no categories array, use single category field
-    final categoriesList = data['categories'] != null
-        ? List<String>.from(data['categories'] as List)
-        : [data['category'] as String? ?? ''];
-    
-    return StallModel(
-      stallId: doc.id,
-      name: data['name'] as String? ?? '',
-      category: data['category'] as String? ?? '',
-      categories: categoriesList,
-      products: List<String>.from(data['products'] as List<dynamic>? ?? []),
-      address: data['address'] as String? ?? '',
-      photoUrls: List<String>.from(data['photoUrls'] as List<dynamic>? ?? []),
-      openTime: data['openTime'] as String? ?? '6:00 AM',
-      closeTime: data['closeTime'] as String? ?? '6:00 PM',
-      daysOpen: List<String>.from(data['daysOpen'] as List<dynamic>? ?? []),
-      latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
-      longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
+    try {
+      final data = doc.data() as Map<String, dynamic>? ?? <String, dynamic>{};
+
+      final category = (data['category'] as String? ?? '').trim();
+      final categories = data['categories'] is List
+          ? (data['categories'] as List)
+              .map((e) => (e ?? '').toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
+          : (category.isNotEmpty ? <String>[category] : <String>[]);
+
+      return StallModel(
+        stallId: doc.id,
+        name: (data['name'] as String? ?? '').trim(),
+        category: category,
+        categories: categories,
+        products: data['products'] is List
+            ? (data['products'] as List)
+                .map((e) => (e ?? '').toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList()
+            : <String>[],
+        address: (data['address'] as String? ?? '').trim(),
+        photoUrls: data['photoUrls'] is List
+            ? (data['photoUrls'] as List)
+                .map((e) => (e ?? '').toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList()
+            : <String>[],
+        openTime: data['openTime'] as String? ?? '6:00 AM',
+        closeTime: data['closeTime'] as String? ?? '6:00 PM',
+        daysOpen: data['daysOpen'] is List
+            ? (data['daysOpen'] as List)
+                .map((e) => (e ?? '').toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList()
+            : <String>[],
+        latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
         isActive: data['isActive'] as bool? ??
-          data['isOpen'] as bool? ??
-          ((data['status'] as String?) == 'open'),
+            data['isOpen'] as bool? ??
+            ((data['status'] as String?) == 'open'),
         status: data['status'] as String? ??
-          ((data['isOpen'] == true || data['isActive'] == true)
-            ? 'open'
-            : 'closed'),
-      section: data['section'] as String?,
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      tags: data['tags'] != null 
-          ? List<String>.from(data['tags'] as List) 
-          : const [],
-    );
+            ((data['isOpen'] == true || data['isActive'] == true)
+                ? 'open'
+                : 'closed'),
+        section: (data['section'] as String?)?.trim(),
+        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        tags: data['tags'] is List
+            ? (data['tags'] as List)
+                .map((e) => (e ?? '').toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList()
+            : <String>[],
+      );
+    } catch (e) {
+      return StallModel(
+        stallId: doc.id,
+        name: 'Error loading stall',
+        category: '',
+        categories: const <String>[],
+        products: const <String>[],
+        address: '',
+        photoUrls: const <String>[],
+        openTime: '6:00 AM',
+        closeTime: '6:00 PM',
+        daysOpen: const <String>[],
+        latitude: 0.0,
+        longitude: 0.0,
+        isActive: false,
+        status: 'closed',
+        section: '',
+        updatedAt: DateTime.now(),
+        tags: const <String>[],
+      );
+    }
   }
 
   // Convert StallModel to Firestore document

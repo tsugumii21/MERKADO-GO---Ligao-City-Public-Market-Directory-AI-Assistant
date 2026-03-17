@@ -18,8 +18,8 @@ class AdminMapScreen extends StatefulWidget {
 
 class _AdminMapScreenState extends State<AdminMapScreen> {
   GoogleMapController? _mapController;
-  BitmapDescriptor? _activeMarkerIcon;
-  BitmapDescriptor? _inactiveMarkerIcon;
+  BitmapDescriptor? _openMarkerIcon;
+  BitmapDescriptor? _closedMarkerIcon;
   Set<Marker> _markers = {};
   List<StallModel> _allStalls = [];
   List<StallModel> _filteredStalls = [];
@@ -28,6 +28,10 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
   // Search
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  // Match user map behavior: show stall markers only at higher zoom
+  double? _currentZoom = 19.0;
+  static const double _stallVisibilityZoomThreshold = 20.0;
 
   // Ligao City Public Market coordinates
   static const LatLng _ligaoMarketCenter = LatLng(13.241861, 123.538917);
@@ -91,12 +95,38 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     });
   }
 
+  void _onCameraMove(CameraPosition position) {
+    if (_currentZoom != position.zoom) {
+      setState(() {
+        _currentZoom = position.zoom;
+      });
+    }
+  }
+
+  void _recenterMap() {
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        const CameraPosition(
+          target: _ligaoMarketCenter,
+          zoom: 19.0,
+        ),
+      ),
+    );
+  }
+
   Future<void> _createMarkers([List<StallModel>? stalls]) async {
     final stallsToShow = stalls ?? _filteredStalls;
     final markers = <Marker>{};
 
-    _activeMarkerIcon ??= await _createMarkerIcon(const Color(0xFF4CAF50));
-    _inactiveMarkerIcon ??= await _createMarkerIcon(const Color(0xFFE53935));
+    if ((_currentZoom ?? 19.0) < _stallVisibilityZoomThreshold) {
+      if (mounted && _markers.isNotEmpty) {
+        setState(() => _markers = {});
+      }
+      return;
+    }
+
+    _openMarkerIcon ??= await _createMarkerIcon(const Color(0xFF2E7D32));
+    _closedMarkerIcon ??= await _createMarkerIcon(const Color(0xFFC62828));
 
     for (var stall in stallsToShow) {
       // Skip stalls without coordinates
@@ -111,8 +141,8 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
             snippet: '${stall.category.replaceAll('_', ' ')} - Tap to edit',
           ),
           icon: StallUtils.isStallOpenNow(stall)
-              ? _activeMarkerIcon!
-              : _inactiveMarkerIcon!,
+              ? _openMarkerIcon!
+              : _closedMarkerIcon!,
           anchor: const Offset(0.5, 0.5),
           onTap: () => _onMarkerTapped(stall),
         ),
@@ -726,30 +756,96 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     );
   }
 
-  Widget _buildStallCount() {
-    final count = _searchQuery.isEmpty
-        ? _allStalls.length
-        : _filteredStalls.length;
+  Widget _buildOpenClosedCountBadge() {
+    final stallsToCount = _searchQuery.isEmpty ? _allStalls : _filteredStalls;
+    final openCount = stallsToCount.where((s) => StallUtils.isStallOpenNow(s)).length;
+    final closedCount = stallsToCount.length - openCount;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Text(
-        '$count stalls',
-        style: GoogleFonts.poppins(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF1B5E20),
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2E7D32),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$openCount Open',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF2E7D32),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 28,
+            color: const Color(0xFFE0E0E0),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFEBEE),
+              borderRadius: BorderRadius.only(
+                topRight: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFC62828),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$closedCount Closed',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFC62828),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -764,6 +860,10 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
           // Google Map
           GoogleMap(
             onMapCreated: _onMapCreated,
+            onCameraMove: _onCameraMove,
+            onCameraIdle: () {
+              unawaited(_createMarkers());
+            },
             initialCameraPosition: _initialCameraPosition,
             markers: _markers,
             mapType: MapType.satellite,
@@ -795,49 +895,52 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
             child: _buildSearchBar(),
           ),
 
-          // Stall Count Badge
+          // Open/Closed Count Badge
           Positioned(
             top: topInset + 12 + 48 + 8,
             left: 16,
-            child: _buildStallCount(),
+            child: _buildOpenClosedCountBadge(),
           ),
 
-          // Legend - bottom left
+          // Recenter button (bottom right) - same as user map
           Positioned(
-            bottom: 90,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
+            bottom: 100,
+            right: 16,
+            child: Tooltip(
+              message: 'Back to Market',
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B5E20),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _recenterMap,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.center_focus_strong_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildLegendItem(
-                    color: const Color(0xFF4CAF50),
-                    label: 'Active',
-                  ),
-                  const SizedBox(height: 4),
-                  _buildLegendItem(
-                    color: const Color(0xFFE53935),
-                    label: 'Inactive',
-                  ),
-                ],
+                ),
               ),
             ),
           ),
+
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -855,30 +958,4 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     );
   }
 
-  Widget _buildLegendItem({
-    required Color color,
-    required String label,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            color: const Color(0xFF212121),
-          ),
-        ),
-      ],
-    );
-  }
 }

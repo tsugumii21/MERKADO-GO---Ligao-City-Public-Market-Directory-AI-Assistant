@@ -32,7 +32,14 @@ class FirestoreStallRepository implements StallRepository {
         })
         .map((snapshot) {
           return snapshot.docs
-              .map((doc) => StallModel.fromFirestore(doc))
+              .map((doc) {
+                try {
+                  return StallModel.fromFirestore(doc);
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<StallModel>()
               .toList();
         });
   }
@@ -68,7 +75,14 @@ class FirestoreStallRepository implements StallRepository {
         })
         .map((snapshot) {
       return snapshot.docs
-          .map((doc) => StallModel.fromFirestore(doc))
+          .map((doc) {
+            try {
+              return StallModel.fromFirestore(doc);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<StallModel>()
           .where((stall) => stall.name.toLowerCase().contains(queryLower))
           .toList();
     });
@@ -91,7 +105,14 @@ class FirestoreStallRepository implements StallRepository {
         })
         .map((snapshot) {
       return snapshot.docs
-          .map((doc) => StallModel.fromFirestore(doc))
+          .map((doc) {
+            try {
+              return StallModel.fromFirestore(doc);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<StallModel>()
           .where((stall) => stall.products.any(
               (product) => product.toLowerCase().contains(ingredientLower)))
           .toList();
@@ -111,7 +132,14 @@ class FirestoreStallRepository implements StallRepository {
         })
         .map((snapshot) {
           return snapshot.docs
-              .map((doc) => StallModel.fromFirestore(doc))
+              .map((doc) {
+                try {
+                  return StallModel.fromFirestore(doc);
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<StallModel>()
               .toList();
         });
   }

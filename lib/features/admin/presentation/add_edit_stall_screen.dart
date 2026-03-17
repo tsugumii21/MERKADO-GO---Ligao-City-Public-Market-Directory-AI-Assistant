@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../models/stall_model.dart';
 import '../../../core/services/cloudinary_service.dart';
+import '../../../core/utils/stall_utils.dart';
 
 class AddEditStallScreen extends StatefulWidget {
   final String? stallId;
@@ -31,7 +32,34 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   final FocusNode _productFocusNode = FocusNode();
 
   // State variables
-  final List<String> _selectedCategories = [];
+  // Selected top-level category key
+  String? _selectedCategoryKey;
+
+  // Selected subcategory value (if has subcategories)
+  String? _selectedSubcategory;
+
+  // Final category value saved to Firestore
+  // = subcategory if selected, else top-level value
+  String get _finalCategoryValue {
+    if (_selectedSubcategory != null && _selectedSubcategory!.isNotEmpty) {
+      return _selectedSubcategory!;
+    }
+    if (_selectedCategoryKey != null) {
+      final cat = _categoryList.firstWhere(
+        (c) => c['key'] == _selectedCategoryKey,
+        orElse: () => {},
+      );
+      return cat['value'] as String? ?? '';
+    }
+    return '';
+  }
+
+  // For backward compat with existing _selectedCategories list usage
+  List<String> get _selectedCategories {
+    final val = _finalCategoryValue;
+    return val.isNotEmpty ? [val] : [];
+  }
+
   List<String> _products = [];
   String? _selectedSection;
   final List<String> _selectedTags = [];
@@ -42,24 +70,188 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   bool _isLoading = false;
   bool _isSaving = false;
 
-  static const List<Map<String, dynamic>> _foodCategories = [
-    {'value': 'fresh', 'label': 'Fresh Produce', 'icon': '🌿'},
-    {'value': 'seafood', 'label': 'Seafood & Fish', 'icon': '🐟'},
-    {'value': 'meat', 'label': 'Meat', 'icon': '🥩'},
-    {'value': 'poultry', 'label': 'Poultry & Chicken', 'icon': '🐔'},
-    {'value': 'vegetables', 'label': 'Vegetables', 'icon': '🥬'},
-    {'value': 'fruits', 'label': 'Fruits', 'icon': '🍎'},
-    {'value': 'frozen', 'label': 'Frozen & Processed', 'icon': '🧊'},
-    {'value': 'dry_goods', 'label': 'Dry Goods', 'icon': '🌾'},
-    {'value': 'rice', 'label': 'Rice', 'icon': '🍚'},
-    {'value': 'cooked', 'label': 'Cooked Food', 'icon': '🍳'},
-    {'value': 'sari_sari', 'label': 'Sari-Sari Store', 'icon': '🏪'},
-  ];
-
-  static const List<Map<String, dynamic>> _nonFoodCategories = [
-    {'value': 'retail', 'label': 'Retail / Clothing', 'icon': '👗'},
-    {'value': 'general', 'label': 'General Merchandise', 'icon': '🛒'},
-    {'value': 'services', 'label': 'Services', 'icon': '🔧'},
+  static const List<Map<String, dynamic>> _categoryList = [
+    {
+      'key': 'fresh',
+      'label': 'Fresh Produce',
+      'icon': '🌿',
+      'hasSubcategories': true,
+      'value': 'fresh',
+      'subcategories': [
+        {
+          'label': 'Seafood',
+          'value': 'seafood',
+          'icon': '🐟',
+        },
+        {
+          'label': 'Meat',
+          'value': 'meat',
+          'icon': '🥩',
+        },
+        {
+          'label': 'Poultry',
+          'value': 'poultry',
+          'icon': '🐔',
+        },
+        {
+          'label': 'Vegetables',
+          'value': 'vegetables',
+          'icon': '🥬',
+        },
+        {
+          'label': 'Fruits',
+          'value': 'fruits',
+          'icon': '🍎',
+        },
+      ],
+    },
+    {
+      'key': 'processed',
+      'label': 'Frozen & Processed',
+      'icon': '🧊',
+      'hasSubcategories': true,
+      'value': 'frozen',
+      'subcategories': [
+        {
+          'label': 'Frozen Goods',
+          'value': 'frozen_goods',
+          'icon': '❄️',
+        },
+        {
+          'label': 'Processed Foods',
+          'value': 'processed_foods',
+          'icon': '🥫',
+        },
+        {
+          'label': 'Spices',
+          'value': 'spices',
+          'icon': '🌶️',
+        },
+      ],
+    },
+    {
+      'key': 'dry_goods',
+      'label': 'Dry Goods',
+      'icon': '🥬',
+      'hasSubcategories': true,
+      'value': 'dry_goods',
+      'subcategories': [
+        {
+          'label': 'Rice Dealer',
+          'value': 'rice_dealer',
+          'icon': '🍚',
+        },
+        {
+          'label': 'Dried Fish',
+          'value': 'dried_fish',
+          'icon': '🐠',
+        },
+      ],
+    },
+    {
+      'key': 'cooked',
+      'label': 'Cooked Food',
+      'icon': '🍳',
+      'hasSubcategories': true,
+      'value': 'cooked',
+      'subcategories': [
+        {
+          'label': 'Carinderia',
+          'value': 'carinderia',
+          'icon': '🍱',
+        },
+        {
+          'label': 'Bakery',
+          'value': 'bakery',
+          'icon': '🍞',
+        },
+        {
+          'label': 'Kakanin',
+          'value': 'kakanin',
+          'icon': '🍡',
+        },
+        {
+          'label': 'Snack Stand',
+          'value': 'snack_stand',
+          'icon': '🍿',
+        },
+      ],
+    },
+    {
+      'key': 'sari_sari',
+      'label': 'Sari-Sari Store',
+      'icon': '🏪',
+      'hasSubcategories': false,
+      'value': 'sari_sari',
+      'subcategories': [],
+    },
+    {
+      'key': 'retail',
+      'label': 'Retail / Clothing',
+      'icon': '👗',
+      'hasSubcategories': true,
+      'value': 'retail',
+      'subcategories': [
+        {
+          'label': 'Ukay-Ukay',
+          'value': 'ukay_ukay',
+          'icon': '👕',
+        },
+        {
+          'label': 'Tailor Shop',
+          'value': 'tailor_shop',
+          'icon': '🧵',
+        },
+      ],
+    },
+    {
+      'key': 'general',
+      'label': 'General Merchandise',
+      'icon': '🛒',
+      'hasSubcategories': true,
+      'value': 'general',
+      'subcategories': [
+        {
+          'label': 'Hardware & Tools',
+          'value': 'hardware',
+          'icon': '🔨',
+        },
+        {
+          'label': 'School Supplies',
+          'value': 'school_supplies',
+          'icon': '📚',
+        },
+        {
+          'label': 'Home Supplies',
+          'value': 'home_supplies',
+          'icon': '🏠',
+        },
+        {
+          'label': 'Agrivet Supplies',
+          'value': 'agrivet',
+          'icon': '🌱',
+        },
+      ],
+    },
+    {
+      'key': 'services',
+      'label': 'Services',
+      'icon': '🔧',
+      'hasSubcategories': true,
+      'value': 'services',
+      'subcategories': [
+        {
+          'label': 'Electronics & Repair',
+          'value': 'electronics_repair',
+          'icon': '📱',
+        },
+        {
+          'label': 'Barber / Salon',
+          'value': 'barber_salon',
+          'icon': '💈',
+        },
+      ],
+    },
   ];
 
   static const List<Map<String, dynamic>> _statusOptions = [
@@ -187,12 +379,6 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     {'value': 'Sun', 'label': 'Sun'},
   ];
 
-  bool get _hasFoodSelected => _selectedCategories
-      .any((c) => _foodCategories.any((f) => f['value'] == c));
-
-  bool get _hasNonFoodSelected => _selectedCategories
-      .any((c) => _nonFoodCategories.any((nf) => nf['value'] == c));
-
   List<String> get _productSuggestions {
     final suggestions = <String>[];
 
@@ -270,7 +456,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         'Lunch Special',
       ]);
     }
-    if (_selectedCategories.contains('rice') ||
+    if (_selectedCategories.contains('rice_dealer') ||
         _selectedCategories.contains('dry_goods')) {
       suggestions.addAll([
         'Dinorado',
@@ -464,10 +650,34 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         _products = List<String>.from(stall.products);
         _stallNumberController.text = stall.address;
         
-        // Load categories (multi-select)
-        _selectedCategories
-          ..clear()
-          ..addAll(stall.categories.map(_normalizeCategoryValue).toSet());
+        final stallCat = _normalizeCategoryValue(stall.category).toLowerCase();
+
+        _selectedCategoryKey = null;
+        _selectedSubcategory = null;
+
+        for (final cat in _categoryList) {
+          final topValue = (cat['value'] as String).toLowerCase();
+          final subs = cat['subcategories'] as List;
+
+          if (stallCat == topValue) {
+            _selectedCategoryKey = cat['key'] as String;
+            break;
+          }
+
+          for (final sub in subs) {
+            final subMap = sub as Map;
+            final subValue = (subMap['value'] as String).toLowerCase();
+            if (stallCat == subValue) {
+              _selectedCategoryKey = cat['key'] as String;
+              _selectedSubcategory = subMap['value'] as String;
+              break;
+            }
+          }
+
+          if (_selectedCategoryKey != null) {
+            break;
+          }
+        }
         
         // Load tags
         _selectedTags.clear();
@@ -722,14 +932,21 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       return;
     }
 
-    if (_selectedCategories.isEmpty) {
+    if (_finalCategoryValue.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select at least one category',
-            style: GoogleFonts.poppins(),
+            'Please select a category',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+            ),
           ),
           backgroundColor: const Color(0xFFE53935),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
         ),
       );
       return;
@@ -762,13 +979,10 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         );
       }
 
-      final normalizedCategories =
-          _selectedCategories.map(_normalizeCategoryValue).toSet().toList();
-
       final stallData = {
         'name': _nameController.text.trim(),
-        'category': normalizedCategories.first,
-        'categories': normalizedCategories,
+        'category': _finalCategoryValue,
+        'categories': _selectedCategories,
         'products': _products,
         'address': _stallNumberController.text.trim(),
         'photoUrls': photoUrl != null ? [photoUrl] : [],
@@ -982,97 +1196,109 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               const SizedBox(height: 20),
 
               // 2. Category
-              Text(
-                'Category',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF212121),
-                ),
+              Row(
+                children: [
+                  Text(
+                    'Category',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF212121),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFEBEE),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Required',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: const Color(0xFFC62828),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(
-                'Food stalls can select multiple. Non-food stalls select one only.',
+                'Select the main category then choose a specific type.',
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   color: const Color(0xFF9E9E9E),
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                'Food & Market Products',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2E7D32),
-                ),
-              ),
-              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _foodCategories.map((cat) {
-                  final value = cat['value'] as String;
-                  final isSelected = _selectedCategories.contains(value);
-                  final isDisabled = _hasNonFoodSelected;
+                children: _categoryList.map((cat) {
+                  final isSelected = _selectedCategoryKey == cat['key'];
 
                   return GestureDetector(
-                    onTap: isDisabled
-                        ? null
-                        : () {
-                            setState(() {
-                              if (isSelected) {
-                                _selectedCategories.remove(value);
-                              } else {
-                                _selectedCategories.add(value);
-                              }
-                            });
-                          },
+                    onTap: () {
+                      setState(() {
+                        if (isSelected) {
+                          _selectedCategoryKey = null;
+                          _selectedSubcategory = null;
+                        } else {
+                          _selectedCategoryKey = cat['key'] as String;
+                          _selectedSubcategory = null;
+                        }
+                      });
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                       decoration: BoxDecoration(
-                        color: isDisabled
-                            ? const Color(0xFFF5F5F5)
-                            : isSelected
-                                ? const Color(0xFF1B5E20)
-                                : Colors.white,
+                        color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isDisabled
-                              ? const Color(0xFFE0E0E0)
-                              : isSelected
-                                  ? const Color(0xFF1B5E20)
-                                  : const Color(0xFFE0E0E0),
+                          color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFFE0E0E0),
+                          width: isSelected ? 1.5 : 1,
                         ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF1B5E20).withOpacity(0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : [],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             cat['icon'] as String,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: isDisabled ? Colors.grey : null,
-                            ),
+                            style: const TextStyle(fontSize: 16),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             cat['label'] as String,
                             style: GoogleFonts.poppins(
                               fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                              color: isDisabled
-                                  ? const Color(0xFFBDBDBD)
-                                  : isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF212121),
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected ? Colors.white : const Color(0xFF212121),
                             ),
                           ),
+                          if ((cat['hasSubcategories'] as bool) && !isSelected) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: Color(0xFF9E9E9E),
+                            ),
+                          ],
                           if (isSelected) ...[
                             const SizedBox(width: 4),
                             const Icon(
-                              Icons.check_circle_rounded,
+                              Icons.check_rounded,
                               size: 14,
                               color: Colors.white,
                             ),
@@ -1083,152 +1309,197 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Expanded(child: Divider(color: Color(0xFFE0E0E0))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'OR',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: const Color(0xFF9E9E9E),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const Expanded(child: Divider(color: Color(0xFFE0E0E0))),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Non-Food / Services',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1565C0),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _nonFoodCategories.map((cat) {
-                  final value = cat['value'] as String;
-                  final isSelected = _selectedCategories.contains(value);
-                  final isDisabled = _hasFoodSelected;
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _selectedCategoryKey != null
+                    ? Builder(
+                        builder: (context) {
+                          final selectedCat = _categoryList.firstWhere(
+                            (c) => c['key'] == _selectedCategoryKey,
+                            orElse: () => {'subcategories': []},
+                          );
 
-                  return GestureDetector(
-                    onTap: isDisabled
-                        ? null
-                        : () {
-                            setState(() {
-                              _selectedCategories.removeWhere(
-                                (c) => _nonFoodCategories.any((nf) => nf['value'] == c),
-                              );
-                              if (!isSelected) {
-                                _selectedCategories.add(value);
-                              }
-                            });
-                          },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isDisabled
-                            ? const Color(0xFFF5F5F5)
-                            : isSelected
-                                ? const Color(0xFF1565C0)
-                                : Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDisabled
-                              ? const Color(0xFFE0E0E0)
-                              : isSelected
-                                  ? const Color(0xFF1565C0)
-                                  : const Color(0xFFE0E0E0),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            cat['icon'] as String,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: isDisabled ? Colors.grey : null,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            cat['label'] as String,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                              color: isDisabled
-                                  ? const Color(0xFFBDBDBD)
-                                  : isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF212121),
-                            ),
-                          ),
-                          if (isSelected) ...[
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                          final subcategories = selectedCat['subcategories'] as List;
+
+                          if (subcategories.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.subdirectory_arrow_right_rounded,
+                                    size: 16,
+                                    color: Color(0xFF1B5E20),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Select specific type (optional)',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF1B5E20),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F8E9),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFF4CAF50).withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedSubcategory = null;
+                                        });
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: _selectedSubcategory == null
+                                              ? const Color(0xFF1B5E20)
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: _selectedSubcategory == null
+                                                ? const Color(0xFF1B5E20)
+                                                : const Color(0xFFE0E0E0),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'General',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            fontWeight: _selectedSubcategory == null
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                            color: _selectedSubcategory == null
+                                                ? Colors.white
+                                                : const Color(0xFF666666),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    ...subcategories.map((sub) {
+                                      final subMap = sub as Map<String, dynamic>;
+                                      final isSubSelected = _selectedSubcategory == subMap['value'];
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedSubcategory = isSubSelected
+                                                ? null
+                                                : subMap['value'] as String;
+                                          });
+                                        },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                          decoration: BoxDecoration(
+                                            color: isSubSelected
+                                                ? const Color(0xFF1B5E20)
+                                                : Colors.white,
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: isSubSelected
+                                                  ? const Color(0xFF1B5E20)
+                                                  : const Color(0xFFE0E0E0),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                subMap['icon'] as String,
+                                                style: const TextStyle(fontSize: 13),
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                subMap['label'] as String,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 12,
+                                                  fontWeight: isSubSelected
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w400,
+                                                  color: isSubSelected
+                                                      ? Colors.white
+                                                      : const Color(0xFF212121),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      )
+                    : const SizedBox.shrink(),
               ),
-              if (_hasFoodSelected)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
+              if (_finalCategoryValue.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF4CAF50)),
+                  ),
                   child: Row(
                     children: [
                       const Icon(
-                        Icons.info_outline_rounded,
-                        size: 14,
-                        color: Color(0xFF9E9E9E),
+                        Icons.check_circle_rounded,
+                        size: 16,
+                        color: Color(0xFF2E7D32),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Remove food categories to select non-food',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: const Color(0xFF9E9E9E),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Category set to: ${StallUtils.getCategoryLabel(_finalCategoryValue)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategoryKey = null;
+                            _selectedSubcategory = null;
+                          });
+                        },
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Color(0xFF2E7D32),
                         ),
                       ),
                     ],
                   ),
                 ),
-              if (_hasNonFoodSelected)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        size: 14,
-                        color: Color(0xFF9E9E9E),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Remove non-food category to select food categories',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: const Color(0xFF9E9E9E),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              ],
               const SizedBox(height: 20),
 
               // 3. Market Section (Optional)

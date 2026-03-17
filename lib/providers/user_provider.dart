@@ -6,30 +6,37 @@ import 'auth_provider.dart';
 
 // Stream provider for current user data from Firestore
 final userDataStreamProvider = StreamProvider<UserModel?>((ref) {
-  // Watch the auth state
   final authState = ref.watch(currentUserProvider);
-  
-  // Get the user from auth state
-  final user = authState.when(
-    data: (u) => u,
-    loading: () => null,
-    error: (_, __) => null,
-  );
-  
-  // Return null stream if no user
+
+  // Keep profile in loading state while auth is still resolving.
+  if (authState.isLoading) {
+    return const Stream<UserModel?>.empty();
+  }
+
+  final user = authState.asData?.value;
+
+  // No authenticated user, so no profile document should be shown.
   if (user == null) {
     return Stream.value(null);
   }
-  
-  // Return the Firestore stream
-  // The token is already refreshed in currentUserProvider so this is safe
+
   return FirebaseFirestore.instance
       .collection('users')
       .doc(user.uid)
       .snapshots()
-      .map((doc) {
-        if (!doc.exists) return null;
-        return UserModel.fromFirestore(doc);
+      .asyncMap((doc) async {
+        if (doc.exists) return UserModel.fromFirestore(doc);
+
+        // Handle brief propagation delays after sign-in/token refresh.
+        for (var attempt = 0; attempt < 3; attempt++) {
+          await Future<void>.delayed(Duration(milliseconds: 250 * (attempt + 1)));
+          final retryDoc = await doc.reference.get();
+          if (retryDoc.exists) {
+            return UserModel.fromFirestore(retryDoc);
+          }
+        }
+
+        return null;
       })
       .handleError((e) {
         debugPrint('❌ Failed: User stream error: $e');

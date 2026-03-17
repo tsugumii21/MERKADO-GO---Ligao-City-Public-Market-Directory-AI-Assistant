@@ -50,6 +50,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   bool _mapInitialized = false;
 
   Timer? _markerDebounce;
+  Timer? _countRefreshTimer;
   
   // Ligao City Public Market coordinates (exact location from Google Maps)
   static const LatLng _ligaoMarketCenter = LatLng(13.241861, 123.538917);
@@ -87,6 +88,12 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   void initState() {
     super.initState();
     _loadStalls();
+    _countRefreshTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
     
     // Initialize pulse animation for Aling Suki button
     _pulseController = AnimationController(
@@ -134,14 +141,103 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     // DO NOT reset: map camera, chat history, markers
   }
 
-  // Get count of currently open stalls
-  int _getOpenStallsCount(List<StallModel> stalls) {
-    return stalls.where((stall) => StallUtils.isStallOpenNow(stall)).length;
+  Widget _buildStallCountBadge() {
+    final openCount = _allStalls.where((s) => StallUtils.isStallOpenNow(s)).length;
+    final closedCount = _allStalls.length - openCount;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2E7D32),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$openCount Open',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF2E7D32),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 28,
+            color: const Color(0xFFE0E0E0),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFEBEE),
+              borderRadius: BorderRadius.only(
+                topRight: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFC62828),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$closedCount Closed',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFC62828),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   void dispose() {
     _markerDebounce?.cancel();
+    _countRefreshTimer?.cancel();
     _mapController?.dispose();
     _stallsSubscription?.cancel();
     _searchController.dispose();
@@ -656,50 +752,11 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                 cameraTargetBounds: CameraTargetBounds.unbounded,
               ),
               
-              // Cluster count badge (below search bar)
-              if (stalls.isNotEmpty)
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 70,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1B5E20),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.storefront_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _searchController.text.trim().isEmpty
-                              ? () {
-                                  final stallsToCount = _filteredStalls.isEmpty ? stalls : _filteredStalls;
-                                  final openCount = _getOpenStallsCount(stallsToCount);
-                                  return '$openCount ${openCount == 1 ? 'stall is' : 'stalls are'} open in the market';
-                                }()
-                              : '${_filteredStalls.length} ${_filteredStalls.length == 1 ? 'stall' : 'stalls'} found',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              Positioned(
+                top: MediaQuery.of(context).viewPadding.top + 68,
+                left: 16,
+                child: _buildStallCountBadge(),
+              ),
               
               // Search bar overlay + live dropdown
               Positioned(
@@ -1468,6 +1525,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isRefreshing = false;
+  String _language = 'english';
 
   @override
   void initState() {
@@ -1493,9 +1551,9 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
     if (_isRefreshing) return;
     
     setState(() => _isRefreshing = true);
-    
-    // Only refresh stall data, don't clear chat history
-    await ref.read(chatProvider.notifier).refreshStalls();
+
+    await ref.read(chatProvider.notifier).initializeChat();
+    _language = ref.read(chatProvider.notifier).language;
     
     setState(() => _isRefreshing = false);
   }
@@ -1504,13 +1562,55 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
     if (_isRefreshing) return;
     
     setState(() => _isRefreshing = true);
-    
-    // Refresh stall data and clear chat to start fresh
-    await ref.read(chatProvider.notifier).refreshStalls();
-    ref.read(chatProvider.notifier).clearChat();
+
+    await ref.read(chatProvider.notifier).initializeChat(reset: true);
     
     setState(() => _isRefreshing = false);
   }
+
+  Future<void> _toggleLanguage() async {
+    final newLanguage = _language == 'english' ? 'tagalog' : 'english';
+
+    setState(() {
+      _language = newLanguage;
+    });
+
+    await ref.read(chatProvider.notifier).setLanguage(newLanguage);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _language == 'english' ? 'Switched to English' : 'Lumipat sa Tagalog',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF1B5E20),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  List<String> get _suggestions => _language == 'english'
+      ? [
+          'Open stalls now',
+          'Where to buy fish?',
+          'Meat section',
+          'Vegetable stalls',
+          'What stalls are here?',
+        ]
+      : [
+          'Anong bukas ngayon?',
+          'Saan makabili ng isda?',
+          'Meat section',
+          'Mga gulay na stall',
+          'Anong mga stall dito?',
+        ];
 
   void _scrollToBottom({bool instant = false}) {
     if (!_scrollController.hasClients) return;
@@ -1540,6 +1640,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   }
 
   void _sendSuggestion(String suggestion) {
+    _inputController.text = suggestion;
     ref.read(chatProvider.notifier).sendMessage(suggestion);
     _scrollToBottom();
   }
@@ -1547,6 +1648,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(chatProvider);
+    final notifier = ref.read(chatProvider.notifier);
     final screenHeight = MediaQuery.of(context).size.height;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final hasUserMessages = messages.where((m) => m.role == 'user').isNotEmpty;
@@ -1581,7 +1683,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
-              color: Color(0xFFE8F5E9),
+              color: Color(0xFF1B5E20),
               border: Border(
                 bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
               ),
@@ -1606,9 +1708,9 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                           Text(
                             'Aling Suki',
                             style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1B5E20),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -1625,15 +1727,48 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Inyong Market Guide 🛒',
+                        notifier.stallsLoaded
+                            ? '${notifier.stallsCount} stalls in directory'
+                            : 'Loading stalls...',
                         style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: const Color(0xFF666666),
+                          fontSize: 10,
+                          color: Colors.white60,
                         ),
                       ),
                     ],
                   ),
                 ),
+
+                GestureDetector(
+                  onTap: _toggleLanguage,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _language == 'english' ? '🇵🇭' : '🇺🇸',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _language == 'english' ? 'Filipino' : 'English',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
                 
                 // Refresh button
                 IconButton(
@@ -1647,7 +1782,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                           ),
                         )
                       : const Icon(Icons.refresh_rounded),
-                  color: const Color(0xFF1B5E20),
+                  color: Colors.white,
                   onPressed: _isRefreshing ? null : _refreshStallData,
                   tooltip: 'Reset Chat',
                 ),
@@ -1655,7 +1790,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                 // Close button
                 IconButton(
                   icon: const Icon(Icons.close_rounded),
-                  color: const Color(0xFF666666),
+                  color: Colors.white,
                   onPressed: () => Navigator.pop(context),
                   tooltip: 'Close',
                 ),
@@ -1685,7 +1820,9 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Mga tanong na maaari mong itanong:',
+                    _language == 'english'
+                        ? 'Try asking:'
+                        : 'Mga tanong na maaari mong itanong:',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       color: const Color(0xFF666666),
@@ -1696,13 +1833,9 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: [
-                        _buildSuggestionChip('Saan makakabili ng sariwang isda?'),
-                        _buildSuggestionChip('Which stalls are open right now?'),
-                        _buildSuggestionChip('Saan ang karne at manok section?'),
-                        _buildSuggestionChip('Ilan lahat ng stalls sa palengke?'),
-                        _buildSuggestionChip('Nasaan ang dry goods area?'),
-                      ],
+                      children: _suggestions
+                          .map((s) => _buildSuggestionChip(s))
+                          .toList(),
                     ),
                   ),
                 ],
@@ -1733,7 +1866,9 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                     onChanged: (_) => setState(() {}),
                     style: GoogleFonts.poppins(fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: 'Magtanong kay Aling Suki...',
+                      hintText: _language == 'english'
+                          ? 'Ask Aling Suki...'
+                          : 'Magtanong kay Aling Suki...',
                       hintStyle: GoogleFonts.poppins(
                         fontSize: 14,
                         color: const Color(0xFF9E9E9E),
@@ -1788,18 +1923,25 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   Widget _buildSuggestionChip(String text) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: ActionChip(
-        label: Text(
-          text,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: const Color(0xFF1B5E20),
+      child: GestureDetector(
+        onTap: () => _sendSuggestion(text),
+        child: Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF4CAF50)),
+          ),
+          child: Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: const Color(0xFF1B5E20),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Color(0xFF1B5E20), width: 1),
-        onPressed: () => _sendSuggestion(text),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );
   }
@@ -1807,6 +1949,10 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   Widget _buildMessageBubble(ChatMessage message) {
     final isUser = message.role == 'user';
     final screenWidth = MediaQuery.of(context).size.width;
+
+    if (!isUser && message.isStreaming) {
+      return _buildTypingIndicator();
+    }
     
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -1835,9 +1981,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                 bottomRight: Radius.circular(isUser ? 4 : 18),
               ),
             ),
-            child: message.isStreaming
-                ? _buildTypingIndicator()
-                : isUser
+            child: isUser
                     ? Text(
                         message.content,
                         style: GoogleFonts.poppins(
@@ -1874,13 +2018,55 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   }
 
   Widget _buildTypingIndicator() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(
-        3,
-        (index) => _TypingDot(delay: index * 200),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE8F5E9),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.smart_toy_rounded,
+              size: 14,
+              color: Color(0xFF1B5E20),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              border: Border.fromBorderSide(
+                BorderSide(color: Color(0xFFE0E0E0)),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDot(0),
+                const SizedBox(width: 4),
+                _buildDot(1),
+                const SizedBox(width: 4),
+                _buildDot(2),
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildDot(int index) {
+    return _TypingDot(delay: index * 200);
   }
 }
 

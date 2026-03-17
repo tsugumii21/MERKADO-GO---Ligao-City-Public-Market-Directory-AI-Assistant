@@ -27,7 +27,7 @@ import 'route_names.dart';
 
 // Import GlobalKeys for page state management
 import '../widgets/main_shell.dart'
-  show MainShell, mapPageKey, stallsPageKey, profilePageKey;
+  show MainShell, mainShellKey, mapPageKey, stallsPageKey, profilePageKey;
 
 class AppRouter {
   static void setContainer(ProviderContainer _) {}
@@ -79,7 +79,10 @@ class AppRouter {
         // User Routes with Bottom Navigation (3 tabs: Map, Stalls, Profile)
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
-            return MainShell(navigationShell: navigationShell);
+            return MainShell(
+              key: mainShellKey,
+              navigationShell: navigationShell,
+            );
           },
           branches: [
             // Branch 0: Map (preserve camera, markers, chatbot)

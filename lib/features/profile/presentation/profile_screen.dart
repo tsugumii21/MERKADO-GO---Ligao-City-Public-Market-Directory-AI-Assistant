@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/widgets/main_shell.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../../providers/user_provider.dart';
@@ -127,6 +128,10 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         }
       }
     }
+  }
+
+  void _openFavoriteStalls() {
+    mainShellKey.currentState?.openFavoriteStalls();
   }
 
   @override
@@ -495,7 +500,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildFavoriteStallsRow(BuildContext context, int favoriteCount) {
     return GestureDetector(
-      onTap: () => context.go(RouteNames.stalls),
+      onTap: _openFavoriteStalls,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

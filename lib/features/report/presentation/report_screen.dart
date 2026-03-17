@@ -54,7 +54,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   bool _isFormValid() {
     return _selectedCategories.isNotEmpty &&
-        _descriptionController.text.trim().length >= 20;
+      _descriptionController.text.trim().length >= 10;
   }
 
   void _toggleCategory(String category) {
@@ -433,10 +433,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
               // Validation error for description
               if (_attemptedSubmit &&
-                  _descriptionController.text.trim().length < 20) ...[
+                  _descriptionController.text.trim().length < 10) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Please describe the issue (min. 20 characters)',
+                  'Please describe the issue (min. 10 characters)',
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     color: const Color(0xFFE53935),

@@ -14,20 +14,35 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     state = [
       ChatMessage(
         id: 'welcome',
-        content:
-          'Magandang araw po! Ako si **Aling Suki** \n\n'
-          'Ang inyong digital na gabay sa Ligao City Public Market!\n\n'
-          'Maaari kayong magtanong tungkol sa:\n'
-          '• Mga stalls at lokasyon nila\n'
-          '• Operating hours ng mga tindahan\n'
-          '• Mga available na produkto\n'
-          '• Paano mag-navigate sa palengke\n\n'
-          'Ano po ang maipaglilingkod ko sa inyo? 😊',
+        content: _geminiService.buildIntroMessage(),
         role: 'aling_suki',
         timestamp: DateTime.now(),
       ),
     ];
   }
+
+  Future<void> initializeChat({bool reset = false}) async {
+    await _geminiService.refreshStalls();
+
+    final hasUserMessages = state.any((m) => m.role == 'user');
+    if (reset || !hasUserMessages) {
+      _addWelcomeMessage();
+    }
+  }
+
+  Future<void> setLanguage(String language) async {
+    _geminiService.setLanguage(language);
+    await _geminiService.refreshStalls();
+
+    final hasUserMessages = state.any((m) => m.role == 'user');
+    if (!hasUserMessages) {
+      _addWelcomeMessage();
+    }
+  }
+
+  String get language => _geminiService.language;
+  bool get stallsLoaded => _geminiService.stallsLoaded;
+  int get stallsCount => _geminiService.stallsCount;
   
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;

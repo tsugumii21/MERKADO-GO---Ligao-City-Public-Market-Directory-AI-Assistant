@@ -3,196 +3,313 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants/app_secrets.dart';
+import '../../models/stall_model.dart';
+import '../utils/stall_utils.dart';
 
 class GeminiService {
   static const String _modelName = 'gemini-2.5-flash';
-  
-  GenerativeModel? _model;
-  ChatSession? _chat;
+
   bool _isInitialized = false;
-  String _stallsContext = '';
+  String _language = 'english';
+  List<StallModel> _stalls = [];
+  final List<Map<String, String>> _conversationHistory = [];
   
   GeminiService(Ref _);
-  
-  String _getCurrentPhilippineTime() {
-    // Get current Philippine time (UTC+8)
-    final now = DateTime.now().toUtc().add(const Duration(hours: 8));
-    
-    final days = [
-      'Monday', 'Tuesday', 'Wednesday',
-      'Thursday', 'Friday', 'Saturday', 'Sunday'
+
+  String get language => _language;
+  bool get stallsLoaded => _isInitialized;
+  int get stallsCount => _stalls.length;
+
+  void setLanguage(String language) {
+    _language = language == 'tagalog' ? 'tagalog' : 'english';
+  }
+
+  String _formatCurrentTime() {
+    final now = DateTime.now();
+    return '${now.hour}:${now.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatCurrentDay() {
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
-    final months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    
-    final currentTime24 = '${now.hour.toString().padLeft(2, '0')}:'
-        '${now.minute.toString().padLeft(2, '0')}';
-    final currentDay = days[now.weekday - 1];
-    final currentDate = '${months[now.month - 1]} ${now.day}, ${now.year}';
-    final amPm = now.hour < 12 ? 'AM' : 'PM';
-    final hour12 = now.hour == 0 ? 12 : 
-                   now.hour > 12 ? now.hour - 12 : 
-                   now.hour;
-    final timeReadable = '$hour12:'
-        '${now.minute.toString().padLeft(2, '0')} $amPm';
-    
+    return days[DateTime.now().weekday - 1];
+  }
+
+  Future<void> _loadStalls() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection('stalls').get();
+      _stalls = snapshot.docs.map((doc) => StallModel.fromFirestore(doc)).toList();
+      _isInitialized = true;
+    } catch (e) {
+      debugPrint('❌ Error: Failed to fetch stalls context: $e');
+      _stalls = [];
+      _isInitialized = true;
+    }
+  }
+
+  Future<void> _ensureInitialized() async {
+    if (_isInitialized) return;
+    await _loadStalls();
+  }
+
+  String buildIntroMessage({String? language}) {
+    final lang = language ?? _language;
+    final openCount = _stalls.where((s) => StallUtils.isStallOpenNow(s)).length;
+
+    if (lang == 'tagalog') {
+      return 'Kamusta! Ako si **Aling Suki** 🛒\n\n'
+          'Ako ang iyong gabay sa **Ligao City Public Market**. '
+          'Matutulungan kita mahanap ang mga stall, produkto, at seksyon sa loob ng palengke.\n\n'
+          'Sa ngayon, **$openCount stalls** ang bukas.\n\n'
+          'Subukan mong itanong:\n'
+          '• *Saan ako makakabili ng isda?*\n'
+          '• *Anong mga stall ang bukas?*\n'
+          '• *Nasaan ang meat section?*\n'
+          '• *Sino ang nagbebenta ng pork liempo?*';
+    }
+
+    return 'Hello! I\'m **Aling Suki** 🛒\n\n'
+        'I\'m your digital guide for **Ligao City Public Market**. '
+        'I can help you find stalls, products, and sections inside the market.\n\n'
+        'Right now, **$openCount stalls** are open.\n\n'
+        'Try asking me:\n'
+        '• *Where can I buy fish?*\n'
+        '• *Which stalls are open now?*\n'
+        '• *Where is the meat section?*\n'
+        '• *Who sells pork liempo?*';
+  }
+
+  String _buildSystemPrompt() {
+    final timeStr = _formatCurrentTime();
+    final dayStr = _formatCurrentDay();
+    final stallData = StringBuffer();
+
+    for (final stall in _stalls) {
+      final isOpen = StallUtils.isStallOpenNow(stall);
+      final cats = stall.categories.isNotEmpty
+          ? stall.categories.join(', ')
+          : stall.category;
+      final products = stall.products.isNotEmpty
+          ? stall.products.join(', ')
+          : 'not specified';
+      final tags = stall.tags.isNotEmpty
+          ? stall.tags.map((t) => StallUtils.getTagLabel(t)).join(', ')
+          : 'none';
+      final section = (stall.section != null && stall.section!.trim().isNotEmpty)
+          ? stall.section!.trim()
+          : 'not specified';
+
+      stallData.writeln(
+        '- STALL: ${stall.name} | '
+        'STATUS: ${isOpen ? 'OPEN' : 'CLOSED'} | '
+        'CATEGORY: $cats | '
+        'PRODUCTS: $products | '
+        'TAGS: $tags | '
+        'SECTION: $section | '
+        'HOURS: ${stall.openTime} - ${stall.closeTime} | '
+        'DAYS: ${stall.daysOpen.join(', ')}',
+      );
+    }
+
+    final langInstruction = _language == 'english'
+        ? 'ALWAYS respond in English.'
+        : 'ALWAYS respond in Filipino/Tagalog language. Use natural conversational Tagalog.';
+
     return '''
-CURRENT DATE AND TIME (Philippine Standard Time):
-Date: $currentDate
-Day: $currentDay
-Time: $timeReadable (24hr: $currentTime24)
+You are Aling Suki, the official AI assistant of Ligao City Public Market in Ligao City, Albay, Philippines.
 
-Use this to determine which stalls are currently open or closed based on their operating hours.
+CURRENT TIME: $timeStr
+CURRENT DAY: $dayStr
 
-HOW TO DETERMINE IF A STALL IS OPEN:
-- Compare current time against the stall's opening and closing hours
-- Consider the current day against the stall's operating days
-- If current time is BETWEEN opening and closing time AND today is an operating day, the stall is OPEN
-- Otherwise it is CLOSED
+$langInstruction
 
-When asked about open stalls, ALWAYS:
-1. State the current time you are using
-2. List which stalls are open RIGHT NOW
-3. List which stalls are closed with their opening time so user knows when they open
+YOUR STRICT RULES:
+1. You ONLY answer questions about the Ligao City Public Market.
+2. If someone greets you (hello, hi, kumusta), respond warmly but immediately steer to market topics.
+3. If asked something NOT about the market (weather, news, math, etc.), politely say you can only help with market-related questions.
+4. ALWAYS check if stalls are OPEN or CLOSED based on provided STATUS and schedule context.
+5. When listing stalls, ALWAYS show their current open/closed status.
+6. Keep responses SHORT and SPECIFIC.
+7. Maximum 5 stalls per response.
+8. If user asks about a product, find which stalls sell that product and list only those stalls.
+9. Format stall info clearly like:
+   📍 [Stall Name] - [Status]
+      Sells: [products]
+      Hours: [hours]
+10. Never make up stall information. Only use the data provided below.
+11. If no stalls match the query, say so honestly.
+12. Prefer OPEN stalls unless user explicitly asks for all stalls.
+
+MARKET STALL DATA:
+$stallData
+
+RESPONSE FORMAT RULES:
+- Be concise and direct.
+- Use bullet points for stall lists.
+- Always mention open/closed status.
+- If giving directions, mention market section.
+- For greetings: warm but brief, then ask how you can help with the market.
+- For off-topic: politely decline in 1 sentence.
+- Maximum response length: 150 words unless listing stalls.
 ''';
   }
   
-  Future<String> _fetchStallsContext() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('stalls')
-          .get();
-      
-      if (snapshot.docs.isEmpty) {
-        return 'Walang available na stall data sa ngayon.';
-      }
-      
-      final stallsData = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return '''
-Stall: ${data['name'] ?? 'Unknown'}
-Category: ${data['category'] ?? 'Unknown'}
-Hours: ${data['openTime'] ?? 'N/A'} - ${data['closeTime'] ?? 'N/A'}
-Days: ${(data['daysOpen'] as List?)?.join(', ') ?? 'N/A'}
-Status: ${data['isActive'] == true ? 'Active' : 'Inactive'}
-Location: ${data['address'] ?? 'Unknown'}
-Products: ${(data['products'] as List?)?.join(', ') ?? 'N/A'}
----''';
-      }).join('\n');
-      
-      return stallsData;
-    } catch (e) {
-      debugPrint('❌ Error: Failed to fetch stalls context: $e');
-      return 'Hindi makuha ang stall data sa ngayon.';
-    }
-  }
-  
-  Future<void> _initializeModel() async {
-    if (_isInitialized) return;
-    
-    try {
-      _stallsContext = await _fetchStallsContext();
-      
-      // Get current Philippine time
-      final currentTimeInfo = _getCurrentPhilippineTime();
-      
-      final apiKey = AppSecrets.geminiApiKey;
-      
-      _model = GenerativeModel(
-        model: _modelName,
-        apiKey: apiKey,
-        systemInstruction: Content.system('''
-Ikaw si Aling Suki, ang digital na gabay ng Ligao City Public Market 
-sa Ligao City, Albay, Pilipinas.
-
-$currentTimeInfo
-
-MAHALAGANG ALITUNTUNIN:
-Sumagot LAMANG batay sa tunay na datos ng mga stall na ito. 
-Huwag mag-imbento ng impormasyong wala sa listahan.
-
-[STALL DATA - ITO LANG ANG TOTOO]
-$_stallsContext
-[END STALL DATA]
-
-GABAY SA PAGSAGOT:
-1. Kung tinanong tungkol sa stall, produkto, o lokasyon - tingnan ang datos sa itaas
-2. Kung walang nakalagay sa datos, sabihin honestly: "Pasensya po, wala pa akong 
-   impormasyon tungkol diyan sa aking database. Maaari po kayong magtanong sa 
-   market information desk para sa mas detalyadong impormasyon. 😊"
-3. Kung hindi tungkol sa palengke ang tanong, mahinahon na sabihin:
-   "Ay naku, iyan ay wala sa aking alam! Pero kung may tanong kayo tungkol 
-   sa Ligao Public Market, nandito po ako para tumulong! 😊"
-
-TONO AT UGALI:
-- Palaging gumamit ng po/opo para magiliw
-- Maging makulay at friendly sa pagsagot
-- Sumagot sa PAREHONG WIKA na ginamit ng user (Filipino o English)
-- Tulungan ang mamimili na makahanap ng hinahanap nila
-- Maging totoong "Aling" - mapagkaibigan at matulungin
-- Laging gamitin ang Philippine time context para sa katumpakan
-
-FORMATTING RULES:
-- When listing items, always use bullet points on separate lines with \n before each bullet
-- Never put multiple bullets on the same line
-- Always add a blank line (\n\n) between paragraphs for breathing room
-- Use **bold** for emphasis on important information
-        '''),
-      );
-      
-      _chat = _model!.startChat();
-      _isInitialized = true;
-    } catch (e) {
-      debugPrint('❌ Failed: Gemini initialization failed: $e');
-      _model = null;
-      _chat = null;
-      _isInitialized = false;
-    }
-  }
-  
   Future<void> refreshStalls() async {
-    _stallsContext = await _fetchStallsContext();
-    
-    // Reinitialize the model with fresh data
     _isInitialized = false;
-    await _initializeModel();
+    await _ensureInitialized();
   }
-  
-  Stream<String> sendMessage(String message) async* {
-    // Lazy initialization - only initialize when first message is sent
-    if (_model == null) {
-      await _initializeModel();
+
+  bool _looksIncompleteResponse(String text) {
+    final trimmed = text.trimRight();
+    if (trimmed.length < 24) return false;
+
+    if (RegExp(r'[.!?)]$').hasMatch(trimmed)) return false;
+
+    final lastToken = trimmed.split(RegExp(r'\s+')).last.toLowerCase();
+    const danglingTokens = {
+      'at',
+      'and',
+      'or',
+      'ng',
+      'sa',
+      'na',
+      'pero',
+      'dahil',
+    };
+    if (danglingTokens.contains(lastToken)) return true;
+
+    if (trimmed.endsWith(',') || trimmed.endsWith(':') || trimmed.endsWith('-')) {
+      return true;
     }
-    
-    // If initialization failed, return error message
-    if (_model == null || _chat == null) {
-      yield 'Ay naku, may error po si Aling Suki! Pakisubukan ulit. 😊';
+
+    final markdownAsterisks = RegExp(r'\*\*').allMatches(trimmed).length;
+    if (markdownAsterisks.isOdd) return true;
+
+    return false;
+  }
+
+  Future<String> _requestContinuation({
+    required GenerativeModel model,
+    required List<Content> contents,
+    required String partialReply,
+  }) async {
+    final continuationPrompt = _language == 'tagalog'
+        ? 'Mukhang naputol ang huling sagot mo. Ipagpatuloy at tapusin ito sa Filipino/Tagalog. Huwag ulitin ang naibigay na.'
+        : 'Your last answer appears cut off. Continue and finish it in English without repeating previous lines.';
+
+    final continued = await model.generateContent([
+      ...contents,
+      Content.model([TextPart(partialReply)]),
+      Content.text(continuationPrompt),
+    ]);
+
+    return (continued.text ?? '').trim();
+  }
+
+  String _mergeReplyAndContinuation(String reply, String continuation) {
+    final base = reply.trimRight();
+    final tail = continuation.trimLeft();
+    if (tail.isEmpty) return base;
+
+    if (base.endsWith('.') || base.endsWith('!') || base.endsWith('?')) {
+      return '$base\n$tail';
+    }
+    return '$base $tail';
+  }
+
+  Stream<String> sendMessage(String message) async* {
+    if (message.trim().isEmpty) return;
+
+    await _ensureInitialized();
+    final apiKey = AppSecrets.geminiApiKey;
+    if (apiKey.isEmpty) {
+      yield _language == 'english'
+          ? 'Sorry, Gemini API key is missing. Please configure it first.'
+          : 'Paumanhin, kulang ang Gemini API key. Paki-configure muna.';
       return;
     }
-    
+
     try {
-      final response = _chat!.sendMessageStream(
-        Content.text(message),
+      final model = GenerativeModel(
+        model: _modelName,
+        apiKey: apiKey,
+        systemInstruction: Content.system(_buildSystemPrompt()),
+        generationConfig: GenerationConfig(
+          temperature: 0.3,
+          maxOutputTokens: 768,
+          topP: 0.8,
+          topK: 40,
+        ),
       );
-      
-      await for (final chunk in response) {
-        final text = chunk.text;
-        if (text != null && text.isNotEmpty) {
-          yield text;
+
+      final recentTurns = _conversationHistory.length <= 10
+          ? _conversationHistory
+          : _conversationHistory.sublist(_conversationHistory.length - 10);
+
+      final contents = <Content>[];
+      for (final turn in recentTurns) {
+        final role = turn['role'] ?? 'user';
+        final text = turn['text'] ?? '';
+        if (text.isEmpty) continue;
+        if (role == 'model') {
+          contents.add(Content.model([TextPart(text)]));
+        } else {
+          contents.add(Content.text(text));
         }
       }
+
+      contents.add(Content.text(message.trim()));
+
+      final response = await model.generateContent(contents);
+      final botReply = (response.text ?? '').trim();
+
+      if (botReply.isEmpty) {
+        yield _language == 'english'
+            ? 'Sorry, I could not generate a response. Please try again.'
+            : 'Paumanhin, walang nabuong sagot. Subukan po ulit.';
+        return;
+      }
+
+      var finalReply = botReply;
+      if (_language == 'tagalog' && _looksIncompleteResponse(botReply)) {
+        try {
+          final continuation = await _requestContinuation(
+            model: model,
+            contents: contents,
+            partialReply: botReply,
+          );
+          if (continuation.isNotEmpty) {
+            finalReply = _mergeReplyAndContinuation(botReply, continuation);
+          }
+        } catch (e) {
+          debugPrint('⚠️ Warning: Continuation request failed: $e');
+        }
+      }
+
+      _conversationHistory.add({'role': 'user', 'text': message.trim()});
+      _conversationHistory.add({'role': 'model', 'text': finalReply});
+      if (_conversationHistory.length > 20) {
+        _conversationHistory.removeRange(0, _conversationHistory.length - 20);
+      }
+
+      yield finalReply;
     } catch (e) {
       debugPrint('❌ Error: Gemini API error: $e');
-      yield 'Ay naku, may error po! Pakisubukan ulit. Salamat po! 😊';
+      yield _language == 'english'
+          ? 'Sorry, I\'m having trouble connecting. Please try again.'
+          : 'Paumanhin, may problema sa koneksyon. Subukan ulit.';
     }
   }
-  
+
   void clearChat() {
-    if (_model != null) {
-      _chat = _model!.startChat();
-    }
+    _conversationHistory.clear();
   }
 }
 

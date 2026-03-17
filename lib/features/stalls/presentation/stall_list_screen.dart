@@ -459,6 +459,34 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     // DO NOT reset: _selectedType (filter chip), favorites
   }
 
+  void showFavoritesView() {
+    if (!mounted) return;
+
+    _searchFocusNode.unfocus();
+    _searchController.clear();
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
+    setState(() {
+      _selectedType = 'favorites';
+      _selectedSubLabel = null;
+      _selectedTag = null;
+      _subcategoryRowVisible = false;
+      _searchQuery = '';
+      _searchResults = [];
+      _showDropdown = false;
+      _isSearching = false;
+    });
+
+    ref.read(favoriteProvider.notifier).loadFavorites();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1228,9 +1256,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           const SizedBox(width: 12),
                           Icon(
                             Icons.search_rounded,
-                            color: _searchQuery.isNotEmpty
-                                ? const Color(0xFF1B5E20)
-                                : const Color(0xFF9E9E9E),
+                            color: const Color(0xFF9E9E9E),
                             size: 18,
                           ),
                           const SizedBox(width: 8),
@@ -1255,6 +1281,9 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                 focusedBorder: InputBorder.none,
                                 errorBorder: InputBorder.none,
                                 disabledBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                filled: true,
+                                fillColor: Colors.white,
                                 isDense: true,
                                 contentPadding: EdgeInsets.zero,
                                 counterText: '',

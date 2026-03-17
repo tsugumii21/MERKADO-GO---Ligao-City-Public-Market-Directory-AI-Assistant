@@ -6,6 +6,7 @@ import '../../features/stalls/presentation/stall_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 
 // GlobalKeys for accessing each page's State (for resetUI)
+final GlobalKey<MainShellState> mainShellKey = GlobalKey<MainShellState>();
 final GlobalKey<MapScreenState> mapPageKey = GlobalKey<MapScreenState>();
 final GlobalKey<StallListScreenState> stallsPageKey = GlobalKey<StallListScreenState>();
 final GlobalKey<ProfileScreenState> profilePageKey = GlobalKey<ProfileScreenState>();
@@ -19,11 +20,25 @@ class MainShell extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.navigationShell.currentIndex;
+  }
+
+  @override
+  void didUpdateWidget(covariant MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_currentIndex != widget.navigationShell.currentIndex) {
+      _currentIndex = widget.navigationShell.currentIndex;
+    }
+  }
 
   void _resetPage(int pageIndex) {
     if (!mounted) return;
@@ -39,6 +54,43 @@ class _MainShellState extends ConsumerState<MainShell> {
         profilePageKey.currentState?.resetUI();
         break;
     }
+  }
+
+  void goToTab(int index, {bool resetCurrentPage = true}) {
+    if (!mounted) return;
+
+    final currentIndex = widget.navigationShell.currentIndex;
+    if (index == currentIndex) return;
+
+    if (resetCurrentPage) {
+      _resetPage(currentIndex);
+    }
+
+    setState(() {
+      _currentIndex = index;
+    });
+
+    widget.navigationShell.goBranch(index, initialLocation: false);
+  }
+
+  void openFavoriteStalls() {
+    if (!mounted) return;
+
+    final applyFavoritesView = () {
+      if (!mounted) return;
+      stallsPageKey.currentState?.showFavoritesView();
+    };
+
+    if (widget.navigationShell.currentIndex != 1) {
+      goToTab(1);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        applyFavoritesView();
+        Future<void>.delayed(const Duration(milliseconds: 80), applyFavoritesView);
+      });
+      return;
+    }
+
+    applyFavoritesView();
   }
 
   @override
@@ -60,21 +112,23 @@ class _MainShellState extends ConsumerState<MainShell> {
         child: NavigationBar(
           selectedIndex: widget.navigationShell.currentIndex,
           onDestinationSelected: (index) {
+            final currentIndex = widget.navigationShell.currentIndex;
+
             // Don't process if same tab tapped
-            if (index == _currentIndex) return;
-            
+            if (index == currentIndex) return;
+
             // Reset UI state on the page being LEFT
-            _resetPage(_currentIndex);
-            
+            _resetPage(currentIndex);
+
             // Update current index
             setState(() {
               _currentIndex = index;
             });
-            
+
             // Navigate to the new tab
             widget.navigationShell.goBranch(
               index,
-              initialLocation: index == widget.navigationShell.currentIndex,
+              initialLocation: index == currentIndex,
             );
           },
           height: 70,

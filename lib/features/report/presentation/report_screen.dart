@@ -554,10 +554,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeOutBack,
       builder: (context, value, child) {
+        final safeOpacity = value.clamp(0.0, 1.0).toDouble();
         return Transform.scale(
           scale: 0.8 + (0.2 * value),
           child: Opacity(
-            opacity: value,
+            opacity: safeOpacity,
             child: child,
           ),
         );

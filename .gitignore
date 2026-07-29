@@ -47,6 +47,8 @@ app.*.map.json
 .env
 *.env
 .env.*
+android/gradle.properties
+
 
 # Coverage
 coverage/

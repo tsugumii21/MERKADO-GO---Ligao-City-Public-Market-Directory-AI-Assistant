@@ -28,6 +28,13 @@ class AppSecrets {
   static String get googleMapsApiKey =>
       dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
 
+  // Firebase Configuration
+  static String get firebaseAndroidApiKey =>
+      dotenv.env['FIREBASE_ANDROID_API_KEY'] ?? '';
+
+  static String get firebaseWebApiKey =>
+      dotenv.env['FIREBASE_WEB_API_KEY'] ?? '';
+
   // Validation
   static bool get isConfigured {
     return cloudinaryCloudName.isNotEmpty &&

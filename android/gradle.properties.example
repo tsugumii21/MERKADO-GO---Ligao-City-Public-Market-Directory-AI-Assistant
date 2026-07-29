@@ -1,0 +1,9 @@
+android.useAndroidX=true
+android.enableJetifier=true
+org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError
+
+# Fix for Kotlin incremental compilation cross-drive issue
+kotlin.incremental=false
+
+# Google Maps API Key
+GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_API_KEY_HERE

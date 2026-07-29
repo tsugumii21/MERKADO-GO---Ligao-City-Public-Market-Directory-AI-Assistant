@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'core/constants/app_secrets.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -39,8 +40,7 @@ class DefaultFirebaseOptions {
         );
       case TargetPlatform.linux:
         throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+          'DefaultFirebaseOptions are not supported for this platform.',
         );
       default:
         throw UnsupportedError(
@@ -49,15 +49,16 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAW3mmqsCQSL5ZLDbo86RVBwzDN2qmyhWo',
+  static FirebaseOptions get android => FirebaseOptions(
+    apiKey: AppSecrets.firebaseAndroidApiKey,
     appId: '1:25184120050:android:b5c99cebd2040dab5ef46b',
     messagingSenderId: '25184120050',
     projectId: 'merkado-go',
     storageBucket: 'merkado-go.firebasestorage.app',
   );
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAbuf1qm6p56qL2sRbnVb0igd7--mN_ApE',
+
+  static FirebaseOptions get web => FirebaseOptions(
+    apiKey: AppSecrets.firebaseWebApiKey,
     appId: '1:25184120050:web:a4fc524db9f7d15b5ef46b',
     messagingSenderId: '25184120050',
     projectId: 'merkado-go',

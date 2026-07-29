@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -54,10 +51,18 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAW3mmqsCQSL5ZLDbo86RVBwzDN2qmyhWo',
-    appId: '1:25184120050:android:418205228226f5dc5ef46b',
+    appId: '1:25184120050:android:b5c99cebd2040dab5ef46b',
     messagingSenderId: '25184120050',
     projectId: 'merkado-go',
     storageBucket: 'merkado-go.firebasestorage.app',
   );
-
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAbuf1qm6p56qL2sRbnVb0igd7--mN_ApE',
+    appId: '1:25184120050:web:a4fc524db9f7d15b5ef46b',
+    messagingSenderId: '25184120050',
+    projectId: 'merkado-go',
+    authDomain: 'merkado-go.firebaseapp.com',
+    storageBucket: 'merkado-go.firebasestorage.app',
+    measurementId: 'G-74NRG5GHMP',
+  );
 }

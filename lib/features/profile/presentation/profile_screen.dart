@@ -171,13 +171,17 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             );
           }
 
-          return SingleChildScrollView(
-            controller: _scrollController,
-            physics: const ClampingScrollPhysics(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const ClampingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 24),
 
@@ -214,12 +218,13 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   // SECTION 7: LOGOUT BUTTON
                   _buildLogoutButton(context, ref),
 
-                  const SizedBox(height: 48),
                 ],
               ),
             ),
-          );
-        },
+          ),
+        ),
+      );
+    },
         loading: () => const Center(
           child: CircularProgressIndicator(
             color: Color(0xFF1B5E20),

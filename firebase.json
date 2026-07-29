@@ -1,6 +1,1 @@
-{
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  }
-}
+{"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"flutter":{"platforms":{"android":{"default":{"projectId":"merkado-go","appId":"1:25184120050:android:b5c99cebd2040dab5ef46b","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"merkado-go","configurations":{"android":"1:25184120050:android:b5c99cebd2040dab5ef46b","web":"1:25184120050:web:a4fc524db9f7d15b5ef46b"}}}}}}

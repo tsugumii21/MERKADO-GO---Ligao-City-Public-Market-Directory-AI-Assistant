@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -7,51 +6,27 @@ class CloudinaryService {
   static const String _cloudName = 'diiuzmjnk';
   static const String _uploadPreset = 'merkadogo';
 
-  static Future<String?> uploadProfileImage(
-      File imageFile, String userId) async {
-    try {
-      final bytes = await imageFile.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final dataUri = 'data:image/jpeg;base64,$base64Image';
-
-      final response = await http.post(
-        Uri.parse(
-          'https://api.cloudinary.com/v1_1/$_cloudName/image/upload',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'file': dataUri,
-          'upload_preset': _uploadPreset,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        final secureUrl = json['secure_url'] as String;
-        return secureUrl;
-      } else {
-        debugPrint('❌ Failed: Cloudinary profile upload failed: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      debugPrint('❌ Error: Cloudinary profile upload error: $e');
-      return null;
-    }
-  }
-
-  /// Upload stall image to Cloudinary (to 'merkadogo/stalls' folder)
-  /// Returns the secure URL or null if upload fails
-  static Future<String?> uploadStallImage(
-    File imageFile, {
+  /// Upload raw image bytes to Cloudinary
+  static Future<String?> uploadImageBytes(
+    Uint8List bytes, {
+    String? folder,
     Function(int sent, int total)? onProgress,
   }) async {
     try {
-      final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
       final dataUri = 'data:image/jpeg;base64,$base64Image';
 
       if (onProgress != null) {
-        onProgress(50, 100); // Simulated progress (encoding done)
+        onProgress(50, 100);
+      }
+
+      final Map<String, String> payload = {
+        'file': dataUri,
+        'upload_preset': _uploadPreset,
+      };
+
+      if (folder != null && folder.isNotEmpty) {
+        payload['folder'] = folder;
       }
 
       final response = await http.post(
@@ -59,15 +34,11 @@ class CloudinaryService {
           'https://api.cloudinary.com/v1_1/$_cloudName/image/upload',
         ),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'file': dataUri,
-          'upload_preset': _uploadPreset,
-          'folder': 'merkadogo/stalls',
-        }),
+        body: jsonEncode(payload),
       );
 
       if (onProgress != null) {
-        onProgress(100, 100); // Upload complete
+        onProgress(100, 100);
       }
 
       if (response.statusCode == 200) {
@@ -75,37 +46,55 @@ class CloudinaryService {
         final secureUrl = json['secure_url'] as String;
         return secureUrl;
       } else {
-        debugPrint('❌ Failed: Cloudinary stall image upload failed: ${response.body}');
+        debugPrint('❌ Failed: Cloudinary upload failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      debugPrint('❌ Error: Cloudinary stall image upload error: $e');
+      debugPrint('❌ Error: Cloudinary upload error: $e');
       return null;
     }
   }
 
-  /// Upload multiple stall images
-  static Future<List<String>> uploadMultipleStallImages(
-    List<File> imageFiles, {
+  /// Upload profile image bytes to Cloudinary
+  static Future<String?> uploadProfileImageBytes(
+      Uint8List bytes, String userId) async {
+    return uploadImageBytes(bytes);
+  }
+
+  /// Upload stall image bytes to Cloudinary
+  static Future<String?> uploadStallImageBytes(
+    Uint8List bytes, {
+    Function(int sent, int total)? onProgress,
+  }) async {
+    return uploadImageBytes(
+      bytes,
+      folder: 'merkadogo/stalls',
+      onProgress: onProgress,
+    );
+  }
+
+  /// Upload multiple stall images as bytes
+  static Future<List<String>> uploadMultipleStallImagesBytes(
+    List<Uint8List> imageBytesList, {
     Function(int currentIndex, int total)? onProgress,
   }) async {
     List<String> uploadedUrls = [];
 
-    for (int i = 0; i < imageFiles.length; i++) {
+    for (int i = 0; i < imageBytesList.length; i++) {
       if (onProgress != null) {
-        onProgress(i, imageFiles.length);
+        onProgress(i, imageBytesList.length);
       }
 
-      final url = await uploadStallImage(imageFiles[i]);
+      final url = await uploadStallImageBytes(imageBytesList[i]);
       if (url != null) {
         uploadedUrls.add(url);
       }
     }
 
     if (onProgress != null) {
-      onProgress(imageFiles.length, imageFiles.length);
+      onProgress(imageBytesList.length, imageBytesList.length);
     }
 
     return uploadedUrls;
   }
-}
+}

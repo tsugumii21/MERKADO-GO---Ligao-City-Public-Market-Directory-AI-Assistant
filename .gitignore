@@ -86,3 +86,6 @@ coverage/
 
 # Web (not needed)
 **/web/
+
+# AI Agents Local Rules
+AGENTS.md

@@ -12,7 +12,12 @@
           "package_name": "com.merkadogo.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "25184120050-a10j7on91jb8sc8dpd30v20vs84ctkq8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAW3mmqsCQSL5ZLDbo86RVBwzDN2qmyhWo"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "25184120050-a10j7on91jb8sc8dpd30v20vs84ctkq8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     },
@@ -31,7 +41,12 @@
           "package_name": "com.merkadogo.merkado_go"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "25184120050-a10j7on91jb8sc8dpd30v20vs84ctkq8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAW3mmqsCQSL5ZLDbo86RVBwzDN2qmyhWo"
@@ -39,7 +54,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "25184120050-a10j7on91jb8sc8dpd30v20vs84ctkq8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

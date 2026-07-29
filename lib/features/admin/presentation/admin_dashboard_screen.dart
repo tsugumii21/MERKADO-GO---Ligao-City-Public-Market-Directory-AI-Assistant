@@ -124,40 +124,44 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           await Future.delayed(const Duration(milliseconds: 500));
         },
         color: const Color(0xFF1B5E20),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // === WELCOME CARD ===
-              userDataAsync.when(
-                data: (userData) {
-                  final adminName = userData?.fullName ?? 'Admin';
-                  return Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF1B5E20),
-                          Color(0xFF2E7D32),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back,',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.white70,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // === WELCOME CARD ===
+                  userDataAsync.when(
+                    data: (userData) {
+                      final adminName = userData?.fullName ?? 'Admin';
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFF1B5E20),
+                              Color(0xFF2E7D32),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome back,',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
                         Text(
                           adminName,
                           style: GoogleFonts.poppins(
@@ -491,9 +495,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
 }
+}
+
 
 // === REUSABLE STAT CARD WIDGET ===
 class _StatCard extends StatelessWidget {

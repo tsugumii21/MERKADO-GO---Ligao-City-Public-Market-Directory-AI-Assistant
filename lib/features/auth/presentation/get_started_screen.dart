@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
+import 'widgets/auth_layout.dart';
 
 class GetStartedScreen extends StatelessWidget {
   const GetStartedScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMobileView(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -153,4 +153,82 @@ class GetStartedScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDesktopForm(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Welcome to Merkado Go',
+          style: GoogleFonts.poppins(
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF1B5E20),
+          ),
+          textAlign: TextAlign.left,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Get started by logging into your account or registering as a new user.',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: const Color(0xFF757575),
+          ),
+        ),
+        const SizedBox(height: 40),
+        SizedBox(
+          height: 54,
+          child: ElevatedButton(
+            onPressed: () => context.push(RouteNames.login),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'Login',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 54,
+          child: OutlinedButton(
+            onPressed: () => context.push(RouteNames.signup),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2E7D32),
+              side: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'Register',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthLayout(
+      mobileBody: _buildMobileView(context),
+      desktopFormContent: _buildDesktopForm(context),
+    );
+  }
 }
+

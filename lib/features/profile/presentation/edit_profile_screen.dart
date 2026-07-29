@@ -1,5 +1,4 @@
-// Part 10: Edit Profile Screen with Cloudinary photo upload and email verification
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,7 +23,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _newEmailController = TextEditingController();
   final _imagePicker = ImagePicker();
 
-  File? _selectedImage;
+  Uint8List? _selectedImageBytes;
   bool _isSaving = false;
   bool _isInitialized = false;
   String _currentEmail = '';
@@ -47,8 +46,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       );
 
       if (image != null) {
+        final bytes = await image.readAsBytes();
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImageBytes = bytes;
         });
       }
     } catch (e) {
@@ -82,9 +82,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
       // Upload new photo to Cloudinary if selected
       String? newPhotoUrl;
-      if (_selectedImage != null) {
-        newPhotoUrl = await CloudinaryService.uploadProfileImage(
-          _selectedImage!,
+      if (_selectedImageBytes != null) {
+        newPhotoUrl = await CloudinaryService.uploadProfileImageBytes(
+          _selectedImageBytes!,
           user.uid,
         );
 
@@ -271,12 +271,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       CircleAvatar(
                         radius: 52,
                         backgroundColor: const Color(0xFFE8F5E9),
-                        backgroundImage: _selectedImage != null
-                            ? FileImage(_selectedImage!)
+                        backgroundImage: _selectedImageBytes != null
+                            ? MemoryImage(_selectedImageBytes!)
                             : (userData.profilePhotoUrl != null
                                 ? CachedNetworkImageProvider(userData.profilePhotoUrl!) as ImageProvider
                                 : null),
-                        child: (_selectedImage == null && userData.profilePhotoUrl == null)
+                        child: (_selectedImageBytes == null && userData.profilePhotoUrl == null)
                             ? const Icon(
                                 Icons.person_rounded,
                                 size: 52,

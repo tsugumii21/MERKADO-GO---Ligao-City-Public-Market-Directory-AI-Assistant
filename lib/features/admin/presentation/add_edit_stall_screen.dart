@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -65,7 +65,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   final List<String> _selectedTags = [];
   final List<String> _selectedDays = [];
   String _stallStatus = 'open';
-  File? _selectedImage;
+  Uint8List? _selectedImageBytes;
   String? _existingPhotoUrl;
   bool _isLoading = false;
   bool _isSaving = false;
@@ -786,19 +786,20 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     );
 
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _selectedImage = File(pickedFile.path);
+        _selectedImageBytes = bytes;
       });
     }
   }
 
   Widget _buildPhotoSection() {
     // Case 1: User just picked a new image
-    if (_selectedImage != null) {
+    if (_selectedImageBytes != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          _selectedImage!,
+        child: Image.memory(
+          _selectedImageBytes!,
           width: double.infinity,
           height: 180,
           fit: BoxFit.cover,
@@ -971,11 +972,9 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       String? photoUrl = _existingPhotoUrl;
 
       // Upload image if a new one was selected
-      if (_selectedImage != null) {
-        final uid = FirebaseAuth.instance.currentUser?.uid ?? 'stall_${DateTime.now().millisecondsSinceEpoch}';
-        photoUrl = await CloudinaryService.uploadProfileImage(
-          _selectedImage!,
-          'stall_$uid',
+      if (_selectedImageBytes != null) {
+        photoUrl = await CloudinaryService.uploadStallImageBytes(
+          _selectedImageBytes!,
         );
       }
 
@@ -2216,7 +2215,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               _buildPhotoSection(),
               const SizedBox(height: 8),
               // Photo action buttons
-              if (_selectedImage != null ||
+              if (_selectedImageBytes != null ||
                   (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty)) ...[  
                 Row(
                   children: [
@@ -2265,7 +2264,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          _selectedImage = null;
+                          _selectedImageBytes = null;
                           _existingPhotoUrl = null;
                         });
                       },

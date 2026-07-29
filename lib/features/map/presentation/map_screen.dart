@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -1442,6 +1443,38 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   // ── GPS / Location ─────────────────────────────────────────────────────────
 
   Future<void> _initLocationService() async {
+    if (kIsWeb) {
+      if (mounted) {
+        setState(() {
+          _locationPermissionGranted = true;
+          _isLoadingLocation = true;
+        });
+      }
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+            _isLoadingLocation = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isLoadingLocation = false);
+      }
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 5,
+        ),
+      ).listen((position) {
+        if (mounted) setState(() => _currentPosition = position);
+      });
+      return;
+    }
+
     final permission = await Permission.locationWhenInUse.request();
     if (permission.isGranted) {
       if (mounted) {
@@ -1478,7 +1511,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   }
 
   void _goToMyLocation() async {
-    if (!_locationPermissionGranted) {
+    if (!kIsWeb && !_locationPermissionGranted) {
       final permission = await Permission.locationWhenInUse.request();
       if (!permission.isGranted) return;
     }

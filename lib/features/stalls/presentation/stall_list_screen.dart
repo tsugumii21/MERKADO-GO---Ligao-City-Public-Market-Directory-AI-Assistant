@@ -1283,9 +1283,13 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
           final filteredStalls = applyFilters(allStalls, favoriteState.favoriteIds);
           final recentlyViewed = _getRecentlyViewedStalls(allStalls);
 
-          return Column(
-            children: [
-              // Search bar
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: Column(
+                children: [
+                  // Search bar
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Column(
@@ -1922,91 +1926,96 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 ),
               ),
             ],
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF1B5E20),
-          ),
-        ),
-        error: (error, stack) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline_rounded,
-                  size: 64,
-                  color: Color(0xFFE53935),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Error Loading Stalls',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF212121),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error.toString(),
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: const Color(0xFF757575),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
           ),
         ),
       );
-          } catch (e) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    size: 48,
-                    color: Color(0xFFE53935),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Something went wrong',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF212121),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _selectedType = 'all';
-                        _selectedSubLabel = null;
-                        _selectedTag = null;
-                        _subcategoryRowVisible = false;
-                      });
-                    },
-                    child: Text(
-                      'Reset filters',
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF1B5E20),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-        },
+    },
+    loading: () => const Center(
+      child: CircularProgressIndicator(
+        color: Color(0xFF1B5E20),
       ),
-    );
-  }
+    ),
+    error: (error, stack) => Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: Color(0xFFE53935),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error Loading Stalls',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF212121),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.toString(),
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: const Color(0xFF757575),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+} catch (e) {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.error_outline_rounded,
+          size: 48,
+          color: Color(0xFFE53935),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Something went wrong',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF212121),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () {
+            setState(() {
+              _selectedType = 'all';
+              _selectedSubLabel = null;
+              _selectedTag = null;
+              _subcategoryRowVisible = false;
+            });
+          },
+          child: Text(
+            'Reset filters',
+            style: GoogleFonts.poppins(
+              color: const Color(0xFF1B5E20),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+  },
+),
+);
+}
+
+
+
 
   Widget _buildActiveFilterChip(String label, VoidCallback onRemove) {
     return Container(

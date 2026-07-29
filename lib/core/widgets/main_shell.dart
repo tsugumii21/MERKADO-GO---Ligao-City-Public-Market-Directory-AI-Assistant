@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../responsive/responsive_breakpoints.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/stalls/presentation/stall_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -42,7 +43,7 @@ class MainShellState extends ConsumerState<MainShell> {
 
   void _resetPage(int pageIndex) {
     if (!mounted) return;
-    
+
     switch (pageIndex) {
       case 0: // Map page
         mapPageKey.currentState?.resetUI();
@@ -54,6 +55,22 @@ class MainShellState extends ConsumerState<MainShell> {
         profilePageKey.currentState?.resetUI();
         break;
     }
+  }
+
+  void _onTabSelected(int index) {
+    final currentIndex = widget.navigationShell.currentIndex;
+    if (index == currentIndex) return;
+
+    _resetPage(currentIndex);
+
+    setState(() {
+      _currentIndex = index;
+    });
+
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == currentIndex,
+    );
   }
 
   void goToTab(int index, {bool resetCurrentPage = true}) {
@@ -96,7 +113,91 @@ class MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+    final isDesktop = AppBreakpoints.isDesktop(context);
+    final isWideOrTablet = MediaQuery.sizeOf(context).width >= AppBreakpoints.mobile;
+
+    if (isWideOrTablet) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: widget.navigationShell.currentIndex,
+              onDestinationSelected: _onTabSelected,
+              extended: isDesktop,
+              minWidth: 72,
+              minExtendedWidth: 220,
+              backgroundColor: colorScheme.surface,
+              indicatorColor: colorScheme.primaryContainer,
+              leading: isDesktop
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1B5E20),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.storefront_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'MERKADO GO',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1B5E20),
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B5E20),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.storefront_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.map_outlined, size: 24),
+                  selectedIcon: Icon(Icons.map_rounded, size: 26),
+                  label: Text('Market Map'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.storefront_outlined, size: 24),
+                  selectedIcon: Icon(Icons.storefront_rounded, size: 26),
+                  label: Text('Stalls'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.person_outline_rounded, size: 24),
+                  selectedIcon: Icon(Icons.person_rounded, size: 26),
+                  label: Text('Profile'),
+                ),
+              ],
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(child: widget.navigationShell),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: widget.navigationShell,
       bottomNavigationBar: Container(
@@ -111,63 +212,26 @@ class MainShellState extends ConsumerState<MainShell> {
         ),
         child: NavigationBar(
           selectedIndex: widget.navigationShell.currentIndex,
-          onDestinationSelected: (index) {
-            final currentIndex = widget.navigationShell.currentIndex;
-
-            // Don't process if same tab tapped
-            if (index == currentIndex) return;
-
-            // Reset UI state on the page being LEFT
-            _resetPage(currentIndex);
-
-            // Update current index
-            setState(() {
-              _currentIndex = index;
-            });
-
-            // Navigate to the new tab
-            widget.navigationShell.goBranch(
-              index,
-              initialLocation: index == currentIndex,
-            );
-          },
+          onDestinationSelected: _onTabSelected,
           height: 70,
           elevation: 0,
           backgroundColor: colorScheme.surface,
           indicatorColor: colorScheme.primaryContainer,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: [
+          destinations: const [
             NavigationDestination(
-              icon: Icon(
-                Icons.map_outlined,
-                size: 24,
-              ),
-              selectedIcon: Icon(
-                Icons.map_rounded,
-                size: 26,
-              ),
+              icon: Icon(Icons.map_outlined, size: 24),
+              selectedIcon: Icon(Icons.map_rounded, size: 26),
               label: 'Market Map',
             ),
             NavigationDestination(
-              icon: Icon(
-                Icons.storefront_outlined,
-                size: 24,
-              ),
-              selectedIcon: Icon(
-                Icons.storefront_rounded,
-                size: 26,
-              ),
+              icon: Icon(Icons.storefront_outlined, size: 24),
+              selectedIcon: Icon(Icons.storefront_rounded, size: 26),
               label: 'Stalls',
             ),
             NavigationDestination(
-              icon: Icon(
-                Icons.person_outline_rounded,
-                size: 24,
-              ),
-              selectedIcon: Icon(
-                Icons.person_rounded,
-                size: 26,
-              ),
+              icon: Icon(Icons.person_outline_rounded, size: 24),
+              selectedIcon: Icon(Icons.person_rounded, size: 26),
               label: 'Profile',
             ),
           ],
@@ -176,3 +240,4 @@ class MainShellState extends ConsumerState<MainShell> {
     );
   }
 }
+

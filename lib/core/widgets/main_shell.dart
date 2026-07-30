@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../responsive/responsive_breakpoints.dart';
 import '../../features/map/presentation/map_screen.dart';
@@ -124,20 +125,88 @@ class MainShellState extends ConsumerState<MainShell> {
               selectedIndex: widget.navigationShell.currentIndex,
               onDestinationSelected: _onTabSelected,
               extended: isDesktop,
-              minWidth: 72,
-              minExtendedWidth: 220,
-              backgroundColor: AppColors.surface,
-              indicatorColor: AppColors.primaryLight,
-              unselectedIconTheme: const IconThemeData(color: AppColors.inkMuted, size: 24),
-              selectedIconTheme: const IconThemeData(color: AppColors.primary, size: 26),
-              unselectedLabelTextStyle: const TextStyle(color: AppColors.inkMuted, fontSize: 13),
-              selectedLabelTextStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
+              minWidth: 76,
+              minExtendedWidth: 230,
+              backgroundColor: AppColors.navSurface,
+              indicatorColor: AppColors.primary,
+              unselectedIconTheme: const IconThemeData(color: Colors.white60, size: 22),
+              selectedIconTheme: const IconThemeData(color: Colors.white, size: 24),
+              unselectedLabelTextStyle: GoogleFonts.poppins(
+                color: Colors.white60,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+              ),
+              selectedLabelTextStyle: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
               leading: isDesktop
                   ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 28),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.asset(
+                              'assets/images/app_icon.png',
+                              width: 38,
+                              height: 38,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.storefront_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'MerkadoGo',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                              Text(
+                                'Ligao Public Market',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white60,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          'assets/images/app_icon.png',
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
@@ -146,34 +215,9 @@ class MainShellState extends ConsumerState<MainShell> {
                             child: const Icon(
                               Icons.storefront_rounded,
                               color: Colors.white,
-                              size: 22,
+                              size: 20,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'MERKADO GO',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.storefront_rounded,
-                          color: Colors.white,
-                          size: 20,
                         ),
                       ),
                     ),
@@ -195,7 +239,7 @@ class MainShellState extends ConsumerState<MainShell> {
                 ),
               ],
             ),
-            const VerticalDivider(thickness: 1, width: 1, color: AppColors.border),
+            const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF2A362A)),
             Expanded(child: widget.navigationShell),
           ],
         ),

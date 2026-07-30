@@ -1707,12 +1707,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                     applyFilters(allStalls, favoriteState.favoriteIds);
                 final recentlyViewed = _getRecentlyViewedStalls(allStalls);
 
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1000),
-                    child: Column(
-                      children: [
+                return SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    children: [
                         // Search bar
                         Container(
                           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -2451,14 +2449,14 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                               else if (MediaQuery.sizeOf(context).width >= 600)
                                 SliverPadding(
                                   padding:
-                                      const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                                      const EdgeInsets.fromLTRB(20, 0, 20, 24),
                                   sliver: SliverGrid(
                                     gridDelegate:
                                         const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 460,
-                                      mainAxisExtent: 140,
-                                      mainAxisSpacing: 12,
-                                      crossAxisSpacing: 12,
+                                      maxCrossAxisExtent: 380,
+                                      mainAxisExtent: 136,
+                                      mainAxisSpacing: 14,
+                                      crossAxisSpacing: 14,
                                     ),
                                     delegate: SliverChildBuilderDelegate(
                                       (context, index) {
@@ -2496,10 +2494,9 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         ),
                       ],
                     ),
-                  ),
-                );
-              },
-              loading: () => const Center(
+                  );
+                },
+                loading: () => const Center(
                 child: CircularProgressIndicator(
                   color: Color(0xFF1B5E20),
                 ),
@@ -3690,7 +3687,7 @@ class _CategoryScrollTrackState extends State<_CategoryScrollTrack> {
     widget.controller.animateTo(
       (widget.controller.offset + delta)
           .clamp(0.0, widget.controller.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
     );
   }

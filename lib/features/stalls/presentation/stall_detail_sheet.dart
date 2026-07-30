@@ -257,19 +257,54 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
             child: CustomScrollView(
               controller: scrollController,
               slivers: [
-                // Drag handle
+                // Top header / Drag handle
                 SliverToBoxAdapter(
-                  child: Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 12, bottom: 8),
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0E0E0),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
+                  child: MediaQuery.sizeOf(context).width >= 600
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Color(0xFFF0F0F0),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Stall Details',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF1A241A),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: widget.onClose,
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Color(0xFF757575),
+                                  size: 20,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Center(
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 12, bottom: 8),
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0E0E0),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
                 ),
 
                 // Photo carousel

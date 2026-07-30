@@ -1,5 +1,6 @@
 // Part 8: Rebuilt Sort & Filter System - 3 Options (Alphabetical, Time Range, Day+Status)
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +25,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _categoryScrollController = ScrollController();
   String _selectedType = 'all';
   String? _selectedSubLabel;
   String? _selectedTag; // for product-level filtering (sari_sari only)
@@ -1470,33 +1472,101 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   }
 
   void _showFilterBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useSafeArea: false,
-      builder: (context) => _FilterBottomSheet(
-        currentSortAlpha: sortAlpha,
-        currentFilterOpenTime: filterOpenTime,
-        currentFilterCloseTime: filterCloseTime,
-        currentSelectedDay: selectedDay,
-        currentShowOpenOnDay: showOpenOnDay,
-        currentFilterOpenOnly: _filterOpenOnly,
-        onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen,
-            newOpenOnly) {
-          setState(() {
-            sortAlpha = newSortAlpha;
-            filterOpenTime = newOpenTime;
-            filterCloseTime = newCloseTime;
-            selectedDay = newDay;
-            showOpenOnDay = newShowOpen;
-            _filterOpenOnly = newOpenOnly;
-          });
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
+    if (isDesktop) {
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'Dismiss Filter',
+        barrierColor: Colors.black38,
+        transitionDuration: const Duration(milliseconds: 280),
+        pageBuilder: (context, anim1, anim2) {
+          return Align(
+            alignment: Alignment.centerRight,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 380,
+                height: double.infinity,
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 16,
+                      offset: Offset(-4, 0),
+                    ),
+                  ],
+                ),
+                child: _FilterBottomSheet(
+                  currentSortAlpha: sortAlpha,
+                  currentFilterOpenTime: filterOpenTime,
+                  currentFilterCloseTime: filterCloseTime,
+                  currentSelectedDay: selectedDay,
+                  currentShowOpenOnDay: showOpenOnDay,
+                  currentFilterOpenOnly: _filterOpenOnly,
+                  onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay,
+                      newShowOpen, newOpenOnly) {
+                    setState(() {
+                      sortAlpha = newSortAlpha;
+                      filterOpenTime = newOpenTime;
+                      filterCloseTime = newCloseTime;
+                      selectedDay = newDay;
+                      showOpenOnDay = newShowOpen;
+                      _filterOpenOnly = newOpenOnly;
+                    });
+                  },
+                  onReset: resetAllFilters,
+                  parseTime: parseTime,
+                ),
+              ),
+            ),
+          );
         },
-        onReset: resetAllFilters,
-        parseTime: parseTime,
-      ),
-    );
+        transitionBuilder: (context, anim1, anim2, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: anim1,
+              curve: Curves.easeOutCubic,
+            )),
+            child: child,
+          );
+        },
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        useSafeArea: false,
+        builder: (context) => _FilterBottomSheet(
+          currentSortAlpha: sortAlpha,
+          currentFilterOpenTime: filterOpenTime,
+          currentFilterCloseTime: filterCloseTime,
+          currentSelectedDay: selectedDay,
+          currentShowOpenOnDay: showOpenOnDay,
+          currentFilterOpenOnly: _filterOpenOnly,
+          onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen,
+              newOpenOnly) {
+            setState(() {
+              sortAlpha = newSortAlpha;
+              filterOpenTime = newOpenTime;
+              filterCloseTime = newCloseTime;
+              selectedDay = newDay;
+              showOpenOnDay = newShowOpen;
+              _filterOpenOnly = newOpenOnly;
+            });
+          },
+          onReset: resetAllFilters,
+          parseTime: parseTime,
+        ),
+      );
+    }
   }
 
   IconData _getCategoryIcon(String category) {
@@ -1965,11 +2035,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                             slivers: [
                               // Category chips
                               SliverToBoxAdapter(
-                                child: Container(
-                                  height: 50,
-                                  margin:
-                                      const EdgeInsets.only(top: 12, bottom: 8),
+                                child: _CategoryScrollTrack(
+                                  controller: _categoryScrollController,
                                   child: ListView.builder(
+                                    controller: _categoryScrollController,
                                     scrollDirection: Axis.horizontal,
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 16),
@@ -2962,67 +3031,104 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
     return SafeArea(
       top: false,
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.80,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
+        height: isDesktop
+            ? double.infinity
+            : MediaQuery.of(context).size.height * 0.80,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: isDesktop
+              ? const BorderRadius.horizontal(left: Radius.circular(20))
+              : const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
         ),
         child: Column(
           children: [
-            // Drag handle
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 4),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E0),
-                borderRadius: BorderRadius.circular(2),
+            // Drag handle (mobile only)
+            if (!isDesktop)
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
 
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Sort & Filter',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF212121),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _tempSortAlpha = null;
-                        _tempFilterOpenTime = null;
-                        _tempFilterCloseTime = null;
-                        _tempSelectedDay = null;
-                        _tempShowOpenOnDay = true;
-                        _tempFilterOpenOnly = false;
-                      });
-                    },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 0),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      'Reset All',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: const Color(0xFF9E9E9E),
+                  Row(
+                    children: [
+                      Text(
+                        'Sort & Filter',
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
                       ),
-                    ),
+                      if (getActiveFilterCount() > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${getActiveFilterCount()}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _tempSortAlpha = null;
+                            _tempFilterOpenTime = null;
+                            _tempFilterCloseTime = null;
+                            _tempSelectedDay = null;
+                            _tempShowOpenOnDay = true;
+                            _tempFilterOpenOnly = false;
+                          });
+                        },
+                        child: Text(
+                          'Reset All',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (isDesktop)
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded,
+                              color: AppColors.inkMuted),
+                          onPressed: () => Navigator.pop(context),
+                          tooltip: 'Close Filter',
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -3537,6 +3643,116 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryScrollTrack extends StatefulWidget {
+  final Widget child;
+  final ScrollController controller;
+
+  const _CategoryScrollTrack({
+    required this.child,
+    required this.controller,
+  });
+
+  @override
+  State<_CategoryScrollTrack> createState() => _CategoryScrollTrackState();
+}
+
+class _CategoryScrollTrackState extends State<_CategoryScrollTrack> {
+  bool _canScrollLeft = false;
+  bool _canScrollRight = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_updateScrollState);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _updateScrollState());
+  }
+
+  void _updateScrollState() {
+    if (!widget.controller.hasClients) return;
+    final max = widget.controller.position.maxScrollExtent;
+    final offset = widget.controller.offset;
+    if (mounted) {
+      setState(() {
+        _canScrollLeft = offset > 5;
+        _canScrollRight = offset < max - 5;
+      });
+    }
+  }
+
+  void _scroll(double delta) {
+    if (!widget.controller.hasClients) return;
+    widget.controller.animateTo(
+      (widget.controller.offset + delta)
+          .clamp(0.0, widget.controller.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.only(top: 12, bottom: 8),
+      child: Row(
+        children: [
+          if (isDesktop && _canScrollLeft)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: InkWell(
+                onTap: () => _scroll(-240),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Icon(Icons.chevron_left_rounded,
+                      size: 20, color: AppColors.primary),
+                ),
+              ),
+            ),
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(
+                dragDevices: {
+                  PointerDeviceKind.touch,
+                  PointerDeviceKind.mouse,
+                  PointerDeviceKind.trackpad,
+                },
+              ),
+              child: widget.child,
+            ),
+          ),
+          if (isDesktop && _canScrollRight)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InkWell(
+                onTap: () => _scroll(240),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Icon(Icons.chevron_right_rounded,
+                      size: 20, color: AppColors.primary),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

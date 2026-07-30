@@ -197,10 +197,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         children: [
           Text(
             'Welcome Back!',
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.outfit(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF1B5E20),
+              color: const Color(0xFF1A241A),
               letterSpacing: -0.5,
             ),
             textAlign: TextAlign.center,
@@ -211,7 +211,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: const Color(0xFF757575),
+              color: const Color(0xFF667066),
             ),
             textAlign: TextAlign.center,
           ),
@@ -221,25 +221,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF212121),
+              color: const Color(0xFF1A241A),
             ),
             decoration: InputDecoration(
               labelText: 'Email or Username',
               labelStyle: GoogleFonts.poppins(
                 fontSize: 13,
-                color: const Color(0xFF757575),
+                color: const Color(0xFF667066),
               ),
               prefixIcon: const Icon(
                 Icons.person_outline_rounded,
-                color: Color(0xFF757575),
+                color: Color(0xFF667066),
                 size: 22,
               ),
               filled: true,
-              fillColor: const Color(0xFFF5F5F5),
+              fillColor: const Color(0xFFF6F8F6),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+                borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -262,17 +266,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF212121),
+              color: const Color(0xFF1A241A),
             ),
             decoration: InputDecoration(
               labelText: 'Password',
               labelStyle: GoogleFonts.poppins(
                 fontSize: 13,
-                color: const Color(0xFF757575),
+                color: const Color(0xFF667066),
               ),
               prefixIcon: const Icon(
                 Icons.lock_outline_rounded,
-                color: Color(0xFF757575),
+                color: Color(0xFF667066),
                 size: 22,
               ),
               suffixIcon: IconButton(
@@ -280,7 +284,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   _obscurePassword
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: const Color(0xFF757575),
+                  color: const Color(0xFF667066),
                   size: 22,
                 ),
                 onPressed: () {
@@ -290,11 +294,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 },
               ),
               filled: true,
-              fillColor: const Color(0xFFF5F5F5),
+              fillColor: const Color(0xFFF6F8F6),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+                borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -331,9 +339,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleLogin,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
+                backgroundColor: const Color(0xFF1B5E20),
                 foregroundColor: Colors.white,
                 elevation: 0,
+                shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -470,6 +479,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       desktopFormContent: _buildFormFields(context),
       heroTitle: 'Welcome Back',
       heroSubtitle: 'Sign in to access your Ligao City Public Market guide & stalls',
+      illustrationPath: 'assets/images/login_illustration.png',
     );
   }
 }

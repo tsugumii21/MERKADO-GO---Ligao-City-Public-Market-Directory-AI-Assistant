@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
+import 'core/utils/google_maps_web_loader.dart';
 
 void main() async {
   // CRITICAL: Catch all Flutter errors before anything else
@@ -23,8 +24,9 @@ void main() async {
   
   try {
     await dotenv.load(fileName: '.env');
+    await loadGoogleMapsWebScript();
   } catch (e) {
-    debugPrint('❌ Failed: dotenv load failed: $e');
+    debugPrint('❌ Failed: dotenv / Maps loader failed: $e');
   }
   
   try {

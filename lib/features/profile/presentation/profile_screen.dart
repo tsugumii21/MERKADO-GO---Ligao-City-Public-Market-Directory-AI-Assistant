@@ -9,6 +9,7 @@ import '../../../core/widgets/main_shell.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../../providers/user_provider.dart';
+import '../../../core/theme/app_colors.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -59,14 +60,14 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF424242),
+            color: AppColors.ink,
           ),
         ),
         content: Text(
           'Are you sure you want to log out?',
           style: GoogleFonts.poppins(
             fontSize: 14,
-            color: const Color(0xFF757575),
+            color: AppColors.inkMuted,
           ),
         ),
         actions: [
@@ -77,21 +78,21 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF757575),
+                color: AppColors.inkMuted,
               ),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFE53935),
+              foregroundColor: AppColors.error,
             ),
             child: Text(
               'Log Out',
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFFE53935),
+                color: AppColors.error,
               ),
             ),
           ),
@@ -118,7 +119,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                 'Failed to log out. Please try again.',
                 style: GoogleFonts.poppins(fontSize: 13),
               ),
-              backgroundColor: const Color(0xFFE53935),
+              backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -140,9 +141,9 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
     final favoriteCount = ref.watch(favoriteCountProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: AppColors.primary,
         elevation: 0,
         automaticallyImplyLeading: false,
         toolbarHeight: 60,
@@ -165,7 +166,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                 'No user data found',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: const Color(0xFF757575),
+                  color: AppColors.inkMuted,
                 ),
               ),
             );
@@ -227,7 +228,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
     },
         loading: () => const Center(
           child: CircularProgressIndicator(
-            color: Color(0xFF1B5E20),
+            color: AppColors.primary,
           ),
         ),
         error: (error, stack) => Center(
@@ -235,7 +236,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             'Error loading profile',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: const Color(0xFFE53935),
+              color: AppColors.error,
             ),
           ),
         ),
@@ -265,7 +266,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 48,
-                backgroundColor: const Color(0xFFE8F5E9),
+                backgroundColor: AppColors.primaryLight,
                 backgroundImage: userData.profilePhotoUrl != null
                     ? CachedNetworkImageProvider(userData.profilePhotoUrl!)
                     : null,
@@ -273,7 +274,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ? const Icon(
                         Icons.person_rounded,
                         size: 48,
-                        color: Color(0xFF1B5E20),
+                        color: AppColors.primary,
                       )
                     : null,
               ),
@@ -286,7 +287,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1B5E20),
+                      color: AppColors.primary,
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Colors.white,
@@ -312,7 +313,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF1B5E20),
+              color: AppColors.primary,
             ),
           ),
 
@@ -324,7 +325,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w400,
-              color: const Color(0xFF9E9E9E),
+              color: AppColors.inkSubtle,
             ),
           ),
         ],
@@ -352,7 +353,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1B5E20),
+          backgroundColor: AppColors.primary,
           elevation: 0,
           minimumSize: const Size(double.infinity, 52),
           maximumSize: const Size(double.infinity, 52),
@@ -387,7 +388,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 const Icon(
                   Icons.favorite_rounded,
-                  color: Color(0xFFE53935),
+                  color: AppColors.error,
                   size: 24,
                 ),
                 const SizedBox(height: 8),
@@ -396,7 +397,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1B5E20),
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -404,7 +405,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   'Favorite Stalls',
                   style: GoogleFonts.poppins(
                     fontSize: 11,
-                    color: const Color(0xFF9E9E9E),
+                    color: AppColors.inkSubtle,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -434,7 +435,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 const Icon(
                   Icons.calendar_today_rounded,
-                  color: Color(0xFF1B5E20),
+                  color: AppColors.primary,
                   size: 24,
                 ),
                 const SizedBox(height: 8),
@@ -443,7 +444,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1B5E20),
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -451,7 +452,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   'Member Since',
                   style: GoogleFonts.poppins(
                     fontSize: 11,
-                    color: const Color(0xFF9E9E9E),
+                    color: AppColors.inkSubtle,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -471,7 +472,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         style: GoogleFonts.poppins(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF9E9E9E),
+          color: AppColors.inkSubtle,
           letterSpacing: 1.2,
         ),
       ),
@@ -525,12 +526,12 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEE),
+                color: AppColors.errorLight,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.favorite_rounded,
-                color: Color(0xFFE53935),
+                color: AppColors.error,
                 size: 18,
               ),
             ),
@@ -540,14 +541,14 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF424242),
+                color: AppColors.ink,
               ),
             ),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
+                color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -555,14 +556,14 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1B5E20),
+                  color: AppColors.primary,
                 ),
               ),
             ),
             const SizedBox(width: 8),
             const Icon(
               Icons.chevron_right_rounded,
-              color: Color(0xFFBDBDBD),
+              color: AppColors.inkSubtle,
               size: 18,
             ),
           ],
@@ -579,7 +580,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         onPressed: () => _handleSignOut(context, ref),
         icon: const Icon(
           Icons.logout_rounded,
-          color: Color(0xFFE53935),
+          color: AppColors.error,
           size: 18,
         ),
         label: Text(
@@ -587,12 +588,12 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
           style: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFFE53935),
+            color: AppColors.error,
           ),
         ),
         style: OutlinedButton.styleFrom(
-          backgroundColor: const Color(0xFFFFEBEE),
-          side: const BorderSide(color: Color(0xFFFFCDD2), width: 1),
+          backgroundColor: AppColors.errorLight,
+          side: const BorderSide(color: AppColors.errorBorder, width: 1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -614,12 +615,12 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F8E9),
+              color: AppColors.surfaceDim,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              color: const Color(0xFF1B5E20),
+              color: AppColors.primary,
               size: 18,
             ),
           ),
@@ -633,7 +634,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF424242),
+                    color: AppColors.ink,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -642,7 +643,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: const Color(0xFF9E9E9E),
+                    color: AppColors.inkSubtle,
                   ),
                 ),
               ],
@@ -650,7 +651,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const Icon(
             Icons.chevron_right_rounded,
-            color: Color(0xFFBDBDBD),
+            color: AppColors.inkSubtle,
             size: 18,
           ),
         ],
@@ -658,3 +659,5 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
+
+

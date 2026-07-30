@@ -21,6 +21,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/utils/stall_utils.dart';
 import '../indoor_map_screen.dart';
+import '../../../core/theme/app_colors.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -29,39 +30,40 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => MapScreenState();
 }
 
-class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMixin {
+class MapScreenState extends ConsumerState<MapScreen>
+    with TickerProviderStateMixin {
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  
+
   // Animation for floating Aling Suki button
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   bool _isChatOpen = false;
-  
+
   // Camera state
   double? _currentZoom = 19.0;
   static const double _stallVisibilityZoomThreshold = 20.0;
-  
+
   // Zoom limit tracking (prevent zooming out past opening view)
   bool _initialZoomCaptured = false;
   static const double _minZoom = 17.0; // matches opening view zoom level
-  
+
   // Map initialization tracking (prevent repeated camera animations)
   bool _mapInitialized = false;
 
   Timer? _markerDebounce;
   Timer? _countRefreshTimer;
-  
+
   // Ligao City Public Market coordinates (exact location from Google Maps)
   static const LatLng _ligaoMarketCenter = LatLng(13.241861, 123.538917);
-  
+
   // Market boundary (wider to show all stalls)
   static final LatLngBounds _marketBounds = LatLngBounds(
     southwest: const LatLng(13.2410, 123.5378),
     northeast: const LatLng(13.2428, 123.5398),
   );
-  
+
   Set<Marker> _markers = {};
   BitmapDescriptor? _openMarkerIcon;
   BitmapDescriptor? _closedMarkerIcon;
@@ -95,13 +97,13 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
         if (mounted) setState(() {});
       },
     );
-    
+
     // Initialize pulse animation for Aling Suki button
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
@@ -143,7 +145,8 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   }
 
   Widget _buildStallCountBadge() {
-    final openCount = _allStalls.where((s) => StallUtils.isStallOpenNow(s)).length;
+    final openCount =
+        _allStalls.where((s) => StallUtils.isStallOpenNow(s)).length;
     final closedCount = _allStalls.length - openCount;
 
     return Container(
@@ -279,7 +282,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
       }
     });
   }
-  
+
   void _initMapView() {
     if (_mapController == null) return;
     _mapController!.animateCamera(
@@ -307,9 +310,8 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
 
   void _toggleMapType() {
     setState(() {
-      _currentMapType = _currentMapType == MapType.hybrid
-          ? MapType.normal
-          : MapType.hybrid;
+      _currentMapType =
+          _currentMapType == MapType.hybrid ? MapType.normal : MapType.hybrid;
     });
   }
 
@@ -324,8 +326,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     );
   }
 
-  Future<void> _buildMarkers(
-      List<StallModel> stalls, double zoom) async {
+  Future<void> _buildMarkers(List<StallModel> stalls, double zoom) async {
     if (zoom < _stallVisibilityZoomThreshold) {
       if (mounted && _markers.isNotEmpty) {
         setState(() => _markers = {});
@@ -370,11 +371,11 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     final Canvas canvas = Canvas(pictureRecorder);
     const double size = 32.0;
     const double radius = 16.0;
-    
+
     // Marker circle background (green=open, red=closed)
     final paint = Paint()..color = markerColor;
     canvas.drawCircle(const Offset(radius, radius), radius, paint);
-    
+
     // White border
     final borderPaint = Paint()
       ..color = Colors.white
@@ -385,11 +386,11 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
       radius - 1,
       borderPaint,
     );
-    
+
     final picture = pictureRecorder.endRecording();
     final image = await picture.toImage(size.toInt(), size.toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    
+
     return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
   }
 
@@ -494,7 +495,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
       }
       return false;
     }).toList();
-    
+
     setState(() {
       _isSearching = true;
       _filteredStalls = allMatches;
@@ -643,7 +644,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
 
   void _animateToStalls(List<StallModel> stalls) {
     if (stalls.isEmpty) return;
-    
+
     if (stalls.length == 1) {
       // Single stall: zoom to it
       _animateToCameraPosition(
@@ -664,14 +665,14 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     double maxLat = stalls.first.latitude;
     double minLng = stalls.first.longitude;
     double maxLng = stalls.first.longitude;
-    
+
     for (final stall in stalls) {
       if (stall.latitude < minLat) minLat = stall.latitude;
       if (stall.latitude > maxLat) maxLat = stall.latitude;
       if (stall.longitude < minLng) minLng = stall.longitude;
       if (stall.longitude > maxLng) maxLng = stall.longitude;
     }
-    
+
     return LatLngBounds(
       southwest: LatLng(minLat, minLng),
       northeast: LatLng(maxLat, maxLng),
@@ -682,7 +683,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final stallsAsync = ref.watch(allStallsProvider);
-    
+
     return Scaffold(
       body: stallsAsync.when(
         data: (stalls) {
@@ -694,8 +695,10 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
           }
 
           final double dropdownListHeight =
-              ((_searchResults.length * 72.0) + 8.0).clamp(72.0, 260.0).toDouble();
-          
+              ((_searchResults.length * 72.0) + 8.0)
+                  .clamp(72.0, 260.0)
+                  .toDouble();
+
           return Stack(
             children: [
               // Google Map with strict camera bounds (hybrid mode)
@@ -717,13 +720,14 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                     _initialZoomCaptured = true;
                     await _mapController!.getZoomLevel();
                   }
-                  
+
                   // Debounce marker rebuilding to avoid lag
                   _markerDebounce?.cancel();
                   _markerDebounce = Timer(
                     const Duration(milliseconds: 300),
                     () {
-                      final stalls = _isSearching ? _filteredStalls : _allStalls;
+                      final stalls =
+                          _isSearching ? _filteredStalls : _allStalls;
                       _buildMarkers(stalls, _currentZoom ?? 18.0);
                     },
                   );
@@ -752,13 +756,13 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                 ),
                 cameraTargetBounds: CameraTargetBounds.unbounded,
               ),
-              
+
               Positioned(
                 top: MediaQuery.of(context).viewPadding.top + 68,
                 left: 16,
                 child: _buildStallCountBadge(),
               ),
-              
+
               // Search bar overlay + live dropdown
               Positioned(
                 top: MediaQuery.of(context).viewPadding.top + 12,
@@ -870,7 +874,8 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                             Container(
                               height: 1,
                               color: const Color(0xFFE0E0E0),
-                              margin: const EdgeInsets.symmetric(horizontal: 12),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 12),
                             ),
                             if (_searchResults.isEmpty)
                               Padding(
@@ -887,12 +892,15 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                               SizedBox(
                                 height: dropdownListHeight,
                                 child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   itemCount: _searchResults.length,
                                   itemBuilder: (_, i) {
                                     final stall = _searchResults[i];
-                                    final isOpen = StallUtils.isStallOpenNow(stall);
-                                    final matchedProduct = _getMatchedProduct(stall);
+                                    final isOpen =
+                                        StallUtils.isStallOpenNow(stall);
+                                    final matchedProduct =
+                                        _getMatchedProduct(stall);
 
                                     return GestureDetector(
                                       onTap: () => _onStallSelected(stall),
@@ -909,17 +917,23 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                                               height: 40,
                                               decoration: BoxDecoration(
                                                 color: const Color(0xFFE8F5E9),
-                                                borderRadius: BorderRadius.circular(8),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
                                               child: stall.photoUrls.isNotEmpty
                                                   ? ClipRRect(
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
                                                       child: Image.network(
                                                         stall.photoUrls.first,
                                                         fit: BoxFit.cover,
-                                                        errorBuilder: (_, __, ___) => const Icon(
+                                                        errorBuilder:
+                                                            (_, __, ___) =>
+                                                                const Icon(
                                                           Icons.store_rounded,
-                                                          color: Color(0xFF4CAF50),
+                                                          color:
+                                                              Color(0xFF4CAF50),
                                                           size: 20,
                                                         ),
                                                       ),
@@ -933,40 +947,57 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                                             const SizedBox(width: 12),
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  _buildHighlightedText(stall.name, _searchQuery),
+                                                  _buildHighlightedText(
+                                                      stall.name, _searchQuery),
                                                   const SizedBox(height: 2),
                                                   Row(
                                                     children: [
                                                       Flexible(
                                                         child: Text(
-                                                          StallUtils.getCategoryLabel(stall.category),
-                                                          style: GoogleFonts.poppins(
+                                                          StallUtils
+                                                              .getCategoryLabel(
+                                                                  stall
+                                                                      .category),
+                                                          style: GoogleFonts
+                                                              .poppins(
                                                             fontSize: 11,
-                                                            color: const Color(0xFF666666),
+                                                            color: const Color(
+                                                                0xFF666666),
                                                           ),
-                                                          overflow: TextOverflow.ellipsis,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
                                                         ),
                                                       ),
                                                       const SizedBox(width: 6),
                                                       Container(
                                                         width: 3,
                                                         height: 3,
-                                                        decoration: const BoxDecoration(
-                                                          color: Color(0xFF9E9E9E),
-                                                          shape: BoxShape.circle,
+                                                        decoration:
+                                                            const BoxDecoration(
+                                                          color:
+                                                              Color(0xFF9E9E9E),
+                                                          shape:
+                                                              BoxShape.circle,
                                                         ),
                                                       ),
                                                       const SizedBox(width: 6),
                                                       Text(
-                                                        isOpen ? 'Open' : 'Closed',
-                                                        style: GoogleFonts.poppins(
+                                                        isOpen
+                                                            ? 'Open'
+                                                            : 'Closed',
+                                                        style:
+                                                            GoogleFonts.poppins(
                                                           fontSize: 11,
                                                           color: isOpen
-                                                              ? const Color(0xFF2E7D32)
-                                                              : const Color(0xFFC62828),
-                                                          fontWeight: FontWeight.w500,
+                                                              ? const Color(
+                                                                  0xFF2E7D32)
+                                                              : const Color(
+                                                                  0xFFC62828),
+                                                          fontWeight:
+                                                              FontWeight.w500,
                                                         ),
                                                       ),
                                                     ],
@@ -974,18 +1005,23 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                                                   if (matchedProduct != null)
                                                     Text(
                                                       'Sells: $matchedProduct',
-                                                      style: GoogleFonts.poppins(
+                                                      style:
+                                                          GoogleFonts.poppins(
                                                         fontSize: 10,
-                                                        color: const Color(0xFF1B5E20),
-                                                        fontWeight: FontWeight.w500,
+                                                        color: const Color(
+                                                            0xFF1B5E20),
+                                                        fontWeight:
+                                                            FontWeight.w500,
                                                       ),
                                                       maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                 ],
                                               ),
                                             ),
-                                            if (stall.latitude != 0.0 || stall.longitude != 0.0)
+                                            if (stall.latitude != 0.0 ||
+                                                stall.longitude != 0.0)
                                               const Icon(
                                                 Icons.location_on_rounded,
                                                 size: 16,
@@ -1004,13 +1040,15 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   ],
                 ),
               ),
-              
+
               // Map type toggle button (top right)
               Positioned(
                 top: MediaQuery.of(context).padding.top + 16,
                 right: 16,
                 child: Tooltip(
-                  message: _currentMapType == MapType.hybrid ? 'Satellite View' : 'Map View',
+                  message: _currentMapType == MapType.hybrid
+                      ? 'Satellite View'
+                      : 'Map View',
                   child: Container(
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
@@ -1044,7 +1082,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   ),
                 ),
               ),
-              
+
               // Zoom controls (right side, centered vertically)
               Positioned(
                 right: 16,
@@ -1086,18 +1124,18 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 1),
-                    
+
                     // Divider line
                     Container(
                       width: 44,
                       height: 1,
                       color: const Color(0xFFE0E0E0),
                     ),
-                    
+
                     const SizedBox(height: 1),
-                    
+
                     // Zoom Out button
                     Container(
                       decoration: BoxDecoration(
@@ -1136,7 +1174,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   ],
                 ),
               ),
-              
+
               // My Location button (above recenter, bottom right)
               Positioned(
                 bottom: 162,
@@ -1201,49 +1239,49 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                     ignoring: !_showIndoorButton,
                     child: Center(
                       child: GestureDetector(
-                          onTap: _openIndoorMap,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                        onTap: _openIndoorMap,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF2E7D32).withOpacity(0.5),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
                               ),
-                              borderRadius: BorderRadius.circular(30),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF2E7D32).withOpacity(0.5),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.map_rounded,
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.map_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'View Indoor Map',
+                                style: GoogleFonts.poppins(
                                   color: Colors.white,
-                                  size: 18,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'View Indoor Map',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
+                      ),
                     ),
                   ),
                 ),
@@ -1287,7 +1325,7 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                   ),
                 ),
               ),
-              
+
               // Floating Aling Suki AI Assistant button (bottom left)
               Positioned(
                 bottom: 90,
@@ -1308,15 +1346,11 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: AppColors.primary,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2E7D32).withOpacity(0.4),
+                              color: AppColors.primary.withOpacity(0.4),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -1335,14 +1369,15 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
                             child: const Center(
                               child: CircleAvatar(
                                 backgroundColor: Colors.transparent,
-                                backgroundImage: AssetImage('assets/images/aling_suki.png'),
+                                backgroundImage:
+                                    AssetImage('assets/images/aling_suki.png'),
                                 radius: 24,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      
+
                       // Unread badge (red dot) - show when chat has messages and is closed
                       if (!_isChatOpen && ref.watch(chatProvider).length > 1)
                         Positioned(
@@ -1426,18 +1461,52 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
     );
   }
 
-  // Show Aling Suki chat overlay (modal bottom sheet)
+  // Show Aling Suki chat overlay (docked dialog on desktop, bottom sheet on mobile)
   void _showAlingSukiOverlay() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _AlingSukiChatSheet(),
-    ).then((_) {
-      setState(() {
-        _isChatOpen = false;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        barrierColor: Colors.black26,
+        builder: (context) => Dialog(
+          alignment: Alignment.bottomRight,
+          insetPadding: const EdgeInsets.only(right: 24, bottom: 24),
+          backgroundColor: Colors.transparent,
+          child: SizedBox(
+            width: 400,
+            height: 600,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: const _AlingSukiChatSheet(),
+            ),
+          ),
+        ),
+      ).then((_) {
+        if (mounted) {
+          setState(() {
+            _isChatOpen = false;
+          });
+        }
       });
-    });
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.white,
+        builder: (context) => SizedBox(
+          height: MediaQuery.sizeOf(context).height,
+          width: MediaQuery.sizeOf(context).width,
+          child: const _AlingSukiChatSheet(),
+        ),
+      ).then((_) {
+        if (mounted) {
+          setState(() {
+            _isChatOpen = false;
+          });
+        }
+      });
+    }
   }
 
   // ── GPS / Location ─────────────────────────────────────────────────────────
@@ -1543,7 +1612,6 @@ class MapScreenState extends ConsumerState<MapScreen> with TickerProviderStateMi
       ),
     );
   }
-
 }
 
 // Aling Suki Chat Overlay Widget
@@ -1551,7 +1619,8 @@ class _AlingSukiChatSheet extends ConsumerStatefulWidget {
   const _AlingSukiChatSheet();
 
   @override
-  ConsumerState<_AlingSukiChatSheet> createState() => _AlingSukiChatSheetState();
+  ConsumerState<_AlingSukiChatSheet> createState() =>
+      _AlingSukiChatSheetState();
 }
 
 class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
@@ -1563,12 +1632,12 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   @override
   void initState() {
     super.initState();
-    
+
     // Scroll to bottom when sheet opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom(instant: true);
     });
-    
+
     // Refresh stall data when chat opens (without clearing chat)
     _initializeChat();
   }
@@ -1582,22 +1651,22 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
 
   Future<void> _initializeChat() async {
     if (_isRefreshing) return;
-    
+
     setState(() => _isRefreshing = true);
 
     await ref.read(chatProvider.notifier).initializeChat();
     _language = ref.read(chatProvider.notifier).language;
-    
+
     setState(() => _isRefreshing = false);
   }
 
   Future<void> _refreshStallData() async {
     if (_isRefreshing) return;
-    
+
     setState(() => _isRefreshing = true);
 
     await ref.read(chatProvider.notifier).initializeChat(reset: true);
-    
+
     setState(() => _isRefreshing = false);
   }
 
@@ -1614,10 +1683,12 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _language == 'english' ? 'Switched to English' : 'Lumipat sa Tagalog',
+            _language == 'english'
+                ? 'Switched to English'
+                : 'Lumipat sa Tagalog',
             style: GoogleFonts.poppins(color: Colors.white),
           ),
-          backgroundColor: const Color(0xFF1B5E20),
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -1647,7 +1718,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
 
   void _scrollToBottom({bool instant = false}) {
     if (!_scrollController.hasClients) return;
-    
+
     if (instant) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     } else {
@@ -1666,7 +1737,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   void _sendMessage() {
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
-    
+
     ref.read(chatProvider.notifier).sendMessage(text);
     _inputController.clear();
     _scrollToBottom();
@@ -1696,7 +1767,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
     return Container(
       height: screenHeight * 0.7 + keyboardHeight,
       decoration: const BoxDecoration(
-        color: Color(0xFFFAFAFA),
+        color: AppColors.chatBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -1707,7 +1778,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFBDBDBD),
+              color: AppColors.inkSubtle,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1716,9 +1787,9 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
-              color: Color(0xFF1B5E20),
+              color: AppColors.primary,
               border: Border(
-                bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
+                bottom: BorderSide(color: AppColors.borderLight, width: 1),
               ),
             ),
             child: Row(
@@ -1730,7 +1801,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                   radius: 20,
                 ),
                 const SizedBox(width: 12),
-                
+
                 // Name and status
                 Expanded(
                   child: Column(
@@ -1752,7 +1823,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                             width: 6,
                             height: 6,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF4CAF50),
+                              color: AppColors.navActive,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -1775,7 +1846,8 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                 GestureDetector(
                   onTap: _toggleLanguage,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -1802,7 +1874,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                
+
                 // Refresh button
                 IconButton(
                   icon: _isRefreshing
@@ -1811,7 +1883,8 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Color(0xFF1B5E20)),
+                            valueColor:
+                                AlwaysStoppedAnimation(AppColors.primary),
                           ),
                         )
                       : const Icon(Icons.refresh_rounded),
@@ -1819,7 +1892,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                   onPressed: _isRefreshing ? null : _refreshStallData,
                   tooltip: 'Reset Chat',
                 ),
-                
+
                 // Close button
                 IconButton(
                   icon: const Icon(Icons.close_rounded),
@@ -1858,18 +1931,17 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                         : 'Mga tanong na maaari mong itanong:',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: const Color(0xFF666666),
+                      color: AppColors.inkMuted,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _suggestions
-                          .map((s) => _buildSuggestionChip(s))
-                          .toList(),
-                    ),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _suggestions
+                        .map((s) => _buildSuggestionChip(s))
+                        .toList(),
                   ),
                 ],
               ),
@@ -1887,7 +1959,7 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
             decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(
-                top: BorderSide(color: Color(0xFFE0E0E0), width: 1),
+                top: BorderSide(color: AppColors.borderLight, width: 1),
               ),
             ),
             child: Row(
@@ -1904,10 +1976,10 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                           : 'Magtanong kay Aling Suki...',
                       hintStyle: GoogleFonts.poppins(
                         fontSize: 14,
-                        color: const Color(0xFF9E9E9E),
+                        color: AppColors.inkSubtle,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: AppColors.chatBubbleBot,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
@@ -1926,8 +1998,8 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: _inputController.text.trim().isEmpty
-                        ? const Color(0xFFBDBDBD)
-                        : const Color(0xFF1B5E20),
+                        ? AppColors.inkSubtle
+                        : AppColors.primary,
                     shape: BoxShape.circle,
                   ),
                   child: Material(
@@ -1962,15 +2034,15 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
           margin: const EdgeInsets.only(right: 8),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8F5E9),
+            color: AppColors.primaryLight,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF4CAF50)),
+            border: Border.all(color: AppColors.navActive),
           ),
           child: Text(
             text,
             style: GoogleFonts.poppins(
               fontSize: 12,
-              color: const Color(0xFF1B5E20),
+              color: AppColors.primary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1986,12 +2058,13 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
     if (!isUser && message.isStreaming) {
       return _buildTypingIndicator();
     }
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
             // Small avatar for Aling Suki
@@ -2002,48 +2075,52 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
             ),
             const SizedBox(width: 8),
           ],
-          Container(
-            constraints: BoxConstraints(maxWidth: screenWidth * 0.75),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              color: isUser ? const Color(0xFF1B5E20) : const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(isUser ? 18 : 4),
-                topRight: const Radius.circular(18),
-                bottomLeft: const Radius.circular(18),
-                bottomRight: Radius.circular(isUser ? 4 : 18),
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: min(screenWidth * 0.75, 320.0),
               ),
-            ),
-            child: isUser
-                    ? Text(
-                        message.content,
-                        style: GoogleFonts.poppins(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser ? AppColors.primary : AppColors.chatBubbleBot,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(isUser ? 18 : 4),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: const Radius.circular(18),
+                  bottomRight: Radius.circular(isUser ? 4 : 18),
+                ),
+              ),
+              child: isUser
+                  ? Text(
+                      message.content,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.white,
+                        height: 1.5,
+                      ),
+                    )
+                  : MarkdownBody(
+                      data: message.content,
+                      softLineBreak: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: GoogleFonts.poppins(
                           fontSize: 14,
-                          color: Colors.white,
+                          color: AppColors.ink,
                           height: 1.5,
                         ),
-                      )
-                    : MarkdownBody(
-                        data: message.content,
-                        softLineBreak: true,
-                        styleSheet: MarkdownStyleSheet(
-                          p: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: const Color(0xFF212121),
-                            height: 1.5,
-                          ),
-                          strong: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF212121),
-                            height: 1.5,
-                          ),
-                          listBullet: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: const Color(0xFF212121),
-                          ),
+                        strong: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink,
+                          height: 1.5,
+                        ),
+                        listBullet: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: AppColors.ink,
                         ),
                       ),
+                    ),
+            ),
           ),
         ],
       ),
@@ -2058,13 +2135,13 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: const BoxDecoration(
-              color: Color(0xFFE8F5E9),
+              color: AppColors.primaryLight,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.smart_toy_rounded,
               size: 14,
-              color: Color(0xFF1B5E20),
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(width: 8),
@@ -2078,8 +2155,8 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                 bottomLeft: Radius.circular(16),
                 bottomRight: Radius.circular(16),
               ),
-              border: Border.fromBorderSide(
-                BorderSide(color: Color(0xFFE0E0E0)),
+              border: const Border.fromBorderSide(
+                BorderSide(color: AppColors.borderLight),
               ),
             ),
             child: Row(
@@ -2106,14 +2183,15 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
 // Typing indicator animation
 class _TypingDot extends StatefulWidget {
   final int delay;
-  
+
   const _TypingDot({required this.delay});
 
   @override
   State<_TypingDot> createState() => _TypingDotState();
 }
 
-class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
+class _TypingDotState extends State<_TypingDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -2124,7 +2202,7 @@ class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMi
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -2157,7 +2235,7 @@ class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMi
         height: 8,
         margin: const EdgeInsets.symmetric(horizontal: 3),
         decoration: const BoxDecoration(
-          color: Color(0xFF1B5E20),
+          color: AppColors.primary,
           shape: BoxShape.circle,
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../theme/app_colors.dart';
 import '../responsive/responsive_breakpoints.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/stalls/presentation/stall_list_screen.dart';
@@ -112,7 +113,6 @@ class MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDesktop = AppBreakpoints.isDesktop(context);
     final isWideOrTablet = MediaQuery.sizeOf(context).width >= AppBreakpoints.mobile;
 
@@ -126,8 +126,12 @@ class MainShellState extends ConsumerState<MainShell> {
               extended: isDesktop,
               minWidth: 72,
               minExtendedWidth: 220,
-              backgroundColor: colorScheme.surface,
-              indicatorColor: colorScheme.primaryContainer,
+              backgroundColor: AppColors.surface,
+              indicatorColor: AppColors.primaryLight,
+              unselectedIconTheme: const IconThemeData(color: AppColors.inkMuted, size: 24),
+              selectedIconTheme: const IconThemeData(color: AppColors.primary, size: 26),
+              unselectedLabelTextStyle: const TextStyle(color: AppColors.inkMuted, fontSize: 13),
+              selectedLabelTextStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
               leading: isDesktop
                   ? Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -136,7 +140,7 @@ class MainShellState extends ConsumerState<MainShell> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1B5E20),
+                              color: AppColors.primary,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -151,7 +155,7 @@ class MainShellState extends ConsumerState<MainShell> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF1B5E20),
+                              color: AppColors.primary,
                               letterSpacing: 1.0,
                             ),
                           ),
@@ -163,7 +167,7 @@ class MainShellState extends ConsumerState<MainShell> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1B5E20),
+                          color: AppColors.primary,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
@@ -175,23 +179,23 @@ class MainShellState extends ConsumerState<MainShell> {
                     ),
               destinations: const [
                 NavigationRailDestination(
-                  icon: Icon(Icons.map_outlined, size: 24),
-                  selectedIcon: Icon(Icons.map_rounded, size: 26),
+                  icon: Icon(Icons.map_outlined),
+                  selectedIcon: Icon(Icons.map_rounded),
                   label: Text('Market Map'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.storefront_outlined, size: 24),
-                  selectedIcon: Icon(Icons.storefront_rounded, size: 26),
+                  icon: Icon(Icons.storefront_outlined),
+                  selectedIcon: Icon(Icons.storefront_rounded),
                   label: Text('Stalls'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.person_outline_rounded, size: 24),
-                  selectedIcon: Icon(Icons.person_rounded, size: 26),
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
                   label: Text('Profile'),
                 ),
               ],
             ),
-            const VerticalDivider(thickness: 1, width: 1),
+            const VerticalDivider(thickness: 1, width: 1, color: AppColors.border),
             Expanded(child: widget.navigationShell),
           ],
         ),
@@ -201,38 +205,32 @@ class MainShellState extends ConsumerState<MainShell> {
     return Scaffold(
       body: widget.navigationShell,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
         ),
         child: NavigationBar(
           selectedIndex: widget.navigationShell.currentIndex,
           onDestinationSelected: _onTabSelected,
-          height: 70,
+          height: 60,
           elevation: 0,
-          backgroundColor: colorScheme.surface,
-          indicatorColor: colorScheme.primaryContainer,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          backgroundColor: AppColors.surface,
+          indicatorColor: AppColors.primaryLight,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.map_outlined, size: 24),
-              selectedIcon: Icon(Icons.map_rounded, size: 26),
-              label: 'Market Map',
+              icon: Icon(Icons.map_outlined, size: 24, color: AppColors.inkMuted),
+              selectedIcon: Icon(Icons.map_rounded, size: 26, color: AppColors.primary),
+              label: '',
             ),
             NavigationDestination(
-              icon: Icon(Icons.storefront_outlined, size: 24),
-              selectedIcon: Icon(Icons.storefront_rounded, size: 26),
-              label: 'Stalls',
+              icon: Icon(Icons.storefront_outlined, size: 24, color: AppColors.inkMuted),
+              selectedIcon: Icon(Icons.storefront_rounded, size: 26, color: AppColors.primary),
+              label: '',
             ),
             NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded, size: 24),
-              selectedIcon: Icon(Icons.person_rounded, size: 26),
-              label: 'Profile',
+              icon: Icon(Icons.person_outline_rounded, size: 24, color: AppColors.inkMuted),
+              selectedIcon: Icon(Icons.person_rounded, size: 26, color: AppColors.primary),
+              label: '',
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/auth_provider.dart';
@@ -128,10 +129,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         children: [
           Text(
             'Create Account',
-            style: TextStyle(
+            style: GoogleFonts.outfit(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              color: AppColors.primary,
+              color: const Color(0xFF1A241A),
               letterSpacing: -0.5,
             ),
             textAlign: TextAlign.center,
@@ -139,22 +140,29 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           const SizedBox(height: 8),
           Text(
             'Sign up to start exploring Merkado Go',
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.grey.shade600,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: const Color(0xFF667066),
               fontWeight: FontWeight.w400,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 36),
+
+          // Username
           TextFormField(
             controller: _usernameController,
+            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1A241A)),
             decoration: InputDecoration(
               labelText: 'Username',
-              prefixIcon: Icon(Icons.person_outline_rounded, color: Colors.grey.shade600),
+              labelStyle: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF667066)),
+              prefixIcon: const Icon(Icons.person_outline_rounded, color: Color(0xFF667066), size: 22),
               filled: true,
-              fillColor: const Color(0xFFF5F5F5),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              fillColor: const Color(0xFFF6F8F6),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 2)),
               errorText: _usernameError,
             ),
             textInputAction: TextInputAction.next,
@@ -174,14 +182,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             },
           ),
           const SizedBox(height: 16),
+
+          // Email
           TextFormField(
             controller: _emailController,
+            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1A241A)),
             decoration: InputDecoration(
               labelText: 'Email',
-              prefixIcon: Icon(Icons.email_outlined, color: Colors.grey.shade600),
+              labelStyle: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF667066)),
+              prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF667066), size: 22),
               filled: true,
-              fillColor: const Color(0xFFF5F5F5),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              fillColor: const Color(0xFFF6F8F6),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 2)),
             ),
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
@@ -196,22 +211,30 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             },
           ),
           const SizedBox(height: 16),
+
+          // Password
           TextFormField(
             controller: _passwordController,
             obscureText: _obscurePassword,
+            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1A241A)),
             decoration: InputDecoration(
               labelText: 'Password',
-              prefixIcon: Icon(Icons.lock_outline_rounded, color: Colors.grey.shade600),
+              labelStyle: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF667066)),
+              prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF667066), size: 22),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: Colors.grey.shade600,
+                  color: const Color(0xFF667066),
+                  size: 22,
                 ),
                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
               ),
               filled: true,
-              fillColor: const Color(0xFFF5F5F5),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              fillColor: const Color(0xFFF6F8F6),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 2)),
             ),
             textInputAction: TextInputAction.next,
             validator: (value) {
@@ -225,22 +248,30 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             },
           ),
           const SizedBox(height: 16),
+
+          // Confirm Password
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: _obscureConfirmPassword,
+            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1A241A)),
             decoration: InputDecoration(
               labelText: 'Confirm Password',
-              prefixIcon: Icon(Icons.lock_outline_rounded, color: Colors.grey.shade600),
+              labelStyle: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF667066)),
+              prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF667066), size: 22),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: Colors.grey.shade600,
+                  color: const Color(0xFF667066),
+                  size: 22,
                 ),
                 onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
               ),
               filled: true,
-              fillColor: const Color(0xFFF5F5F5),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              fillColor: const Color(0xFFF6F8F6),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDCE3DC), width: 1)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 2)),
             ),
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _handleSignup(),
@@ -255,14 +286,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             },
           ),
           const SizedBox(height: 28),
+
+          // Submit Button
           SizedBox(
             height: 56,
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleSignup,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: const Color(0xFF1B5E20),
                 foregroundColor: Colors.white,
                 elevation: 0,
+                shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: _isLoading
@@ -274,25 +308,27 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Text(
+                  : Text(
                       'Create Account',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
             ),
           ),
           const SizedBox(height: 24),
+
+          // Back to Login Link
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 'Already have an account? ',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF667066)),
               ),
               TextButton(
                 onPressed: () => context.pop(),
                 child: Text(
                   'Sign In',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1B5E20)),
                 ),
               ),
             ],
@@ -309,7 +345,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primary, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1B5E20), size: 20),
           onPressed: () => context.pop(),
         ),
       ),
@@ -353,6 +389,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       desktopFormContent: _buildFormFields(context),
       heroTitle: 'Join Merkado Go',
       heroSubtitle: 'Discover vendors, explore real-time market stalls & navigate Ligao City Market',
+      illustrationPath: 'assets/images/signup_illustration.png',
     );
   }
 }

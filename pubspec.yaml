@@ -76,6 +76,10 @@ flutter:
   assets:
     - .env
     - assets/images/
+    - assets/images/onboarding_illustration.png
+    - assets/images/login_illustration.png
+    - assets/images/signup_illustration.png
+    - assets/images/forgot_password_illustration.png
     - assets/animations/
     - assets/icons/
 

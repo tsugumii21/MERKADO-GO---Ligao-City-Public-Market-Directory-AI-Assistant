@@ -94,12 +94,12 @@ class GetStartedScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => context.push(RouteNames.login),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
+                    backgroundColor: const Color(0xFF1B5E20),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -124,13 +124,13 @@ class GetStartedScreen extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () => context.push(RouteNames.signup),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: const Color(0xFF1B5E20),
                     side: const BorderSide(
-                      color: Color(0xFF2E7D32),
-                      width: 2,
+                      color: Color(0xFF1B5E20),
+                      width: 1.5,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -161,10 +161,11 @@ class GetStartedScreen extends StatelessWidget {
       children: [
         Text(
           'Welcome to Merkado Go',
-          style: GoogleFonts.poppins(
-            fontSize: 30,
+          style: GoogleFonts.outfit(
+            fontSize: 32,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF1B5E20),
+            color: const Color(0xFF1A241A),
+            letterSpacing: -0.5,
           ),
           textAlign: TextAlign.left,
         ),
@@ -173,18 +174,20 @@ class GetStartedScreen extends StatelessWidget {
           'Get started by logging into your account or registering as a new user.',
           style: GoogleFonts.poppins(
             fontSize: 14,
-            color: const Color(0xFF757575),
+            color: const Color(0xFF667066),
           ),
         ),
         const SizedBox(height: 40),
         SizedBox(
-          height: 54,
+          width: double.infinity,
+          height: 56,
           child: ElevatedButton(
             onPressed: () => context.push(RouteNames.login),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32),
+              backgroundColor: const Color(0xFF1B5E20),
               foregroundColor: Colors.white,
               elevation: 0,
+              shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -200,12 +203,16 @@ class GetStartedScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 54,
+          width: double.infinity,
+          height: 56,
           child: OutlinedButton(
             onPressed: () => context.push(RouteNames.signup),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF2E7D32),
-              side: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              foregroundColor: const Color(0xFF1B5E20),
+              side: const BorderSide(
+                color: Color(0xFF1B5E20),
+                width: 1.5,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),

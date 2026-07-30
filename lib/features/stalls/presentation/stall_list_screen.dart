@@ -1711,21 +1711,18 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                   width: double.infinity,
                   child: Column(
                     children: [
-                        // Search bar
+                        // Search bar & floating suggestions dropdown
                         Container(
                           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          child: Column(
+                          child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
+                              // 1. Search Input Bar
                               Container(
                                 height: 46,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: _showDropdown
-                                      ? const BorderRadius.only(
-                                          topLeft: Radius.circular(12),
-                                          topRight: Radius.circular(12),
-                                        )
-                                      : BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: AppColors.border,
                                     width: 1.5,
@@ -1741,7 +1738,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                 child: Row(
                                   children: [
                                     const SizedBox(width: 12),
-                                    Icon(
+                                    const Icon(
                                       Icons.search_rounded,
                                       color: AppColors.inkSubtle,
                                       size: 18,
@@ -1765,17 +1762,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             fontWeight: FontWeight.w400,
                                           ),
                                           border: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          errorBorder: InputBorder.none,
-                                          disabledBorder: InputBorder.none,
-                                          focusedErrorBorder: InputBorder.none,
-                                          filled: true,
-                                          fillColor: Colors.white,
                                           isDense: true,
                                           contentPadding: EdgeInsets.zero,
-                                          counterText: '',
-                                          helperText: null,
                                         ),
                                         onChanged: _onSearchChangedLive,
                                         textInputAction: TextInputAction.search,
@@ -1794,7 +1782,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                           padding: EdgeInsets.all(10),
                                           child: Icon(
                                             Icons.close_rounded,
-                                            color: Color(0xFF9E9E9E),
+                                            color: AppColors.inkSubtle,
                                             size: 16,
                                           ),
                                         ),
@@ -1804,223 +1792,236 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                   ],
                                 ),
                               ),
-                              if (_showDropdown)
-                                Container(
-                                  constraints:
-                                      const BoxConstraints(maxHeight: 320),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: const BorderRadius.only(
-                                      bottomLeft: Radius.circular(12),
-                                      bottomRight: Radius.circular(12),
-                                    ),
-                                    border: Border.all(
-                                      color: const Color(0xFFE0E0E0),
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x0A000000),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        height: 1,
-                                        color: const Color(0xFFE0E0E0),
-                                        margin: const EdgeInsets.symmetric(
-                                            horizontal: 12),
-                                      ),
-                                      if (_searchResults.isEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Text(
-                                            'No stalls found for "$_searchQuery"',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 13,
-                                              color: const Color(0xFF9E9E9E),
-                                            ),
-                                          ),
-                                        )
-                                      else
-                                        ListView.builder(
-                                          shrinkWrap: true,
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 4),
-                                          itemCount: _searchResults.length,
-                                          itemBuilder: (_, i) {
-                                            final stall = _searchResults[i];
-                                            final isOpen =
-                                                StallUtils.isStallOpenNow(
-                                                    stall);
-                                            final matchedProduct =
-                                                _getMatchedProduct(stall);
 
-                                            return GestureDetector(
-                                              onTap: () =>
-                                                  _onStallSelectedFromSearch(
-                                                      stall),
-                                              child: Container(
-                                                color: Colors.transparent,
+                              // 2. Floating Suggestions Dropdown Overlay
+                              if (_showDropdown)
+                                Positioned(
+                                  top: 50,
+                                  left: 0,
+                                  right: 0,
+                                  child: Material(
+                                    elevation: 8,
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: Colors.transparent,
+                                    child: Container(
+                                      constraints:
+                                          const BoxConstraints(maxHeight: 260),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppColors.border,
+                                          width: 1.5,
+                                        ),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 12,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: _searchResults.isEmpty
+                                            ? Padding(
+                                                padding:
+                                                    const EdgeInsets.all(16),
+                                                child: Text(
+                                                  'No stalls found for "$_searchQuery"',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 13,
+                                                    color: AppColors.inkMuted,
+                                                  ),
+                                                ),
+                                              )
+                                            : ListView.builder(
+                                                shrinkWrap: true,
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                  horizontal: 16,
-                                                  vertical: 10,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Container(
-                                                      width: 40,
-                                                      height: 40,
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xFFE8F5E9),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(8),
+                                                        vertical: 4),
+                                                itemCount:
+                                                    _searchResults.length,
+                                                itemBuilder: (_, i) {
+                                                  final stall =
+                                                      _searchResults[i];
+                                                  final isOpen = StallUtils
+                                                      .isStallOpenNow(stall);
+                                                  final matchedProduct =
+                                                      _getMatchedProduct(stall);
+
+                                                  return InkWell(
+                                                    onTap: () =>
+                                                        _onStallSelectedFromSearch(
+                                                            stall),
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 10,
                                                       ),
-                                                      child: stall.photoUrls
-                                                              .isNotEmpty
-                                                          ? ClipRRect(
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            width: 40,
+                                                            height: 40,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: AppColors
+                                                                  .primaryLight,
                                                               borderRadius:
                                                                   BorderRadius
                                                                       .circular(
                                                                           8),
-                                                              child:
-                                                                  CachedNetworkImage(
-                                                                imageUrl: stall
-                                                                    .photoUrls
-                                                                    .first,
-                                                                fit: BoxFit
-                                                                    .cover,
-                                                                errorWidget: (_,
-                                                                        __,
-                                                                        ___) =>
-                                                                    const Icon(
-                                                                  Icons
-                                                                      .store_rounded,
-                                                                  color: Color(
-                                                                      0xFF4CAF50),
-                                                                  size: 20,
-                                                                ),
-                                                              ),
-                                                            )
-                                                          : const Icon(
-                                                              Icons
-                                                                  .store_rounded,
-                                                              color: Color(
-                                                                  0xFF4CAF50),
-                                                              size: 20,
                                                             ),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          _buildHighlightedText(
-                                                              stall.name,
-                                                              _searchQuery),
-                                                          const SizedBox(
-                                                              height: 2),
-                                                          Row(
-                                                            children: [
-                                                              Flexible(
-                                                                child: Text(
-                                                                  StallUtils
-                                                                      .getCategoryLabel(
+                                                            child: stall
+                                                                    .photoUrls
+                                                                    .isNotEmpty
+                                                                ? ClipRRect(
+                                                                    borderRadius:
+                                                                        BorderRadius
+                                                                            .circular(
+                                                                                8),
+                                                                    child:
+                                                                        CachedNetworkImage(
+                                                                      imageUrl:
                                                                           stall
-                                                                              .category),
-                                                                  style: GoogleFonts
-                                                                      .poppins(
-                                                                    fontSize:
-                                                                        11,
-                                                                    color: const Color(
-                                                                        0xFF666666),
+                                                                              .photoUrls
+                                                                              .first,
+                                                                      fit:
+                                                                          BoxFit
+                                                                              .cover,
+                                                                      errorWidget:
+                                                                          (_, __,
+                                                                                  ___) =>
+                                                                              const Icon(
+                                                                        Icons
+                                                                            .store_rounded,
+                                                                        color:
+                                                                            AppColors
+                                                                                .primary,
+                                                                        size:
+                                                                            20,
+                                                                      ),
+                                                                    ),
+                                                                  )
+                                                                : const Icon(
+                                                                    Icons
+                                                                        .store_rounded,
+                                                                    color:
+                                                                        AppColors
+                                                                            .primary,
+                                                                    size: 20,
                                                                   ),
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  width: 6),
-                                                              Container(
-                                                                width: 3,
-                                                                height: 3,
-                                                                decoration:
-                                                                    const BoxDecoration(
-                                                                  color: Color(
-                                                                      0xFF9E9E9E),
-                                                                  shape: BoxShape
-                                                                      .circle,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  width: 6),
-                                                              Text(
-                                                                isOpen
-                                                                    ? 'Open'
-                                                                    : 'Closed',
-                                                                style:
-                                                                    GoogleFonts
-                                                                        .poppins(
-                                                                  fontSize: 11,
-                                                                  color: isOpen
-                                                                      ? const Color(
-                                                                          0xFF2E7D32)
-                                                                      : const Color(
-                                                                          0xFFC62828),
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                ),
-                                                              ),
-                                                            ],
                                                           ),
-                                                          if (matchedProduct !=
-                                                              null)
-                                                            Text(
-                                                              'Sells: $matchedProduct',
-                                                              style: GoogleFonts
-                                                                  .poppins(
-                                                                fontSize: 10,
-                                                                color: const Color(
-                                                                    0xFF1B5E20),
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                              ),
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
+                                                          const SizedBox(
+                                                              width: 12),
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                _buildHighlightedText(
+                                                                    stall
+                                                                        .name,
+                                                                    _searchQuery),
+                                                                const SizedBox(
+                                                                    height: 2),
+                                                                Row(
+                                                                  children: [
+                                                                    Flexible(
+                                                                      child:
+                                                                          Text(
+                                                                        StallUtils
+                                                                            .getCategoryLabel(stall.category),
+                                                                        style:
+                                                                            GoogleFonts.poppins(
+                                                                          fontSize:
+                                                                              11,
+                                                                          color: AppColors
+                                                                              .inkMuted,
+                                                                        ),
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                      ),
+                                                                    ),
+                                                                    const SizedBox(
+                                                                        width:
+                                                                            6),
+                                                                    Container(
+                                                                      width: 3,
+                                                                      height: 3,
+                                                                      decoration:
+                                                                          const BoxDecoration(
+                                                                        color: AppColors
+                                                                            .inkSubtle,
+                                                                        shape:
+                                                                            BoxShape.circle,
+                                                                      ),
+                                                                    ),
+                                                                    const SizedBox(
+                                                                        width:
+                                                                            6),
+                                                                    Text(
+                                                                      isOpen
+                                                                          ? 'Open'
+                                                                          : 'Closed',
+                                                                      style:
+                                                                          GoogleFonts.poppins(
+                                                                        fontSize:
+                                                                            11,
+                                                                        color: isOpen
+                                                                            ? AppColors
+                                                                                .primary
+                                                                            : AppColors
+                                                                                .error,
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                                if (matchedProduct !=
+                                                                    null)
+                                                                  Text(
+                                                                    'Sells: $matchedProduct',
+                                                                    style:
+                                                                        GoogleFonts.poppins(
+                                                                      fontSize:
+                                                                          10,
+                                                                      color: AppColors
+                                                                          .primary,
+                                                                      fontWeight:
+                                                                          FontWeight.w500,
+                                                                    ),
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow.ellipsis,
+                                                                  ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          if (stall.latitude !=
+                                                                  0.0 ||
+                                                              stall.longitude !=
+                                                                  0.0)
+                                                            const Icon(
+                                                              Icons
+                                                                  .location_on_rounded,
+                                                              size: 16,
+                                                              color: AppColors
+                                                                  .inkSubtle,
                                                             ),
                                                         ],
                                                       ),
                                                     ),
-                                                    if (stall.latitude != 0.0 ||
-                                                        stall.longitude != 0.0)
-                                                      const Icon(
-                                                        Icons
-                                                            .location_on_rounded,
-                                                        size: 16,
-                                                        color:
-                                                            Color(0xFF9E9E9E),
-                                                      ),
-                                                  ],
-                                                ),
+                                                  );
+                                                },
                                               ),
-                                            );
-                                          },
-                                        ),
-                                    ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                             ],

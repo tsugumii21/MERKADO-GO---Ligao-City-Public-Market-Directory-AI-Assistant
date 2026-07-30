@@ -34,6 +34,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   List<StallModel> _allStalls = [];
   List<StallModel> _searchResults = [];
   bool _showDropdown = false;
+  OverlayEntry? _overlayEntry;
+  final LayerLink _layerLink = LayerLink();
   List<String> _recentlyViewedIds = [];
 
   // Sort/Filter state variables
@@ -644,6 +646,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       setState(() {
         _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
       });
+      _updateOverlay();
     });
 
     // Refresh open/closed status every 60 seconds
@@ -655,8 +658,196 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     );
   }
 
+  void _updateOverlay() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_showDropdown) {
+        if (_overlayEntry == null) {
+          _overlayEntry = _createOverlayEntry();
+          Overlay.of(context).insert(_overlayEntry!);
+        } else {
+          _overlayEntry?.markNeedsBuild();
+        }
+      } else {
+        _removeOverlay();
+      }
+    });
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  OverlayEntry _createOverlayEntry() {
+    RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    var size = renderBox?.size ?? Size.zero;
+
+    return OverlayEntry(
+      builder: (context) => Positioned(
+        width: size.width > 0 ? (size.width - 32).clamp(280.0, 968.0) : 340,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 50),
+          child: Material(
+            elevation: 12,
+            shadowColor: Colors.black38,
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.transparent,
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 260),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.border,
+                  width: 1.5,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x2E000000),
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _searchResults.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'No stalls found for "$_searchQuery"',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: AppColors.inkMuted,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        itemCount: _searchResults.length,
+                        itemBuilder: (_, i) {
+                          final stall = _searchResults[i];
+                          final isOpen = StallUtils.isStallOpenNow(stall);
+                          final matchedProduct = _getMatchedProduct(stall);
+
+                          return InkWell(
+                            onTap: () {
+                              _removeOverlay();
+                              _onStallSelectedFromSearch(stall);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryLight,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: stall.photoUrls.isNotEmpty
+                                        ? ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: CachedNetworkImage(
+                                              imageUrl: stall.photoUrls.first,
+                                              fit: BoxFit.cover,
+                                              errorWidget: (_, __, ___) => const Icon(
+                                                Icons.store_rounded,
+                                                color: AppColors.primary,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.store_rounded,
+                                            color: AppColors.primary,
+                                            size: 20,
+                                          ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildHighlightedText(stall.name, _searchQuery),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                StallUtils.getCategoryLabel(stall.category),
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 11,
+                                                  color: AppColors.inkMuted,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              width: 3,
+                                              height: 3,
+                                              decoration: const BoxDecoration(
+                                                color: AppColors.inkSubtle,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              isOpen ? 'Open' : 'Closed',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                color: isOpen ? AppColors.primary : AppColors.error,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (matchedProduct != null)
+                                          Text(
+                                            'Sells: $matchedProduct',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 10,
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (stall.latitude != 0.0 || stall.longitude != 0.0)
+                                    const Icon(
+                                      Icons.location_on_rounded,
+                                      size: 16,
+                                      color: AppColors.inkSubtle,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    _removeOverlay();
     _statusTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -676,6 +867,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         _searchResults = [];
         _showDropdown = false;
       });
+      _updateOverlay();
       return;
     }
 
@@ -703,6 +895,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       _searchResults = matches;
       _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
     });
+    _updateOverlay();
   }
 
   void _onStallSelectedFromSearch(StallModel stall) {
@@ -712,6 +905,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       _searchController.text = stall.name;
       _searchQuery = stall.name;
     });
+    _updateOverlay();
 
     _openStallDetail(stall);
   }
@@ -723,6 +917,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       _searchResults = [];
       _showDropdown = false;
     });
+    _updateOverlay();
     _searchFocusNode.unfocus();
   }
 
@@ -1457,18 +1652,75 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   void _openStallDetail(StallModel stall) {
     _saveRecentlyViewed(stall.stallId);
+    _removeOverlay();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StallDetailSheet(
-        stall: stall,
-        onClose: () {
-          Navigator.of(context).pop();
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
+    if (isDesktop) {
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'Dismiss Stall Detail',
+        barrierColor: Colors.black38,
+        transitionDuration: const Duration(milliseconds: 280),
+        pageBuilder: (context, anim1, anim2) {
+          return Align(
+            alignment: Alignment.centerRight,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 440,
+                height: double.infinity,
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 16,
+                      offset: Offset(-4, 0),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+                  child: StallDetailSheet(
+                    stall: stall,
+                    onClose: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
         },
-      ),
-    );
+        transitionBuilder: (context, anim1, anim2, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: anim1,
+              curve: Curves.easeOutCubic,
+            )),
+            child: child,
+          );
+        },
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => StallDetailSheet(
+          stall: stall,
+          onClose: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      );
+    }
   }
 
   void _showFilterBottomSheet() {
@@ -1711,15 +1963,13 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                   width: double.infinity,
                   child: Column(
                     children: [
-                        // Search bar & floating suggestions dropdown
+                        // Search bar & floating suggestions dropdown target
                         Container(
                           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              // 1. Search Input Bar
-                              Container(
-                                height: 46,
+                          child: CompositedTransformTarget(
+                            link: _layerLink,
+                            child: Container(
+                              height: 46,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
@@ -1792,6 +2042,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                   ],
                                 ),
                               ),
+                            ),
+                          ),
 
                               // 2. Floating Suggestions Dropdown Overlay
                               if (_showDropdown)
@@ -2024,9 +2276,6 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                     ),
                                   ),
                                 ),
-                            ],
-                          ),
-                        ),
 
                         Expanded(
                           child: CustomScrollView(

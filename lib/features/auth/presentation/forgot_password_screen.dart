@@ -125,6 +125,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       heroTitle: 'Account Recovery',
       heroSubtitle: 'Enter your email address to receive a secure password reset link',
       heroIcon: Icons.lock_reset_rounded,
+      illustrationPath: 'assets/images/forgot_password_illustration.png',
     );
   }
 

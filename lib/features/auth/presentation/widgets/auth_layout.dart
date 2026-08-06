@@ -21,6 +21,11 @@ class AuthLayout extends StatelessWidget {
   /// All other screens leave this null and get the standard DM Sans heading.
   final Widget? heroTitleWidget;
 
+  /// Path to a per-screen illustration asset to show on the left panel
+  /// in place of the default rounded-square logo cluster.
+  /// When null, the logo is shown (Get Started behaviour).
+  final String? illustrationPath;
+
   /// The Material icon to display in the left-panel brand icon cluster.
   /// Each auth screen provides its own contextually appropriate icon.
   final IconData heroIcon;
@@ -33,6 +38,7 @@ class AuthLayout extends StatelessWidget {
     this.heroSubtitle = 'Your Ligao City Public Market Guide & Navigation Helper',
     this.heroIcon = Icons.storefront_rounded,
     this.heroTitleWidget,
+    this.illustrationPath,
   });
 
   @override
@@ -92,8 +98,12 @@ class AuthLayout extends StatelessWidget {
 
                   const SizedBox(height: 48),
 
-                  // Brand Icon Cluster (replaces per-screen stock illustrations)
-                  _BrandIconCluster(icon: heroIcon),
+                  // Brand Icon Cluster — shows per-screen illustration when provided,
+                  // falls back to the rounded-square logo (Get Started default).
+                  _BrandIconCluster(
+                    icon: heroIcon,
+                    illustrationPath: illustrationPath,
+                  ),
 
                   const SizedBox(height: 48),
 
@@ -150,25 +160,74 @@ class AuthLayout extends StatelessWidget {
   }
 }
 
-/// App logo cluster displayed on the left panel of every auth screen.
-/// Uses a consistent circular container across all screens.
+// ─── Design constants ──────────────────────────────────────────────────────────
+// Illustration display sizes on the left panel (desktop only).
+// Square illustrations (500×500 source) → 220×220 display.
+// Landscape illustration (612×408 source) → unconstrained height, width 260,
+// BoxFit.contain preserves aspect ratio.
+const _kIllustrationSquareSize = 220.0;
+const _kIllustrationLandscapeWidth = 260.0;
+const _kLogoClusterSize = 160.0;
+const _kLogoClusterRadius = 20.0;
+const _kLogoPadding = 16.0;
+
+/// Left-panel visual cluster.
+/// Renders a per-screen [illustrationPath] image when provided;
+/// falls back to the rounded-square app logo otherwise.
 class _BrandIconCluster extends StatelessWidget {
   // icon parameter kept for API compatibility with all call sites
   // ignore: unused_field
   final IconData icon;
 
-  const _BrandIconCluster({required this.icon});
+  /// Optional illustration asset path. When non-null the illustration is
+  /// displayed instead of the logo. Square images are rendered at
+  /// [_kIllustrationSquareSize]; landscape images at [_kIllustrationLandscapeWidth]
+  /// with unconstrained height and BoxFit.contain.
+  final String? illustrationPath;
+
+  const _BrandIconCluster({
+    required this.icon,
+    this.illustrationPath,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // ── Illustration mode ────────────────────────────────────────────────────
+    if (illustrationPath != null) {
+      // Detect landscape vs square by checking the known landscape asset path.
+      // Only email_verification_illustration is landscape (612×408).
+      final isLandscape = illustrationPath!.contains('email_verification');
+
+      if (isLandscape) {
+        return SizedBox(
+          width: _kIllustrationLandscapeWidth,
+          child: Image.asset(
+            illustrationPath!,
+            fit: BoxFit.contain,
+          ),
+        );
+      }
+
+      // Square illustrations (sign-in, signup, forgot_password) — 220×220.
+      return SizedBox(
+        width: _kIllustrationSquareSize,
+        height: _kIllustrationSquareSize,
+        child: Image.asset(
+          illustrationPath!,
+          fit: BoxFit.contain,
+        ),
+      );
+    }
+
+    // ── Logo mode (default — Get Started) ────────────────────────────────────
     return Container(
-      width: 160,
-      height: 160,
+      width: _kLogoClusterSize,
+      height: _kLogoClusterSize,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(_kLogoClusterRadius),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(_kLogoPadding),
       child: Image.asset(
         'assets/icons/MerkadoGo_Transparent Logo.png',
         fit: BoxFit.contain,

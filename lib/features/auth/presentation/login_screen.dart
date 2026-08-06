@@ -470,6 +470,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       heroTitle: 'Welcome Back',
       heroSubtitle: 'Ligao City Public Market, at your fingertips.',
       heroIcon: Icons.login_rounded,
+      illustrationPath: 'assets/images/sign-in_illustration.png',
     );
   }
 }

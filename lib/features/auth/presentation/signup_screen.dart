@@ -376,6 +376,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       heroTitle: 'Join Merkado Go',
       heroSubtitle: 'Find every stall. Navigate the market. Discover more.',
       heroIcon: Icons.person_add_rounded,
+      illustrationPath: 'assets/images/signup_illustration.png',
     );
   }
 }

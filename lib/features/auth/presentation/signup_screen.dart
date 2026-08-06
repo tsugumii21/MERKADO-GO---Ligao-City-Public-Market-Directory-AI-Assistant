@@ -129,21 +129,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         children: [
           Text(
             'Create Account',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.dmSans(
               fontSize: 28,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF1A241A),
               letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Sign up to start exploring Merkado Go',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: const Color(0xFF667066),
-              fontWeight: FontWeight.w400,
             ),
             textAlign: TextAlign.center,
           ),
@@ -354,22 +344,18 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
             children: [
+              // App logo — white rounded-square container, transparent logo (consistent with desktop panel)
               Container(
-                height: 180,
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
-                child: ClipRRect(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/images/signup_illustration.avif',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: const Color(0xFFE8F5E9),
-                      child: const Center(
-                        child: Icon(Icons.storefront_rounded, size: 64, color: Color(0xFF1B5E20)),
-                      ),
-                    ),
-                  ),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(
+                  'assets/icons/MerkadoGo_Transparent Logo.png',
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 32),
@@ -388,8 +374,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       mobileBody: _buildMobileView(context),
       desktopFormContent: _buildFormFields(context),
       heroTitle: 'Join Merkado Go',
-      heroSubtitle: 'Discover vendors, explore real-time market stalls & navigate Ligao City Market',
-      illustrationPath: 'assets/images/signup_illustration.png',
+      heroSubtitle: 'Find every stall. Navigate the market. Discover more.',
+      heroIcon: Icons.person_add_rounded,
     );
   }
 }

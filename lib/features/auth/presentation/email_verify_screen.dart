@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import '../../../core/router/route_names.dart';
 import '../../../providers/auth_provider.dart';
+import 'widgets/auth_layout.dart';
 
 class EmailVerifyScreen extends ConsumerStatefulWidget {
   const EmailVerifyScreen({super.key});
@@ -14,7 +15,7 @@ class EmailVerifyScreen extends ConsumerStatefulWidget {
 }
 
 class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   bool _isCheckingVerification = false;
   bool _canResend = true;
   int _resendCooldown = 0;
@@ -22,86 +23,31 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
   String? _feedbackMessage;
   FeedbackType? _feedbackType;
 
-  late AnimationController _iconController;
+  // Single animation controller — purposeful state-change entry only.
+  // Continuous pulse removed (decorative — violates motion rules).
   late AnimationController _contentController;
-  late AnimationController _buttonController;
-  late AnimationController _pulseController;
-
-  late Animation<double> _iconScale;
-  late Animation<double> _iconOpacity;
-
   late Animation<double> _contentOpacity;
-  late Animation<Offset> _contentSlide;
-
-  late Animation<double> _buttonOpacity;
-  late Animation<double> _pulseScale;
 
   @override
   void initState() {
     super.initState();
 
-    // Icon animation
-    _iconController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _iconScale = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _iconController, curve: Curves.elasticOut),
-    );
-    _iconOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _iconController, curve: Curves.easeOut),
-    );
-
-    // Content animation
     _contentController = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 350),
       vsync: this,
     );
     _contentOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _contentController, curve: Curves.easeOutCubic),
     );
-    _contentSlide = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _contentController, curve: Curves.easeOutCubic),
-    );
 
-    // Button animation
-    _buttonController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _buttonOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _buttonController, curve: Curves.easeIn),
-    );
-
-    // Pulse animation
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-    _pulseScale = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    // Start animations in sequence
-    _iconController.forward();
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _contentController.forward();
-    });
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) _buttonController.forward();
-    });
+    // Fade-in communicates: "this screen has loaded" — purposeful state change.
+    _contentController.forward();
   }
 
   @override
   void dispose() {
     _cooldownTimer?.cancel();
-    _iconController.dispose();
     _contentController.dispose();
-    _buttonController.dispose();
-    _pulseController.dispose();
     super.dispose();
   }
 
@@ -272,299 +218,247 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  /// The form content shown on the right panel (desktop) and in the
+  /// single-column mobile view.
+  Widget _buildFormContent(BuildContext context) {
     final user = ref.watch(authRepositoryProvider).currentUser;
     final email = user?.email ?? 'your email';
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(
-          'Verify Email',
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF1B5E20),
+    return FadeTransition(
+      opacity: _contentOpacity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Brand icon — mobile only (desktop uses left panel)
+          // Displayed inline in mobile single-column layout
+          const _MobileVerifyIcon(),
+
+          const SizedBox(height: 32),
+
+          // Heading — DM Sans display font, ink colour (not brand emerald)
+          Text(
+            'Check Your Email',
+            style: GoogleFonts.dmSans(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1A241A),
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Illustration Section
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.35,
-                child: Center(
-                  child: FadeTransition(
-                    opacity: _iconOpacity,
-                    child: ScaleTransition(
-                      scale: _iconScale,
-                      child: Image.asset(
-                        'assets/images/email_verification_illustration.png',
-                        height: 240,
-                        fit: BoxFit.contain,
+
+          const SizedBox(height: 10),
+
+          // Subtitle
+          Text(
+            'We sent a verification link to',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF757575),
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 8),
+
+          // Email Address Box
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F8E9),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: const Color(0xFFA5D6A7),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              email,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF2E7D32),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Description
+          Text(
+            'Please check your inbox and spam folder,\nthen click the verification link.',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF9E9E9E),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 32),
+
+          // Primary Button — flat solid, no gradient, no shadow (matches all other screens)
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _isCheckingVerification ? null : _checkEmailVerified,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1B5E20),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                disabledBackgroundColor: const Color(0xFF1B5E20).withValues(alpha: 0.6),
+              ),
+              child: _isCheckingVerification
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      'I Have Verified My Email',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+            ),
+          ),
+
+          // Feedback Message
+          if (_feedbackMessage != null) ...[
+            const SizedBox(height: 14),
+            _buildFeedbackContainer(),
+          ],
+
+          const SizedBox(height: 14),
+
+          // Resend Button — text label swaps to communicate cooldown state (no animation)
+          TextButton(
+            onPressed: _canResend ? _resendVerificationEmail : null,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _canResend ? Icons.refresh_rounded : Icons.timer_outlined,
+                  size: 16,
+                  color: _canResend
+                      ? const Color(0xFF1B5E20)
+                      : const Color(0xFF9E9E9E),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _canResend
+                      ? 'Resend Verification Email'
+                      : 'Resend in ${_resendCooldown}s',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _canResend
+                        ? const Color(0xFF1B5E20)
+                        : const Color(0xFF9E9E9E),
                   ),
                 ),
-              ),
+              ],
+            ),
+          ),
 
-                  // Content Section
-                  FadeTransition(
-                    opacity: _contentOpacity,
-                    child: SlideTransition(
-                      position: _contentSlide,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
-                            // Title
-                            Text(
-                              'Check Your Email!',
-                              style: GoogleFonts.poppins(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF1B5E20),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            // Subtitle
-                            Text(
-                              'We sent a verification link to',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF757575),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            // Email Address Box
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F8E9),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: const Color(0xFFA5D6A7),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                email,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF2E7D32),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            // Description
-                            Text(
-                              'Please check your inbox and spam folder,\nthen click the verification link.',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF9E9E9E),
-                                height: 1.5,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-
-                            const SizedBox(height: 32),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Buttons Section
-                  FadeTransition(
-                    opacity: _buttonOpacity,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        children: [
-                          // Primary Button
-                          Container(
-                            width: double.infinity,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF2E7D32),
-                                  Color(0xFF1B5E20),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x401B5E20),
-                                  blurRadius: 12,
-                                  offset: Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: _isCheckingVerification
-                                  ? null
-                                  : _checkEmailVerified,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                foregroundColor: Colors.white,
-                                shadowColor: Colors.transparent,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: _isCheckingVerification
-                                  ? const SizedBox(
-                                      height: 22,
-                                      width: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                          Colors.white,
-                                        ),
-                                      ),
-                                    )
-                                  : Text(
-                                      'I Have Verified My Email',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                            ),
-                          ),
-
-                          // Feedback Message
-                          if (_feedbackMessage != null) ...[
-                            const SizedBox(height: 16),
-                            _buildFeedbackContainer(),
-                          ],
-
-                          const SizedBox(height: 16),
-
-                          // Resend Button
-                          TextButton(
-                            onPressed: _canResend
-                                ? _resendVerificationEmail
-                                : null,
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _canResend
-                                      ? Icons.refresh_rounded
-                                      : Icons.timer_outlined,
-                                  size: 16,
-                                  color: _canResend
-                                      ? const Color(0xFF1B5E20)
-                                      : const Color(0xFF9E9E9E),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _canResend
-                                      ? 'Resend Verification Email'
-                                      : 'Resend in ${_resendCooldown}s',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: _canResend
-                                        ? const Color(0xFF1B5E20)
-                                        : const Color(0xFF9E9E9E),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Divider
-                          Center(
-                            child: SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.6,
-                              child: const Divider(
-                                color: Color(0xFFEEEEEE),
-                                height: 1,
-                                thickness: 1,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Wrong Email Section
-                          Text(
-                            'Wrong email address?',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              color: const Color(0xFF9E9E9E),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          TextButton(
-                            onPressed: _showSignOutDialog,
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                            child: Text(
-                              'Sign Out and Try Again',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1B5E20),
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+          Center(
+            child: SizedBox(
+              width: 200,
+              child: const Divider(
+                color: Color(0xFFEEEEEE),
+                height: 1,
+                thickness: 1,
               ),
             ),
           ),
+
+          const SizedBox(height: 24),
+
+          // Wrong email section
+          Text(
+            'Wrong email address?',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF9E9E9E),
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 8),
+
+          Center(
+            child: TextButton(
+              onPressed: _showSignOutDialog,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ),
+              child: Text(
+                'Sign Out and Try Again',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1B5E20),
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthLayout(
+      heroIcon: Icons.mark_email_read_outlined,
+      heroTitle: 'Verify Email',
+      heroSubtitle: 'One last step — confirm your email address to activate your account.',
+      mobileBody: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Text(
+            'Verify Email',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1B5E20),
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: _buildFormContent(context),
+          ),
+        ),
+      ),
+      desktopFormContent: _buildFormContent(context),
     );
   }
 
@@ -601,17 +495,13 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
         color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: textColor.withOpacity(0.3),
+          color: textColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: textColor,
-            size: 20,
-          ),
+          Icon(icon, color: textColor, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -624,6 +514,37 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Brand icon shown at the top of the mobile single-column layout only.
+/// On desktop, this role is filled by the left-panel `_BrandIconCluster` in `AuthLayout`.
+class _MobileVerifyIcon extends StatelessWidget {
+  const _MobileVerifyIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    // On desktop, AuthLayout provides the left panel — we don't render the icon.
+    // On mobile, this widget is visible inside the scrollable Scaffold body.
+    final isDesktop =
+        MediaQuery.sizeOf(context).width >= 600;
+    if (isDesktop) return const SizedBox.shrink();
+
+    return Center(
+      child: Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Image.asset(
+          'assets/icons/MerkadoGo_Transparent Logo.png',
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }

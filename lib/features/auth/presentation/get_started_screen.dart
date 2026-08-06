@@ -4,9 +4,76 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
 import 'widgets/auth_layout.dart';
 
+// ─── Design constants (Rule 11) ───────────────────────────────────────────────
+const _kLogoPath = 'assets/icons/MerkadoGo_Transparent Logo.png';
+const _kPrimary = Color(0xFF1B5E20);
+const _kRed = Color(0xFFE53935);
+const _kInkMuted = Color(0xFF667066);
+const _kLogoContainerSizeMobile = 120.0; // mobile single-column
+const _kLogoContainerRadius = 20.0;
+const _kButtonHeight = 56.0;
+const _kButtonRadius = 12.0;
+
 class GetStartedScreen extends StatelessWidget {
   const GetStartedScreen({super.key});
 
+  // ── Shared: two-tone "Merkado Go" RichText ──────────────────────────────────
+  // Replicates exact typography from splash_screen.dart.
+  // [whiteVariant] = true → white "Merkado" (for green left panel)
+  //                = false → brand-green "Merkado" (for white mobile bg)
+  static Widget _buildBrandText({
+    required bool whiteVariant,
+    double fontSize = 36,
+  }) {
+    final merkadoColor = whiteVariant ? Colors.white : _kPrimary;
+
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: 'Merkado',
+            style: GoogleFonts.poppins(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w800,
+              color: merkadoColor,
+              letterSpacing: -0.5,
+            ),
+          ),
+          TextSpan(
+            text: 'Go',
+            style: GoogleFonts.poppins(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w800,
+              color: _kRed,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared: logo inside a white rounded-square container ────────────────────
+  // White container ensures contrast on both green (desktop) and white (mobile) BGs.
+  static Widget _buildLogoContainer({required double size}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kLogoContainerRadius),
+        boxShadow: const [], // flat — no elevation
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Image.asset(
+        _kLogoPath,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
+  // ── Mobile view ─────────────────────────────────────────────────────────────
   Widget _buildMobileView(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -16,136 +83,83 @@ class GetStartedScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(flex: 1),
-              
-              // Market Illustration
-              Container(
-                height: 320,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                      spreadRadius: -5,
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Image.asset(
-                    'assets/images/onboarding_illustration.png',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 48),
-              
-              // App Title
-              Text(
-                'MERKADO GO',
-                style: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF1B5E20),
-                  letterSpacing: 1.2,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 12),
-              
+
+              // Logo — white rounded-square container
+              _buildLogoContainer(size: _kLogoContainerSizeMobile),
+
+              const SizedBox(height: 28),
+
+              // "MerkadoGo" two-tone — green/red on white background
+              _buildBrandText(whiteVariant: false, fontSize: 32),
+
+              const SizedBox(height: 8),
+
               // Subtitle
               Text(
-                'Your Ligao City Public Market Guide',
+                'Ligao City\'s market, simplified.',
                 style: GoogleFonts.poppins(
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFF757575),
-                  letterSpacing: 0.2,
+                  color: _kInkMuted,
+                  height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),
-              
-              const SizedBox(height: 16),
-              
-              // Description
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Navigate the market, find stalls, and chat with our AI assistant',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF9E9E9E),
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              
+
               const Spacer(flex: 1),
-              
-              // Login Button
+
+              // Primary CTA — Sign In
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: _kButtonHeight,
                 child: ElevatedButton(
                   onPressed: () => context.push(RouteNames.login),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
+                    backgroundColor: _kPrimary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(_kButtonRadius),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: Text(
-                    'Login',
+                    'Sign In',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                      height: 1.2,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
               ),
-              
-              const SizedBox(height: 16),
-              
-              // Register Button
+
+              const SizedBox(height: 14),
+
+              // Secondary CTA — Create Account
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: _kButtonHeight,
                 child: OutlinedButton(
                   onPressed: () => context.push(RouteNames.signup),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF1B5E20),
-                    side: const BorderSide(
-                      color: Color(0xFF1B5E20),
-                      width: 1.5,
-                    ),
+                    foregroundColor: _kPrimary,
+                    side: const BorderSide(color: _kPrimary, width: 1.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(_kButtonRadius),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: Text(
-                    'Register',
+                    'Create Account',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                      height: 1.2,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 48),
             ],
           ),
@@ -154,75 +168,68 @@ class GetStartedScreen extends StatelessWidget {
     );
   }
 
+  // ── Desktop right-panel form content ────────────────────────────────────────
   Widget _buildDesktopForm(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // "MerkadoGo" two-tone — green/red on white right panel
+        _buildBrandText(whiteVariant: false, fontSize: 28),
+
+        const SizedBox(height: 6),
+
         Text(
-          'Welcome to Merkado Go',
-          style: GoogleFonts.outfit(
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF1A241A),
-            letterSpacing: -0.5,
-          ),
-          textAlign: TextAlign.left,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Get started by logging into your account or registering as a new user.',
+          'Ligao City\'s market, simplified.',
           style: GoogleFonts.poppins(
             fontSize: 14,
-            color: const Color(0xFF667066),
+            color: _kInkMuted,
           ),
+          textAlign: TextAlign.center,
         ),
+
         const SizedBox(height: 40),
+
+        // Primary CTA — Sign In
         SizedBox(
           width: double.infinity,
-          height: 56,
+          height: _kButtonHeight,
           child: ElevatedButton(
             onPressed: () => context.push(RouteNames.login),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20),
+              backgroundColor: _kPrimary,
               foregroundColor: Colors.white,
               elevation: 0,
               shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(_kButtonRadius),
               ),
             ),
             child: Text(
-              'Login',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              'Sign In',
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+
+        const SizedBox(height: 14),
+
+        // Secondary CTA — Create Account
         SizedBox(
           width: double.infinity,
-          height: 56,
+          height: _kButtonHeight,
           child: OutlinedButton(
             onPressed: () => context.push(RouteNames.signup),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1B5E20),
-              side: const BorderSide(
-                color: Color(0xFF1B5E20),
-                width: 1.5,
-              ),
+              foregroundColor: _kPrimary,
+              side: const BorderSide(color: _kPrimary, width: 1.5),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(_kButtonRadius),
               ),
             ),
             child: Text(
-              'Register',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              'Create Account',
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -230,12 +237,28 @@ class GetStartedScreen extends StatelessWidget {
     );
   }
 
+  // ── Left-panel hero title override ──────────────────────────────────────────
+  // Passed to AuthLayout.heroTitleWidget so only this screen gets two-tone text.
+  // All other screens leave heroTitleWidget null → standard DM Sans title.
+  static Widget _buildHeroTitleWidget() {
+    return _buildBrandText(whiteVariant: true, fontSize: 32);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AuthLayout(
       mobileBody: _buildMobileView(context),
       desktopFormContent: _buildDesktopForm(context),
+      // heroTitle is unused when heroTitleWidget is provided — kept for fallback safety.
+      heroTitle: 'MerkadoGo',
+      // Custom two-tone title replaces the plain DM Sans text on the left panel.
+      heroTitleWidget: _buildHeroTitleWidget(),
+      // Subtitle uses the divider-line style from the splash screen.
+      heroSubtitle: 'Your Ligao City Public Market Guide & Navigation Helper',
+      // Logo is rendered via _BrandIconCluster in AuthLayout.
+      // heroIcon is required by the constructor; it is unused visually since
+      // _BrandIconCluster now renders Image.asset universally.
+      heroIcon: Icons.storefront_rounded,
     );
   }
 }
-

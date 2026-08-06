@@ -124,7 +124,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       desktopFormContent: formContent,
       heroTitle: 'Account Recovery',
       heroSubtitle: 'Enter your email address to receive a secure password reset link',
-      illustrationPath: 'assets/images/forgot_password_illustration.png',
+      heroIcon: Icons.lock_reset_rounded,
     );
   }
 
@@ -160,7 +160,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           // Title
           Text(
             'Reset Your Password',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.dmSans(
               fontSize: 28,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF1A241A),
@@ -404,10 +404,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         // Title
         Text(
           'Check Your Email',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.dmSans(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF1B5E20),
+            color: const Color(0xFF1A241A),
             letterSpacing: -0.5,
           ),
           textAlign: TextAlign.center,

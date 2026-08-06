@@ -196,22 +196,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Welcome Back!',
-            style: GoogleFonts.outfit(
+            'Welcome Back',
+            style: GoogleFonts.dmSans(
               fontSize: 28,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF1A241A),
               letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Sign in to continue to Merkado Go',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF667066),
             ),
             textAlign: TextAlign.center,
           ),
@@ -447,18 +437,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               children: [
+                // App logo — white rounded-square container, transparent logo (consistent with desktop panel)
                 Container(
-                  height: 200,
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  width: 120,
+                  height: 120,
                   decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.asset(
-                      'assets/images/login_illustration.jpg',
-                      fit: BoxFit.cover,
-                    ),
+                  padding: const EdgeInsets.all(10),
+                  child: Image.asset(
+                    'assets/icons/MerkadoGo_Transparent Logo.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -478,8 +468,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       mobileBody: _buildMobileView(context),
       desktopFormContent: _buildFormFields(context),
       heroTitle: 'Welcome Back',
-      heroSubtitle: 'Sign in to access your Ligao City Public Market guide & stalls',
-      illustrationPath: 'assets/images/login_illustration.png',
+      heroSubtitle: 'Ligao City Public Market, at your fingertips.',
+      heroIcon: Icons.login_rounded,
     );
   }
 }

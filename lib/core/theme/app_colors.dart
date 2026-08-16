@@ -27,6 +27,9 @@ class AppColors {
   static const Color error        = Color(0xFFE53935);
   static const Color errorLight   = Color(0xFFFFEBEE);
   static const Color errorBorder  = Color(0xFFFFCDD2);
+  static const Color warning      = Color(0xFFF57F17);
+  static const Color warningLight = Color(0xFFFFFDE7);
+  static const Color warningBorder = Color(0xFFFFE082);
 
   // ── Navigation ─────────────────────────────────────────
   static const Color navSurface   = Color(0xFF1A241A);

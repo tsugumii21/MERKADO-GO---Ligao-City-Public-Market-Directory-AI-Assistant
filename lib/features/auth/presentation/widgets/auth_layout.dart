@@ -1,154 +1,175 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/responsive/responsive_breakpoints.dart';
+import '../../../../core/theme/app_colors.dart';
 
-/// Responsive split-panel container for Auth screens (Login, Signup, GetStarted, ForgotPassword, EmailVerify).
-/// On Mobile (<600px): Returns [mobileBody] as-is.
-/// On Desktop (>=600px): Returns a split view with a flat emerald branding panel on the left
-/// and a centered, width-constrained form container on the right.
-///
-/// The left panel displays a consistent [_BrandIconPanel] across all auth screens
-/// instead of per-screen stock illustrations, ensuring visual cohesion.
+/// Unified AuthLayout for all authentication screens with responsive mobile adaptation:
+/// - Desktop (>=600px): 50/50 horizontal split with Forest Green hero panel ([AppColors.primary])
+///   on the left and soft sage green form panel ([AppColors.surfaceDim]) on the right.
+/// - Mobile (<600px): Compact Forest Green hero header ([AppColors.primary], ~120-140px)
+///   with a single clear title and compact icon, transitioning into a soft sage form card ([AppColors.surfaceDim]).
 class AuthLayout extends StatelessWidget {
-  final Widget mobileBody;
-  final Widget desktopFormContent;
+  final Widget formContent;
   final String heroTitle;
   final String heroSubtitle;
-
-  /// Optional override for the hero title widget on the left panel.
-  /// When provided, replaces the default [Text] title — use this for
-  /// screens that need custom typography (e.g. two-tone RichText on Get Started).
-  /// All other screens leave this null and get the standard DM Sans heading.
   final Widget? heroTitleWidget;
-
-  /// Path to a per-screen illustration asset to show on the left panel
-  /// in place of the default rounded-square logo cluster.
-  /// When null, the logo is shown (Get Started behaviour).
   final String? illustrationPath;
-
-  /// The Material icon to display in the left-panel brand icon cluster.
-  /// Each auth screen provides its own contextually appropriate icon.
   final IconData heroIcon;
+  final bool showBackButton;
+  final VoidCallback? onBack;
 
   const AuthLayout({
     super.key,
-    required this.mobileBody,
-    required this.desktopFormContent,
+    required this.formContent,
     this.heroTitle = 'MERKADO GO',
     this.heroSubtitle = 'Your Ligao City Public Market Guide & Navigation Helper',
     this.heroIcon = Icons.storefront_rounded,
     this.heroTitleWidget,
     this.illustrationPath,
+    this.showBackButton = true,
+    this.onBack,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= AppBreakpoints.mobile;
+  // ── Desktop Left Hero Elements ──────────────────────────────────────────────
 
-    if (!isDesktop) {
-      return mobileBody;
-    }
+  Widget _buildDesktopLocationPill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.location_on_rounded,
+            color: Colors.white,
+            size: 14,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Ligao City Public Market',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildDesktopProgressDots() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 24,
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.35),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.35),
+            shape: BoxShape.circle,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Desktop 50/50 Layout ────────────────────────────────────────────────────
+
+  Widget _buildDesktopView(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surfaceDim,
       body: Row(
         children: [
-          // ── Left Hero Branding Panel ───────────────────────────────────
+          // ── Left Hero Panel (Deep Forest Green) ──
           Expanded(
             flex: 5,
             child: Container(
-              color: const Color(0xFF1B5E20),
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 64),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Location Pill Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        width: 1,
+              color: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 48),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildDesktopLocationPill(),
+                      const SizedBox(height: 36),
+                      _BrandIconCluster(
+                        icon: heroIcon,
+                        illustrationPath: illustrationPath,
+                        isMobile: false,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.location_on_rounded,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'LIGAO CITY PUBLIC MARKET',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            letterSpacing: 1.2,
+                      const SizedBox(height: 36),
+                      heroTitleWidget ??
+                          Text(
+                            heroTitle,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Brand Icon Cluster — shows per-screen illustration when provided,
-                  // falls back to the rounded-square logo (Get Started default).
-                  _BrandIconCluster(
-                    icon: heroIcon,
-                    illustrationPath: illustrationPath,
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Hero Title — uses heroTitleWidget override when provided (e.g. two-tone
-                  // RichText on Get Started), otherwise falls back to DM Sans plain text.
-                  heroTitleWidget ??
+                      const SizedBox(height: 14),
                       Text(
-                        heroTitle,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
+                        heroSubtitle,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white.withValues(alpha: 0.88),
+                          height: 1.5,
                         ),
                         textAlign: TextAlign.center,
                       ),
-
-                  const SizedBox(height: 12),
-
-                  // Hero Subtitle — Poppins body
-                  Text(
-                    heroSubtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.85),
-                      height: 1.6,
-                    ),
-                    textAlign: TextAlign.center,
+                      const SizedBox(height: 36),
+                      _buildDesktopProgressDots(),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
 
-          // ── Right Form Panel ───────────────────────────────────────────
+          // ── Right Form Panel (Soft Sage Green Surface) ──
           Expanded(
             flex: 6,
-            child: SafeArea(
+            child: Container(
+              color: AppColors.surfaceDim,
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
               child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 440),
-                    child: desktopFormContent,
+                    child: formContent,
                   ),
                 ),
               ),
@@ -158,49 +179,166 @@ class AuthLayout extends StatelessWidget {
       ),
     );
   }
+
+  // ── Mobile Compact Header + Form Card Layout ────────────────────────────────
+
+  Widget _buildMobileView(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.primary,
+      resizeToAvoidBottomInset: true,
+      appBar: showBackButton
+          ? AppBar(
+              backgroundColor: AppColors.primary,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: onBack ??
+                    () {
+                      if (context.canPop()) {
+                        context.pop();
+                      }
+                    },
+              ),
+            )
+          : null,
+      body: SafeArea(
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      // ── Compact Mobile Brand Header (No duplicate titles) ──
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          24,
+                          showBackButton ? 0 : 16,
+                          24,
+                          16,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _BrandIconCluster(
+                              icon: heroIcon,
+                              illustrationPath: illustrationPath,
+                              isMobile: true,
+                            ),
+                            const SizedBox(height: 10),
+                            heroTitleWidget ??
+                                Text(
+                                  heroTitle,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: -0.3,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                            if (heroTitleWidget != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                heroSubtitle,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      // ── Bottom Form Card (Soft Sage Dim Surface) ──
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          decoration: const BoxDecoration(
+                            color: AppColors.surfaceDim,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(24),
+                              topRight: Radius.circular(24),
+                            ),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                          child: SafeArea(
+                            top: false,
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 420),
+                                child: formContent,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= AppBreakpoints.mobile;
+
+    if (isDesktop) {
+      return _buildDesktopView(context);
+    }
+    return _buildMobileView(context);
+  }
 }
 
-// ─── Design constants ──────────────────────────────────────────────────────────
-// Illustration display sizes on the left panel (desktop only).
-// Square illustrations (500×500 source) → 220×220 display.
-// Landscape illustration (612×408 source) → unconstrained height, width 260,
-// BoxFit.contain preserves aspect ratio.
-const _kIllustrationSquareSize = 220.0;
-const _kIllustrationLandscapeWidth = 260.0;
-const _kLogoClusterSize = 160.0;
+// ─── Design Constants & Icon Cluster ──────────────────────────────────────────
+
+const _kIllustrationSquareSize = 200.0;
+const _kIllustrationLandscapeWidth = 240.0;
+const _kLogoClusterSize = 140.0;
 const _kLogoClusterRadius = 20.0;
-const _kLogoPadding = 16.0;
 
-/// Left-panel visual cluster.
-/// Renders a per-screen [illustrationPath] image when provided;
-/// falls back to the rounded-square app logo otherwise.
 class _BrandIconCluster extends StatelessWidget {
-  // icon parameter kept for API compatibility with all call sites
-  // ignore: unused_field
   final IconData icon;
-
-  /// Optional illustration asset path. When non-null the illustration is
-  /// displayed instead of the logo. Square images are rendered at
-  /// [_kIllustrationSquareSize]; landscape images at [_kIllustrationLandscapeWidth]
-  /// with unconstrained height and BoxFit.contain.
   final String? illustrationPath;
+  final bool isMobile;
 
   const _BrandIconCluster({
     required this.icon,
     this.illustrationPath,
+    this.isMobile = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    // ── Illustration mode ────────────────────────────────────────────────────
+    // Compact mobile icon size: 48px square container
+    final containerSize = isMobile ? 48.0 : _kLogoClusterSize;
+    final iconSize = isMobile ? 36.0 : 56.0;
+
     if (illustrationPath != null) {
-      // Detect landscape vs square by checking the known landscape asset path.
-      // Only email_verification_illustration is landscape (612×408).
       final isLandscape = illustrationPath!.contains('email_verification');
 
       if (isLandscape) {
         return SizedBox(
-          width: _kIllustrationLandscapeWidth,
+          width: isMobile ? 120.0 : _kIllustrationLandscapeWidth,
           child: Image.asset(
             illustrationPath!,
             fit: BoxFit.contain,
@@ -208,10 +346,9 @@ class _BrandIconCluster extends StatelessWidget {
         );
       }
 
-      // Square illustrations (sign-in, signup, forgot_password) — 220×220.
       return SizedBox(
-        width: _kIllustrationSquareSize,
-        height: _kIllustrationSquareSize,
+        width: isMobile ? 64.0 : _kIllustrationSquareSize,
+        height: isMobile ? 64.0 : _kIllustrationSquareSize,
         child: Image.asset(
           illustrationPath!,
           fit: BoxFit.contain,
@@ -219,17 +356,23 @@ class _BrandIconCluster extends StatelessWidget {
       );
     }
 
-    // ── Logo mode (default — Get Started) ────────────────────────────────────
+    // App Logo Container
     return Container(
-      width: _kLogoClusterSize,
-      height: _kLogoClusterSize,
+      width: containerSize,
+      height: containerSize,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(_kLogoClusterRadius),
+        borderRadius: BorderRadius.circular(isMobile ? 12 : _kLogoClusterRadius),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
       ),
-      padding: const EdgeInsets.all(_kLogoPadding),
+      padding: EdgeInsets.all(isMobile ? 4 : 14),
       child: Image.asset(
         'assets/icons/MerkadoGo_Transparent Logo.png',
+        width: iconSize,
+        height: iconSize,
         fit: BoxFit.contain,
       ),
     );

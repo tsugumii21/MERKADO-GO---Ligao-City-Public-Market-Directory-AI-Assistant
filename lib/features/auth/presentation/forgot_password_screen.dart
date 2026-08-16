@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
-import '../../../providers/auth_provider.dart';
 import '../../../core/exceptions/auth_exception.dart';
+import '../../../providers/auth_provider.dart';
 import 'widgets/auth_layout.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -83,94 +83,66 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final formContent = _emailSent ? _buildSuccessView() : _buildFormView();
+    final formContent = _emailSent ? _buildSuccessView() : _buildFormView(context);
 
     return AuthLayout(
-      mobileBody: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1B5E20),
-              size: 20,
-            ),
-            onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go(RouteNames.login);
-              }
-            },
-          ),
-          title: Text(
-            'Forgot Password',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF1B5E20),
-            ),
-          ),
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: formContent,
-          ),
-        ),
-      ),
-      desktopFormContent: formContent,
-      heroTitle: 'Account Recovery',
+      formContent: formContent,
+      heroTitle: 'Reset Password',
       heroSubtitle: 'Enter your email address to receive a secure password reset link',
       heroIcon: Icons.lock_reset_rounded,
       illustrationPath: 'assets/images/forgot_password_illustration.png',
+      onBack: () {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(RouteNames.login);
+        }
+      },
     );
   }
 
-  Widget _buildFormView() {
+  Widget _buildFormView(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 40),
-
-          // Lock Icon
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F8E9),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFF1B5E20),
-                width: 2,
+          if (isDesktop) ...[
+            const SizedBox(height: 16),
+            Center(
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F8E9),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF1B5E20),
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.lock_reset_rounded,
+                  size: 36,
+                  color: Color(0xFF1B5E20),
+                ),
               ),
             ),
-            child: const Icon(
-              Icons.lock_reset_rounded,
-              size: 40,
-              color: Color(0xFF1B5E20),
+            const SizedBox(height: 24),
+            Text(
+              'Reset Your Password',
+              style: GoogleFonts.dmSans(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A241A),
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Title
-          Text(
-            'Reset Your Password',
-            style: GoogleFonts.dmSans(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A241A),
-              letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 12),
+            const SizedBox(height: 10),
+          ],
 
           // Description
           Text(
@@ -184,7 +156,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: 48),
+          const SizedBox(height: 28),
 
           // Email Field
           TextFormField(

@@ -222,33 +222,32 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
   /// single-column mobile view.
   Widget _buildFormContent(BuildContext context) {
     final user = ref.watch(authRepositoryProvider).currentUser;
-    final email = user?.email ?? 'your email';
+    final email = user?.email ?? 'your email address';
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
 
     return FadeTransition(
       opacity: _contentOpacity,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Brand icon — mobile only (desktop uses left panel)
-          // Displayed inline in mobile single-column layout
-          const _MobileVerifyIcon(),
-
-          const SizedBox(height: 32),
-
-          // Heading — DM Sans display font, ink colour (not brand emerald)
-          Text(
-            'Check Your Email',
-            style: GoogleFonts.dmSans(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A241A),
-              letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 10),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (isDesktop) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Check Your Email',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1A241A),
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+              ],
 
           // Subtitle
           Text(
@@ -422,11 +421,12 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
               ),
             ),
           ),
-
-          const SizedBox(height: 32),
+              const SizedBox(height: 32),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   @override
@@ -436,30 +436,8 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
       illustrationPath: 'assets/images/email_verification_illustration.png',
       heroTitle: 'Verify Email',
       heroSubtitle: 'One last step — confirm your email address to activate your account.',
-      mobileBody: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Text(
-            'Verify Email',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF1B5E20),
-            ),
-          ),
-          centerTitle: true,
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: _buildFormContent(context),
-          ),
-        ),
-      ),
-      desktopFormContent: _buildFormContent(context),
+      showBackButton: false,
+      formContent: _buildFormContent(context),
     );
   }
 
@@ -471,30 +449,27 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
     switch (_feedbackType) {
       case FeedbackType.success:
         backgroundColor = const Color(0xFFE8F5E9);
-        textColor = const Color(0xFF2E7D32);
+        textColor = const Color(0xFF1B5E20);
         icon = Icons.check_circle_outline_rounded;
         break;
       case FeedbackType.warning:
-        backgroundColor = const Color(0xFFFFF8E1);
+        backgroundColor = const Color(0xFFFFF3E0);
         textColor = const Color(0xFFE65100);
         icon = Icons.warning_amber_rounded;
         break;
       case FeedbackType.error:
+      default:
         backgroundColor = const Color(0xFFFFEBEE);
-        textColor = const Color(0xFFB71C1C);
+        textColor = const Color(0xFFC62828);
         icon = Icons.error_outline_rounded;
         break;
-      default:
-        backgroundColor = const Color(0xFFE8F5E9);
-        textColor = const Color(0xFF2E7D32);
-        icon = Icons.info_outline_rounded;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: textColor.withValues(alpha: 0.3),
           width: 1,
@@ -515,37 +490,6 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Brand icon shown at the top of the mobile single-column layout only.
-/// On desktop, this role is filled by the left-panel `_BrandIconCluster` in `AuthLayout`.
-class _MobileVerifyIcon extends StatelessWidget {
-  const _MobileVerifyIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    // On desktop, AuthLayout provides the left panel — we don't render the icon.
-    // On mobile, this widget is visible inside the scrollable Scaffold body.
-    final isDesktop =
-        MediaQuery.sizeOf(context).width >= 600;
-    if (isDesktop) return const SizedBox.shrink();
-
-    return Center(
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        padding: const EdgeInsets.all(10),
-        child: Image.asset(
-          'assets/icons/MerkadoGo_Transparent Logo.png',
-          fit: BoxFit.contain,
-        ),
       ),
     );
   }

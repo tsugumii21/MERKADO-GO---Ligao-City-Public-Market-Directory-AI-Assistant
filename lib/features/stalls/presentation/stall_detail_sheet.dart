@@ -8,6 +8,7 @@ import '../../../models/stall_model.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../report/presentation/report_screen.dart';
 import '../../../core/utils/stall_utils.dart';
+import '../../../core/theme/app_colors.dart';
 
 class StallDetailSheet extends ConsumerStatefulWidget {
   final StallModel stall;
@@ -222,477 +223,534 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet>
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
     final hasPhotos = widget.stall.photoUrls.isNotEmpty;
     final categoryColors = _getCategoryColors(widget.stall.category);
     final categoryIcon = _getCategoryIcon(widget.stall.category);
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      snap: true,
-      snapSizes: const [0.65, 0.92],
-      builder: (context, scrollController) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          builder: (context, value, child) {
-            return Transform.translate(
-              offset: Offset(0, 20 * (1 - value)),
-              child: Opacity(
-                opacity: value,
-                child: child,
-              ),
-            );
-          },
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
-              ),
-            ),
-            child: CustomScrollView(
-              controller: scrollController,
-              slivers: [
-                // Top header / Drag handle
-                SliverToBoxAdapter(
-                  child: MediaQuery.sizeOf(context).width >= 600
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                color: Color(0xFFF0F0F0),
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Stall Details',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF1A241A),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: widget.onClose,
-                                icon: const Icon(
-                                  Icons.close_rounded,
-                                  color: Color(0xFF757575),
-                                  size: 20,
-                                ),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Center(
-                          child: Container(
-                            margin: const EdgeInsets.only(top: 12, bottom: 8),
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE0E0E0),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                ),
-
-                // Photo carousel
-                SliverToBoxAdapter(
-                  child: hasPhotos
-                      ? Stack(
-                          children: [
-                            SizedBox(
-                              height: 220,
-                              child: PageView.builder(
-                                itemCount: widget.stall.photoUrls.length,
-                                onPageChanged: (index) {
-                                  setState(() {
-                                    _currentPhotoIndex = index;
-                                  });
-                                },
-                                itemBuilder: (context, index) {
-                                  return CachedNetworkImage(
-                                    imageUrl: widget.stall.photoUrls[index],
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      color: const Color(0xFFF5F5F5),
-                                      child: const Center(
-                                        child: CircularProgressIndicator(
-                                          color: Color(0xFF2E7D32),
-                                        ),
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        _buildImagePlaceholder(),
-                                  );
-                                },
-                              ),
-                            ),
-                            // Photo indicators
-                            if (widget.stall.photoUrls.length > 1)
-                              Positioned(
-                                bottom: 12,
-                                left: 0,
-                                right: 0,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    widget.stall.photoUrls.length,
-                                    (index) => Container(
-                                      margin: const EdgeInsets.symmetric(
-                                          horizontal: 3),
-                                      width: _currentPhotoIndex == index
-                                          ? 8
-                                          : 6,
-                                      height: _currentPhotoIndex == index
-                                          ? 8
-                                          : 6,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: _currentPhotoIndex == index
-                                            ? const Color(0xFF1B5E20)
-                                            : const Color(0x401B5E20),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        )
-                      : _buildImagePlaceholder(),
-                ),
-
-                // Content area
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
-
-                        // Category + Favorite row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Category chip
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: categoryColors['bg'],
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    categoryIcon,
-                                    size: 14,
-                                    color: categoryColors['text'],
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    StallUtils.getCategoryLabel(widget.stall.category),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: categoryColors['text'],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Favorite button using new provider
-                            Consumer(
-                              builder: (context, ref, child) {
-                                final favState = ref.watch(favoriteProvider);
-                                final isFav = favState.isFavorite(widget.stall.stallId);
-                                
-                                return ScaleTransition(
-                                  scale: _favoriteScaleAnimation,
-                                  child: IconButton(
-                                    onPressed: () async {
-                                      unawaited(
-                                        _favoriteAnimationController.forward(from: 0),
-                                      );
-                                      await ref.read(favoriteProvider.notifier)
-                                         .toggleFavorite(widget.stall.stallId);
-                                    },
-                                    icon: Icon(
-                                      isFav
-                                          ? Icons.favorite_rounded
-                                          : Icons.favorite_border_rounded,
-                                      color: isFav
-                                          ? const Color(0xFFE53935)
-                                          : const Color(0xFFBDBDBD),
-                                      size: 24,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Stall name
-                        Text(
-                          widget.stall.name,
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1B5E20),
-                            height: 1.2,
-                          ),
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        // Address row
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on_outlined,
-                              size: 14,
-                              color: Color(0xFF9E9E9E),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                widget.stall.address,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: const Color(0xFF757575),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Operating details + status
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F9FA),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFF0F0F0),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              StallUtils.buildStatusBadge(widget.stall),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.access_time_rounded,
-                                    size: 14,
-                                    color: Color(0xFF666666),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      widget.stall.openTime.isNotEmpty &&
-                                              widget.stall.closeTime.isNotEmpty
-                                          ? '${_formatTime12Hour(widget.stall.openTime)} - ${_formatTime12Hour(widget.stall.closeTime)}'
-                                          : 'Hours not specified',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: const Color(0xFF666666),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.calendar_today_rounded,
-                                    size: 14,
-                                    color: Color(0xFF666666),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      widget.stall.daysOpen.isNotEmpty
-                                          ? widget.stall.daysOpen.join(', ')
-                                          : 'Days not specified',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: const Color(0xFF666666),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        if (widget.stall.section != null &&
-                            widget.stall.section!.isNotEmpty) ...[
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.store_mall_directory_rounded,
-                                size: 14,
-                                color: Color(0xFF666666),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _getSectionLabel(widget.stall.section!),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: const Color(0xFF666666),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        // Products section
-                        Text(
-                          'Products Available',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF212121),
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: widget.stall.products.map((product) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(
-                                  color: const Color(0xFFE0E0E0),
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                product,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: const Color(0xFF424242),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Divider
-                        Container(
-                          height: 1,
-                          color: const Color(0xFFF0F0F0),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Report button
-                        InkWell(
-                          onTap: _navigateToReportScreen,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: double.infinity,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(
-                                color: const Color(0xFFFFCDD2),
-                                width: 1.5,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.flag_outlined,
-                                  size: 16,
-                                  color: Color(0xFFE53935),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Report a problem',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFFE53935),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-                      ],
-                    ),
+    if (isDesktop) {
+      return Container(
+        color: AppColors.surface,
+        child: Column(
+          children: [
+            // Top sticky header for Desktop Slide-over
+            Container(
+              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.border,
+                    width: 1.0,
                   ),
                 ),
-              ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Stall Details',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: widget.onClose,
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.inkMuted,
+                      size: 22,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Close',
+                  ),
+                ],
+              ),
             ),
+
+            // Scrollable Content
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: _buildPhotoArea(hasPhotos),
+                  ),
+                  SliverToBoxAdapter(
+                    child: _buildBodyContent(categoryColors, categoryIcon),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Mobile Bottom Sheet
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.45,
+      maxChildSize: 0.95,
+      snap: true,
+      snapSizes: const [0.55, 0.85, 0.95],
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: CustomScrollView(
+            controller: scrollController,
+            slivers: [
+              // Mobile drag handle & header
+              SliverToBoxAdapter(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 12, bottom: 8),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Stall Details',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: widget.onClose,
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: AppColors.inkMuted,
+                              size: 22,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                  ],
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: _buildPhotoArea(hasPhotos),
+              ),
+              SliverToBoxAdapter(
+                child: _buildBodyContent(categoryColors, categoryIcon),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
+  Widget _buildPhotoArea(bool hasPhotos) {
+    if (!hasPhotos) {
+      return _buildImagePlaceholder();
+    }
+
+    return Stack(
+      children: [
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            itemCount: widget.stall.photoUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPhotoIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return CachedNetworkImage(
+                imageUrl: widget.stall.photoUrls[index],
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: AppColors.surfaceDim,
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => _buildImagePlaceholder(),
+              );
+            },
+          ),
+        ),
+        if (widget.stall.photoUrls.length > 1)
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.stall.photoUrls.length,
+                (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentPhotoIndex == index ? 8 : 6,
+                  height: _currentPhotoIndex == index ? 8 : 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentPhotoIndex == index
+                        ? AppColors.primary
+                        : AppColors.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBodyContent(
+      Map<String, Color> categoryColors, IconData categoryIcon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+
+          // Category Badge + Favorite Button Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: categoryColors['bg'] ?? AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      categoryIcon,
+                      size: 14,
+                      color: categoryColors['text'] ?? AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      StallUtils.getCategoryLabel(widget.stall.category),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: categoryColors['text'] ?? AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Favorite Heart Button (48×48 Touch Target)
+              Consumer(
+                builder: (context, ref, child) {
+                  final favState = ref.watch(favoriteProvider);
+                  final isFav = favState.isFavorite(widget.stall.stallId);
+
+                  return SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: ScaleTransition(
+                        scale: _favoriteScaleAnimation,
+                        child: IconButton(
+                          onPressed: () async {
+                            unawaited(
+                              _favoriteAnimationController.forward(from: 0),
+                            );
+                            await ref
+                                .read(favoriteProvider.notifier)
+                                .toggleFavorite(widget.stall.stallId);
+                          },
+                          icon: Icon(
+                            isFav
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: isFav
+                                ? AppColors.error
+                                : AppColors.inkSubtle,
+                            size: 24,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: isFav
+                              ? 'Remove from Favorites'
+                              : 'Add to Favorites',
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Stall Name
+          Text(
+            widget.stall.name,
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              height: 1.25,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // Address Row
+          Row(
+            children: [
+              const Icon(
+                Icons.location_on_outlined,
+                size: 14,
+                color: AppColors.inkSubtle,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  widget.stall.address,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Operating Details & Schedule Box
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.canvas,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.border,
+                width: 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                StallUtils.buildStatusBadge(widget.stall),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.access_time_rounded,
+                      size: 14,
+                      color: AppColors.inkMuted,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        widget.stall.openTime.isNotEmpty &&
+                                widget.stall.closeTime.isNotEmpty
+                            ? '${_formatTime12Hour(widget.stall.openTime)} - ${_formatTime12Hour(widget.stall.closeTime)}'
+                            : 'Hours not specified',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppColors.inkMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 14,
+                      color: AppColors.inkMuted,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        widget.stall.daysOpen.isNotEmpty
+                            ? widget.stall.daysOpen.join(', ')
+                            : 'Days not specified',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppColors.inkMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          if (widget.stall.section != null &&
+              widget.stall.section!.isNotEmpty) ...[
+            Row(
+              children: [
+                const Icon(
+                  Icons.store_mall_directory_rounded,
+                  size: 14,
+                  color: AppColors.inkSubtle,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _getSectionLabel(widget.stall.section!),
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Products Available
+          if (widget.stall.products.isNotEmpty) ...[
+            Text(
+              'Products Available',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: widget.stall.products.map((product) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border.all(
+                      color: AppColors.border,
+                      width: 1.0,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    product,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          const Divider(height: 1, color: AppColors.border),
+
+          const SizedBox(height: 16),
+
+          // Report a Problem Outline Button
+          InkWell(
+            onTap: _navigateToReportScreen,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border.all(
+                  color: AppColors.errorBorder,
+                  width: 1.0,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.flag_outlined,
+                    size: 16,
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Report a problem',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
   Widget _buildImagePlaceholder() {
     return Container(
-      height: 220,
-      color: const Color(0xFFF1F8E9),
+      height: 200,
+      color: AppColors.surfaceDim,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
               Icons.storefront_outlined,
-              size: 48,
-              color: Color(0xFF81C784),
+              size: 40,
+              color: AppColors.primary,
             ),
             const SizedBox(height: 8),
             Text(
               'No photo available',
               style: GoogleFonts.poppins(
                 fontSize: 12,
-                color: const Color(0xFF9E9E9E),
+                color: AppColors.inkSubtle,
               ),
             ),
           ],

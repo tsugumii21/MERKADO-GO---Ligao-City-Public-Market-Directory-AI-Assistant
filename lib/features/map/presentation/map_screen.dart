@@ -36,9 +36,6 @@ class MapScreenState extends ConsumerState<MapScreen>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  // Animation for floating Aling Suki button
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
   bool _isChatOpen = false;
 
   // Camera state
@@ -47,7 +44,6 @@ class MapScreenState extends ConsumerState<MapScreen>
 
   // Zoom limit tracking (prevent zooming out past opening view)
   bool _initialZoomCaptured = false;
-  static const double _minZoom = 17.0; // matches opening view zoom level
 
   // Map initialization tracking (prevent repeated camera animations)
   bool _mapInitialized = false;
@@ -57,12 +53,6 @@ class MapScreenState extends ConsumerState<MapScreen>
 
   // Ligao City Public Market coordinates (exact location from Google Maps)
   static const LatLng _ligaoMarketCenter = LatLng(13.241861, 123.538917);
-
-  // Market boundary (wider to show all stalls)
-  static final LatLngBounds _marketBounds = LatLngBounds(
-    southwest: const LatLng(13.2410, 123.5378),
-    northeast: const LatLng(13.2428, 123.5398),
-  );
 
   Set<Marker> _markers = {};
   BitmapDescriptor? _openMarkerIcon;
@@ -96,16 +86,6 @@ class MapScreenState extends ConsumerState<MapScreen>
       (_) {
         if (mounted) setState(() {});
       },
-    );
-
-    // Initialize pulse animation for Aling Suki button
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     _searchFocusNode.addListener(() {
@@ -149,92 +129,77 @@ class MapScreenState extends ConsumerState<MapScreen>
         _allStalls.where((s) => StallUtils.isStallOpenNow(s)).length;
     final closedCount = _allStalls.length - openCount;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: const BoxDecoration(
-              color: Color(0xFFE8F5E9),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2E7D32),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2E7D32),
-                    shape: BoxShape.circle,
-                  ),
+              const SizedBox(width: 5),
+              Text(
+                '$openCount open',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2E7D32),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  '$openCount Open',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2E7D32),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 28,
-            color: const Color(0xFFE0E0E0),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFEBEE),
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFC62828),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '$closedCount Closed',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFFC62828),
-                  ),
-                ),
-              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.errorLight,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.errorBorder,
+              width: 1,
             ),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.error,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '$closedCount closed',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.error,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -246,7 +211,6 @@ class MapScreenState extends ConsumerState<MapScreen>
     _stallsSubscription?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
-    _pulseController.dispose();
     _positionStream?.cancel();
     super.dispose();
   }
@@ -757,125 +721,158 @@ class MapScreenState extends ConsumerState<MapScreen>
                 cameraTargetBounds: CameraTargetBounds.unbounded,
               ),
 
-              Positioned(
-                top: MediaQuery.of(context).viewPadding.top + 68,
-                left: 16,
-                child: _buildStallCountBadge(),
-              ),
-
-              // Search bar overlay + live dropdown
+              // Top Search Bar + Filter Button paired row & Status Pills
               Positioned(
                 top: MediaQuery.of(context).viewPadding.top + 12,
                 left: 16,
-                right: 64,
+                right: 16,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: _showDropdown
-                            ? const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              )
-                            : BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.search_rounded,
-                            color: _searchQuery.isNotEmpty
-                                ? const Color(0xFF1B5E20)
-                                : const Color(0xFF9E9E9E),
-                            size: 22,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              cursorColor: const Color(0xFF1B5E20),
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: const Color(0xFF212121),
+                    // Search bar + Filter button row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: _showDropdown
+                                  ? const BorderRadius.only(
+                                      topLeft: Radius.circular(12),
+                                      topRight: Radius.circular(12),
+                                    )
+                                  : BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 1,
                               ),
-                              decoration: InputDecoration(
-                                hintText: 'Search stalls, products...',
-                                hintStyle: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: const Color(0xFF9E9E9E),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                Icon(
+                                  Icons.search_rounded,
+                                  color: _searchQuery.isNotEmpty
+                                      ? AppColors.primary
+                                      : AppColors.inkSubtle,
+                                  size: 20,
                                 ),
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                disabledBorder: InputBorder.none,
-                                errorBorder: InputBorder.none,
-                                focusedErrorBorder: InputBorder.none,
-                                filled: false,
-                                fillColor: Colors.white,
-                                contentPadding: EdgeInsets.zero,
-                                isDense: true,
-                              ),
-                              onChanged: _onSearchChanged,
-                              textInputAction: TextInputAction.search,
-                              onSubmitted: (_) {
-                                if (_searchResults.isNotEmpty) {
-                                  _onStallSelected(_searchResults.first);
-                                }
-                              },
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    cursorColor: AppColors.primary,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: AppColors.ink,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Search stalls, products...',
+                                      hintStyle: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: AppColors.inkSubtle,
+                                      ),
+                                      border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
+                                      disabledBorder: InputBorder.none,
+                                      errorBorder: InputBorder.none,
+                                      focusedErrorBorder: InputBorder.none,
+                                      filled: false,
+                                      contentPadding: EdgeInsets.zero,
+                                      isDense: true,
+                                    ),
+                                    onChanged: _onSearchChanged,
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (_) {
+                                      if (_searchResults.length == 1) {
+                                        _onStallSelected(_searchResults.first);
+                                      } else if (_searchResults.isNotEmpty) {
+                                        _animateToStalls(_searchResults);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                if (_searchQuery.isNotEmpty)
+                                  GestureDetector(
+                                    onTap: _clearSearch,
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(12),
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        color: AppColors.inkSubtle,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(width: 12),
+                              ],
                             ),
                           ),
-                          if (_searchQuery.isNotEmpty)
-                            GestureDetector(
-                              onTap: _clearSearch,
-                              child: const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: Icon(
-                                  Icons.close_rounded,
-                                  color: Color(0xFF9E9E9E),
-                                  size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        // Paired Filter / Layer Button
+                        Tooltip(
+                          message: _currentMapType == MapType.hybrid
+                              ? 'Satellite View'
+                              : 'Map View',
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 1,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _toggleMapType,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.layers_rounded,
+                                    color: _currentMapType == MapType.hybrid
+                                        ? AppColors.primary
+                                        : AppColors.inkMuted,
+                                    size: 22,
+                                  ),
                                 ),
                               ),
-                            )
-                          else
-                            const SizedBox(width: 12),
-                        ],
-                      ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+
+                    // Dropdown results under search bar if active
                     if (_showDropdown)
                       Container(
                         constraints: const BoxConstraints(maxHeight: 320),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(12),
                             bottomRight: Radius.circular(12),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
                               height: 1,
-                              color: const Color(0xFFE0E0E0),
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 12),
+                              color: AppColors.border,
+                              margin: const EdgeInsets.symmetric(horizontal: 12),
                             ),
                             if (_searchResults.isEmpty)
                               Padding(
@@ -884,7 +881,7 @@ class MapScreenState extends ConsumerState<MapScreen>
                                   'No stalls found for "$_searchQuery"',
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
-                                    color: const Color(0xFF9E9E9E),
+                                    color: AppColors.inkSubtle,
                                   ),
                                 ),
                               )
@@ -892,15 +889,12 @@ class MapScreenState extends ConsumerState<MapScreen>
                               SizedBox(
                                 height: dropdownListHeight,
                                 child: ListView.builder(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
                                   itemCount: _searchResults.length,
                                   itemBuilder: (_, i) {
                                     final stall = _searchResults[i];
-                                    final isOpen =
-                                        StallUtils.isStallOpenNow(stall);
-                                    final matchedProduct =
-                                        _getMatchedProduct(stall);
+                                    final isOpen = StallUtils.isStallOpenNow(stall);
+                                    final matchedProduct = _getMatchedProduct(stall);
 
                                     return GestureDetector(
                                       onTap: () => _onStallSelected(stall),
@@ -916,88 +910,66 @@ class MapScreenState extends ConsumerState<MapScreen>
                                               width: 40,
                                               height: 40,
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFFE8F5E9),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
+                                                color: AppColors.primaryLight,
+                                                borderRadius: BorderRadius.circular(8),
                                               ),
                                               child: stall.photoUrls.isNotEmpty
                                                   ? ClipRRect(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
+                                                      borderRadius: BorderRadius.circular(8),
                                                       child: Image.network(
                                                         stall.photoUrls.first,
                                                         fit: BoxFit.cover,
-                                                        errorBuilder:
-                                                            (_, __, ___) =>
-                                                                const Icon(
+                                                        errorBuilder: (_, __, ___) => const Icon(
                                                           Icons.store_rounded,
-                                                          color:
-                                                              Color(0xFF4CAF50),
+                                                          color: AppColors.primary,
                                                           size: 20,
                                                         ),
                                                       ),
                                                     )
                                                   : const Icon(
                                                       Icons.store_rounded,
-                                                      color: Color(0xFF4CAF50),
+                                                      color: AppColors.primary,
                                                       size: 20,
                                                     ),
                                             ),
                                             const SizedBox(width: 12),
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
                                                   _buildHighlightedText(
-                                                      stall.name, _searchQuery),
-                                                  const SizedBox(height: 2),
+                                                    stall.name,
+                                                    _searchQuery,
+                                                  ),
                                                   Row(
                                                     children: [
-                                                      Flexible(
-                                                        child: Text(
-                                                          StallUtils
-                                                              .getCategoryLabel(
-                                                                  stall
-                                                                      .category),
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                            fontSize: 11,
-                                                            color: const Color(
-                                                                0xFF666666),
-                                                          ),
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      Container(
-                                                        width: 3,
-                                                        height: 3,
-                                                        decoration:
-                                                            const BoxDecoration(
-                                                          color:
-                                                              Color(0xFF9E9E9E),
-                                                          shape:
-                                                              BoxShape.circle,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
                                                       Text(
-                                                        isOpen
-                                                            ? 'Open'
-                                                            : 'Closed',
-                                                        style:
-                                                            GoogleFonts.poppins(
+                                                        stall.category,
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 11,
+                                                          color: AppColors.inkMuted,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                        width: 6,
+                                                        height: 6,
+                                                        decoration: BoxDecoration(
+                                                          color: isOpen
+                                                              ? const Color(0xFF2E7D32)
+                                                              : AppColors.error,
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        isOpen ? 'Open' : 'Closed',
+                                                        style: GoogleFonts.poppins(
                                                           fontSize: 11,
                                                           color: isOpen
-                                                              ? const Color(
-                                                                  0xFF2E7D32)
-                                                              : const Color(
-                                                                  0xFFC62828),
-                                                          fontWeight:
-                                                              FontWeight.w500,
+                                                              ? const Color(0xFF2E7D32)
+                                                              : AppColors.error,
+                                                          fontWeight: FontWeight.w500,
                                                         ),
                                                       ),
                                                     ],
@@ -1005,27 +977,22 @@ class MapScreenState extends ConsumerState<MapScreen>
                                                   if (matchedProduct != null)
                                                     Text(
                                                       'Sells: $matchedProduct',
-                                                      style:
-                                                          GoogleFonts.poppins(
+                                                      style: GoogleFonts.poppins(
                                                         fontSize: 10,
-                                                        color: const Color(
-                                                            0xFF1B5E20),
-                                                        fontWeight:
-                                                            FontWeight.w500,
+                                                        color: AppColors.primary,
+                                                        fontWeight: FontWeight.w500,
                                                       ),
                                                       maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                      overflow: TextOverflow.ellipsis,
                                                     ),
                                                 ],
                                               ),
                                             ),
-                                            if (stall.latitude != 0.0 ||
-                                                stall.longitude != 0.0)
+                                            if (stall.latitude != 0.0 || stall.longitude != 0.0)
                                               const Icon(
                                                 Icons.location_on_rounded,
                                                 size: 16,
-                                                color: Color(0xFF9E9E9E),
+                                                color: AppColors.inkSubtle,
                                               ),
                                           ],
                                         ),
@@ -1037,42 +1004,212 @@ class MapScreenState extends ConsumerState<MapScreen>
                           ],
                         ),
                       ),
+
+                    const SizedBox(height: 8),
+
+                    // Status Pills below search row
+                    _buildStallCountBadge(),
                   ],
                 ),
               ),
 
-              // Map type toggle button (top right)
+              // Zoom controls (right side, centered vertically)
               Positioned(
-                top: MediaQuery.of(context).padding.top + 16,
+                right: 16,
+                top: MediaQuery.of(context).size.height * 0.42,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.border,
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Zoom In button
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            _mapController?.animateCamera(
+                              CameraUpdate.zoomIn(),
+                            );
+                          },
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.add_rounded,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Divider line
+                      Container(
+                        width: 44,
+                        height: 1,
+                        color: AppColors.border,
+                      ),
+
+                      // Zoom Out button
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            _mapController?.animateCamera(
+                              CameraUpdate.zoomOut(),
+                            );
+                          },
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.remove_rounded,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // My Location button
+              Positioned(
+                bottom: MediaQuery.sizeOf(context).width >= 600 ? 152 : 202,
                 right: 16,
                 child: Tooltip(
-                  message: _currentMapType == MapType.hybrid
-                      ? 'Satellite View'
-                      : 'Map View',
+                  message: 'My Location',
                   child: Container(
-                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1B5E20),
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.18),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: 1,
+                      ),
                     ),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: _toggleMapType,
+                        onTap: _goToMyLocation,
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          width: 44,
-                          height: 44,
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
+                          child: _isLoadingLocation
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.primary,
+                                  ),
+                                )
+                              : Icon(
+                                  _locationPermissionGranted
+                                      ? Icons.my_location_rounded
+                                      : Icons.location_disabled_rounded,
+                                  color: _locationPermissionGranted
+                                      ? AppColors.primary
+                                      : AppColors.inkSubtle,
+                                  size: 22,
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Indoor Map button (visible only at zoom >= 20)
+              Positioned(
+                bottom: MediaQuery.sizeOf(context).width >= 600 ? 92 : 144,
+                left: 16,
+                child: AnimatedOpacity(
+                  opacity: _showIndoorButton ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: IgnorePointer(
+                    ignoring: !_showIndoorButton,
+                    child: GestureDetector(
+                      onTap: _openIndoorMap,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.map_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Indoor Map',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Recenter button (bottom right)
+              Positioned(
+                bottom: MediaQuery.sizeOf(context).width >= 600 ? 92 : 144,
+                right: 16,
+                child: Tooltip(
+                  message: 'Back to Market',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: 1,
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _recenterMap,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 48,
+                          height: 48,
                           alignment: Alignment.center,
                           child: const Icon(
-                            Icons.layers_rounded,
+                            Icons.center_focus_strong_rounded,
                             color: Colors.white,
                             size: 22,
                           ),
@@ -1083,321 +1220,66 @@ class MapScreenState extends ConsumerState<MapScreen>
                 ),
               ),
 
-              // Zoom controls (right side, centered vertically)
+              // Floating Aling Suki AI Assistant button (bottom right)
               Positioned(
+                bottom: MediaQuery.sizeOf(context).width >= 600 ? 24 : 76,
                 right: 16,
-                top: MediaQuery.of(context).size.height * 0.45,
-                child: Column(
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    // Zoom In button
+                    // Main button
                     Container(
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 2,
+                        ),
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () {
-                            _mapController?.animateCamera(
-                              CameraUpdate.zoomIn(),
-                            );
+                            setState(() {
+                              _isChatOpen = true;
+                            });
+                            _showAlingSukiOverlay();
                           },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.add_rounded,
-                              color: Color(0xFF1B5E20),
-                              size: 22,
+                          borderRadius: BorderRadius.circular(28),
+                          child: const Center(
+                            child: CircleAvatar(
+                              backgroundColor: Colors.transparent,
+                              backgroundImage:
+                                  AssetImage('assets/images/aling_suki.png'),
+                              radius: 24,
                             ),
                           ),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 1),
-
-                    // Divider line
-                    Container(
-                      width: 44,
-                      height: 1,
-                      color: const Color(0xFFE0E0E0),
-                    ),
-
-                    const SizedBox(height: 1),
-
-                    // Zoom Out button
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            _mapController?.animateCamera(
-                              CameraUpdate.zoomOut(),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.remove_rounded,
-                              color: Color(0xFF1B5E20),
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // My Location button (above recenter, bottom right)
-              Positioned(
-                bottom: 162,
-                right: 16,
-                child: Tooltip(
-                  message: 'My Location',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _goToMyLocation,
-                        borderRadius: BorderRadius.circular(14),
+                    // Unread badge (red dot)
+                    if (!_isChatOpen && ref.watch(chatProvider).length > 1)
+                      Positioned(
+                        top: 2,
+                        right: 2,
                         child: Container(
-                          width: 50,
-                          height: 50,
-                          alignment: Alignment.center,
-                          child: _isLoadingLocation
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Color(0xFF1B5E20),
-                                  ),
-                                )
-                              : Icon(
-                                  _locationPermissionGranted
-                                      ? Icons.my_location_rounded
-                                      : Icons.location_disabled_rounded,
-                                  color: _locationPermissionGranted
-                                      ? const Color(0xFF1B5E20)
-                                      : const Color(0xFF9E9E9E),
-                                  size: 24,
-                                ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Indoor Map button (fixed position; visible only at zoom >= 20)
-              Positioned(
-                bottom: 162,
-                left: 0,
-                right: 0,
-                child: AnimatedOpacity(
-                  opacity: _showIndoorButton ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 400),
-                  child: IgnorePointer(
-                    ignoring: !_showIndoorButton,
-                    child: Center(
-                      child: GestureDetector(
-                        onTap: _openIndoorMap,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          width: 12,
+                          height: 12,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF2E7D32).withOpacity(0.5),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.map_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'View Indoor Map',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Recenter button (bottom right)
-              Positioned(
-                bottom: 100,
-                right: 16,
-                child: Tooltip(
-                  message: 'Back to Market',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B5E20),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _recenterMap,
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          width: 50,
-                          height: 50,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.center_focus_strong_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Floating Aling Suki AI Assistant button (bottom left)
-              Positioned(
-                bottom: 90,
-                left: 16,
-                child: AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: 1.0,
-                      child: child,
-                    );
-                  },
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Main button
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _isChatOpen = true;
-                              });
-                              _showAlingSukiOverlay();
-                            },
-                            borderRadius: BorderRadius.circular(28),
-                            child: const Center(
-                              child: CircleAvatar(
-                                backgroundColor: Colors.transparent,
-                                backgroundImage:
-                                    AssetImage('assets/images/aling_suki.png'),
-                                radius: 24,
-                              ),
+                            color: AppColors.error,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
                             ),
                           ),
                         ),
                       ),
-
-                      // Unread badge (red dot) - show when chat has messages and is closed
-                      if (!_isChatOpen && ref.watch(chatProvider).length > 1)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -1461,26 +1343,59 @@ class MapScreenState extends ConsumerState<MapScreen>
     );
   }
 
-  // Show Aling Suki chat overlay (docked dialog on desktop, bottom sheet on mobile)
+  // Show Aling Suki chat overlay (docked dialog on desktop, full bottom sheet on mobile)
   void _showAlingSukiOverlay() {
     final isDesktop = MediaQuery.sizeOf(context).width >= 600;
     if (isDesktop) {
-      showDialog(
+      showGeneralDialog(
         context: context,
+        barrierDismissible: true,
+        barrierLabel: 'Aling Suki Chat',
         barrierColor: Colors.black26,
-        builder: (context) => Dialog(
-          alignment: Alignment.bottomRight,
-          insetPadding: const EdgeInsets.only(right: 24, bottom: 24),
-          backgroundColor: Colors.transparent,
-          child: SizedBox(
-            width: 400,
-            height: 600,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: const _AlingSukiChatSheet(),
+        transitionDuration: const Duration(milliseconds: 240),
+        pageBuilder: (context, anim1, anim2) {
+          return Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 24, bottom: 24),
+              child: Material(
+                color: Colors.transparent,
+                child: SizedBox(
+                  width: 400,
+                  height: 600,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 1,
+                        ),
+                      ),
+                      child: const _AlingSukiChatSheet(),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
+        transitionBuilder: (context, anim1, anim2, child) {
+          final curve = CurvedAnimation(
+            parent: anim1,
+            curve: Curves.easeOutCubic,
+          );
+          return ScaleTransition(
+            scale: Tween<double>(begin: 0.85, end: 1.0).animate(curve),
+            alignment: Alignment.bottomRight,
+            child: FadeTransition(
+              opacity: curve,
+              child: child,
+            ),
+          );
+        },
       ).then((_) {
         if (mounted) {
           setState(() {
@@ -1493,7 +1408,7 @@ class MapScreenState extends ConsumerState<MapScreen>
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         builder: (context) => SizedBox(
           height: MediaQuery.sizeOf(context).height,
           width: MediaQuery.sizeOf(context).width,

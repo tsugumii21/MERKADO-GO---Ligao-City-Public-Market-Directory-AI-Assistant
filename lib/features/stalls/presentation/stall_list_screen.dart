@@ -1821,68 +1821,6 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     }
   }
 
-  IconData _getCategoryIcon(String category) {
-    // For individual stall categories displayed in stall cards
-    switch (category.toLowerCase().replaceAll(' ', '_')) {
-      case 'seafood':
-      case 'fish':
-        return Icons.water_outlined;
-      case 'pork':
-      case 'baboy':
-      case 'beef':
-      case 'baka':
-      case 'meat':
-      case 'karne':
-        return Icons.set_meal_outlined;
-      case 'poultry':
-      case 'manok':
-        return Icons.egg_outlined;
-      case 'vegetables':
-      case 'gulay':
-        return Icons.eco_outlined;
-      case 'fruits':
-      case 'prutas':
-        return Icons.energy_savings_leaf_outlined;
-      case 'rice':
-      case 'bigas':
-        return Icons.grain_rounded;
-      case 'sari_sari':
-      case 'sarisari':
-      case 'sari-sari':
-        return Icons.store_rounded;
-      case 'dry_goods':
-      case 'drygoods':
-        return Icons.shopping_bag_outlined;
-      case 'spices':
-      case 'pampalasa':
-        return Icons.grass_outlined;
-      case 'ukay_ukay':
-      case 'ukay-ukay':
-      case 'ukayukay':
-      case 'ukay':
-      case 'clothing':
-        return Icons.checkroom_rounded;
-      case 'eatery':
-      case 'carinderia':
-      case 'cooked':
-      case 'cooked_food':
-      case 'lutong_ulam':
-        return Icons.restaurant_rounded;
-      case 'frozen':
-      case 'frozen_goods':
-      case 'processed':
-      case 'processed_foods':
-        return Icons.kitchen_rounded;
-      default:
-        return Icons.storefront_outlined;
-    }
-  }
-
-  String _getCategoryDisplayName(String category) {
-    // For individual stall categories - just return as is with proper casing
-    return category;
-  }
-
   String _getGroupDisplayName(String groupKey) {
     // For filter chip group labels
     final typeData = _categoryMap[groupKey];
@@ -1935,17 +1873,42 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.surface,
         elevation: 0,
+        scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        title: Text(
-          'Stalls Directory',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+        centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        shape: const Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: 1.0,
+          ),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Stalls Directory',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Text(
+                'Ligao City Public Market',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.inkMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1969,117 +1932,105 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           child: CompositedTransformTarget(
                             link: _layerLink,
                             child: Container(
-                              height: 46,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x0A000000),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.border,
+                                  width: 1.0,
                                 ),
-                                child: Row(
-                                  children: [
-                                    const SizedBox(width: 12),
-                                    const Icon(
-                                      Icons.search_rounded,
-                                      color: AppColors.inkSubtle,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _searchController,
-                                        focusNode: _searchFocusNode,
-                                        style: GoogleFonts.poppins(
+                              ),
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 12),
+                                  Icon(
+                                    Icons.search_rounded,
+                                    color: _searchQuery.isNotEmpty
+                                        ? AppColors.primary
+                                        : AppColors.inkSubtle,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _searchController,
+                                      focusNode: _searchFocusNode,
+                                      cursorColor: AppColors.primary,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: AppColors.ink,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText:
+                                            'Search stalls, products...',
+                                        hintStyle: GoogleFonts.poppins(
                                           fontSize: 13,
-                                          color: AppColors.ink,
+                                          color: AppColors.inkSubtle,
                                           fontWeight: FontWeight.w400,
                                         ),
-                                        decoration: InputDecoration(
-                                          hintText:
-                                              'Search stalls, products...',
-                                          hintStyle: GoogleFonts.poppins(
-                                            fontSize: 13,
-                                            color: AppColors.inkSubtle,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                          border: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          errorBorder: InputBorder.none,
-                                          disabledBorder: InputBorder.none,
-                                          focusedErrorBorder: InputBorder.none,
-                                          filled: false,
-                                          fillColor: Colors.transparent,
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                        onChanged: _onSearchChangedLive,
-                                        textInputAction: TextInputAction.search,
-                                        onSubmitted: (_) {
-                                          if (_searchResults.isNotEmpty) {
-                                            _onStallSelectedFromSearch(
-                                                _searchResults.first);
-                                          }
-                                        },
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        errorBorder: InputBorder.none,
+                                        disabledBorder: InputBorder.none,
+                                        focusedErrorBorder: InputBorder.none,
+                                        filled: false,
+                                        contentPadding: EdgeInsets.zero,
+                                        isDense: true,
                                       ),
+                                      onChanged: _onSearchChangedLive,
+                                      textInputAction: TextInputAction.search,
+                                      onSubmitted: (_) {
+                                        if (_searchResults.isNotEmpty) {
+                                          _onStallSelectedFromSearch(
+                                              _searchResults.first);
+                                        }
+                                      },
                                     ),
-                                    if (_searchQuery.isNotEmpty)
-                                      GestureDetector(
-                                        onTap: _clearSearch,
-                                        child: const Padding(
-                                          padding: EdgeInsets.all(10),
-                                          child: Icon(
-                                            Icons.close_rounded,
-                                            color: AppColors.inkSubtle,
-                                            size: 16,
-                                          ),
+                                  ),
+                                  if (_searchQuery.isNotEmpty)
+                                    GestureDetector(
+                                      onTap: _clearSearch,
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(10),
+                                        child: Icon(
+                                          Icons.close_rounded,
+                                          color: AppColors.inkSubtle,
+                                          size: 18,
                                         ),
-                                      )
-                                    else
-                                      const SizedBox(width: 12),
-                                  ],
-                                ),
+                                      ),
+                                    )
+                                  else
+                                    const SizedBox(width: 12),
+                                ],
                               ),
                             ),
                           ),
+                        ),
 
-                              // 2. Floating Suggestions Dropdown Overlay
-                              if (_showDropdown)
-                                Positioned(
-                                  top: 50,
-                                  left: 0,
-                                  right: 0,
-                                  child: Material(
-                                    elevation: 8,
-                                    borderRadius: BorderRadius.circular(12),
-                                    color: Colors.transparent,
-                                    child: Container(
-                                      constraints:
-                                          const BoxConstraints(maxHeight: 260),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: AppColors.border,
-                                          width: 1.5,
-                                        ),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Colors.black12,
-                                            blurRadius: 12,
-                                            offset: Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
+                        // 2. Floating Suggestions Dropdown Overlay
+                        if (_showDropdown)
+                          Positioned(
+                            top: 50,
+                            left: 0,
+                            right: 0,
+                            child: Material(
+                              elevation: 0,
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.transparent,
+                              child: Container(
+                                constraints:
+                                    const BoxConstraints(maxHeight: 260),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                    width: 1.0,
+                                  ),
+                                ),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
                                         child: _searchResults.isEmpty
@@ -2322,15 +2273,23 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                           _subcategoryRowVisible;
 
                                       final selectedBgColor = isFavoritesChip
-                                          ? const Color(0xFFE53935)
-                                          : const Color(0xFF1B5E20);
+                                          ? AppColors.error
+                                          : AppColors.primary;
                                       final unselectedTextColor =
                                           isFavoritesChip
-                                              ? const Color(0xFFE53935)
-                                              : const Color(0xFF1B5E20);
-                                      final borderColor = isFavoritesChip
-                                          ? const Color(0xFFE53935)
-                                          : const Color(0xFF1B5E20);
+                                              ? AppColors.error
+                                              : AppColors.ink;
+                                      final unselectedIconColor =
+                                          isFavoritesChip
+                                              ? AppColors.error
+                                              : AppColors.inkMuted;
+                                      final borderColor = isSelected
+                                          ? (isFavoritesChip
+                                              ? AppColors.error
+                                              : AppColors.primary)
+                                          : (isFavoritesChip
+                                              ? AppColors.errorBorder
+                                              : AppColors.border);
 
                                       return Padding(
                                         padding:
@@ -2355,7 +2314,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             decoration: BoxDecoration(
                                               color: isSelected
                                                   ? selectedBgColor
-                                                  : Colors.white,
+                                                  : AppColors.surface,
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
@@ -2371,7 +2330,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                                   size: 14,
                                                   color: isSelected
                                                       ? Colors.white
-                                                      : unselectedTextColor,
+                                                      : unselectedIconColor,
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Text(
@@ -2380,8 +2339,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w500,
                                                     color: isSelected
-                                                        ? Colors.white
-                                                        : unselectedTextColor,
+                                                      ? Colors.white
+                                                      : unselectedTextColor,
                                                   ),
                                                 ),
                                                 if (hasSubcategories) ...[
@@ -2397,7 +2356,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                                       size: 14,
                                                       color: isSelected
                                                           ? Colors.white
-                                                          : unselectedTextColor,
+                                                          : unselectedIconColor,
                                                     ),
                                                   ),
                                                 ],
@@ -2432,10 +2391,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             _subcategoryRowVisible
                                         ? Container(
                                             decoration: const BoxDecoration(
-                                              color: Color(0xFFF8F9FA),
+                                              color: AppColors.canvas,
                                               border: Border(
                                                 bottom: BorderSide(
-                                                  color: Color(0xFFE0E0E0),
+                                                  color: AppColors.border,
                                                   width: 1,
                                                 ),
                                               ),
@@ -2499,15 +2458,15 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                                         decoration:
                                                             BoxDecoration(
                                                           color: isSelected
-                                                              ? const Color(
-                                                                  0xFF1B5E20)
-                                                              : Colors.white,
+                                                              ? AppColors.primary
+                                                              : AppColors.surface,
                                                           borderRadius:
                                                               BorderRadius
                                                                   .circular(18),
                                                           border: Border.all(
-                                                            color: const Color(
-                                                                0xFF1B5E20),
+                                                            color: isSelected
+                                                                ? AppColors.primary
+                                                                : AppColors.border,
                                                             width: 1,
                                                           ),
                                                         ),
@@ -2520,8 +2479,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                                                 FontWeight.w500,
                                                             color: isSelected
                                                                 ? Colors.white
-                                                                : const Color(
-                                                                    0xFF1B5E20),
+                                                                : AppColors.ink,
                                                           ),
                                                         ),
                                                       ),
@@ -2570,7 +2528,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                   ),
                                 ),
 
-                              // Recently Viewed
+                               // Recently Viewed
                               if (recentlyViewed.isNotEmpty &&
                                   _searchQuery.isEmpty) ...[
                                 SliverToBoxAdapter(
@@ -2586,7 +2544,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             const Icon(
                                               Icons.history_rounded,
                                               size: 16,
-                                              color: Color(0xFF9E9E9E),
+                                              color: AppColors.inkSubtle,
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
@@ -2594,7 +2552,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                               style: GoogleFonts.poppins(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
-                                                color: const Color(0xFF424242),
+                                                color: AppColors.ink,
                                               ),
                                             ),
                                           ],
@@ -2611,7 +2569,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                             'Clear',
                                             style: GoogleFonts.poppins(
                                               fontSize: 12,
-                                              color: const Color(0xFF9E9E9E),
+                                              color: AppColors.inkSubtle,
                                             ),
                                           ),
                                         ),
@@ -2652,7 +2610,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                         style: GoogleFonts.poppins(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF424242),
+                                          color: AppColors.ink,
                                         ),
                                       ),
                                       InkWell(
@@ -2673,8 +2631,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                                         .filter_list_outlined,
                                                 size: 18,
                                                 color: activeFilterCount > 0
-                                                    ? const Color(0xFF1B5E20)
-                                                    : const Color(0xFF757575),
+                                                    ? AppColors.primary
+                                                    : AppColors.inkMuted,
                                               ),
                                               const SizedBox(width: 4),
                                               Text(
@@ -2685,8 +2643,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w500,
                                                   color: activeFilterCount > 0
-                                                      ? const Color(0xFF1B5E20)
-                                                      : const Color(0xFF757575),
+                                                      ? AppColors.primary
+                                                      : AppColors.inkMuted,
                                                 ),
                                               ),
                                             ],
@@ -2711,7 +2669,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                     gridDelegate:
                                         const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 380,
-                                      mainAxisExtent: 136,
+                                      mainAxisExtent: 142,
                                       mainAxisSpacing: 14,
                                       crossAxisSpacing: 14,
                                     ),
@@ -2737,7 +2695,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                       (context, index) {
                                         try {
                                           final stall = filteredStalls[index];
-                                          return _buildStallCard(stall);
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 12),
+                                            child: _buildStallCard(stall),
+                                          );
                                         } catch (_) {
                                           return const SizedBox.shrink();
                                         }
@@ -2755,7 +2716,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 },
                 loading: () => const Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFF1B5E20),
+                  color: AppColors.primary,
                 ),
               ),
               error: (error, stack) => Center(
@@ -2767,7 +2728,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                       const Icon(
                         Icons.error_outline_rounded,
                         size: 64,
-                        color: Color(0xFFE53935),
+                        color: AppColors.error,
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -2775,7 +2736,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF212121),
+                          color: AppColors.ink,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -2783,7 +2744,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         error.toString(),
                         style: GoogleFonts.poppins(
                           fontSize: 13,
-                          color: const Color(0xFF757575),
+                          color: AppColors.inkMuted,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -2800,7 +2761,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                   const Icon(
                     Icons.error_outline_rounded,
                     size: 48,
-                    color: Color(0xFFE53935),
+                    color: AppColors.error,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -2808,7 +2769,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF212121),
+                      color: AppColors.ink,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -2824,7 +2785,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                     child: Text(
                       'Reset filters',
                       style: GoogleFonts.poppins(
-                        color: const Color(0xFF1B5E20),
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -2842,8 +2803,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
-        border: Border.all(color: const Color(0xFF1B5E20)),
+        color: AppColors.primaryLight,
+        border: Border.all(color: AppColors.primary),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -2853,7 +2814,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
             label,
             style: GoogleFonts.poppins(
               fontSize: 11,
-              color: const Color(0xFF1B5E20),
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(width: 6),
@@ -2862,7 +2823,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
             child: const Icon(
               Icons.close_rounded,
               size: 12,
-              color: Color(0xFF1B5E20),
+              color: AppColors.primary,
             ),
           ),
         ],
@@ -2877,10 +2838,11 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
         width: 110,
         margin: const EdgeInsets.only(right: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFF0F0F0),
+            color: AppColors.border,
+            width: 1.0,
           ),
         ),
         padding: const EdgeInsets.all(10),
@@ -2892,7 +2854,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
               height: 64,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F8E9),
+                color: AppColors.surfaceDim,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: stall.photoUrls.isNotEmpty
@@ -2904,14 +2866,14 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                         placeholder: (context, url) => const Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFF2E7D32),
+                            color: AppColors.primary,
                           ),
                         ),
                         errorWidget: (context, url, error) => const Center(
                           child: Icon(
                             Icons.storefront_outlined,
                             size: 28,
-                            color: Color(0xFF81C784),
+                            color: AppColors.inkSubtle,
                           ),
                         ),
                       ),
@@ -2920,7 +2882,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                       child: Icon(
                         Icons.storefront_outlined,
                         size: 28,
-                        color: Color(0xFF81C784),
+                        color: AppColors.inkSubtle,
                       ),
                     ),
             ),
@@ -2930,7 +2892,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF212121),
+                color: AppColors.ink,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -2942,14 +2904,14 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 vertical: 2,
               ),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
+                color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 StallUtils.getCategoryLabel(stall.category),
                 style: GoogleFonts.poppins(
                   fontSize: 9,
-                  color: const Color(0xFF2E7D32),
+                  color: AppColors.primary,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -2978,14 +2940,13 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
       return GestureDetector(
         onTap: () => _openStallDetail(stall),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: AppColors.border,
-              width: 0.8,
+              width: 1.0,
             ),
           ),
           child: Row(
@@ -3045,37 +3006,47 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                             final favState = ref.watch(favoriteProvider);
                             final isFav = favState.isFavorite(stall.stallId);
 
-                            return GestureDetector(
-                              onTap: () async {
-                                await ref
-                                    .read(favoriteProvider.notifier)
-                                    .toggleFavorite(stall.stallId);
-                              },
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 250),
-                                transitionBuilder: (child, animation) {
-                                  return ScaleTransition(
-                                    scale: Tween<double>(
-                                      begin: 0.7,
-                                      end: 1.0,
-                                    ).animate(
-                                      CurvedAnimation(
-                                        parent: animation,
-                                        curve: Curves.elasticOut,
+                            return SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Center(
+                                child: InkWell(
+                                  onTap: () async {
+                                    await ref
+                                        .read(favoriteProvider.notifier)
+                                        .toggleFavorite(stall.stallId);
+                                  },
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 250),
+                                      transitionBuilder: (child, animation) {
+                                        return ScaleTransition(
+                                          scale: Tween<double>(
+                                            begin: 0.7,
+                                            end: 1.0,
+                                          ).animate(
+                                            CurvedAnimation(
+                                              parent: animation,
+                                              curve: Curves.elasticOut,
+                                            ),
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                      child: Icon(
+                                        isFav
+                                            ? Icons.favorite_rounded
+                                            : Icons.favorite_border_rounded,
+                                        key: ValueKey(isFav),
+                                        color: isFav
+                                            ? AppColors.error
+                                            : AppColors.inkSubtle,
+                                        size: 22,
                                       ),
                                     ),
-                                    child: child,
-                                  );
-                                },
-                                child: Icon(
-                                  isFav
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  key: ValueKey(isFav),
-                                  color: isFav
-                                      ? AppColors.error
-                                      : AppColors.inkSubtle,
-                                  size: 22,
+                                  ),
                                 ),
                               ),
                             );
@@ -3144,7 +3115,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
-                color: Color(0xFFF5F5F5),
+                color: AppColors.surfaceDim,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -3152,7 +3123,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                     ? Icons.favorite_border_rounded
                     : Icons.search_off_rounded,
                 size: 56,
-                color: const Color(0xFFBDBDBD),
+                color: AppColors.inkSubtle,
               ),
             ),
             const SizedBox(height: 16),
@@ -3165,7 +3136,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF424242),
+                color: AppColors.ink,
               ),
             ),
             const SizedBox(height: 8),
@@ -3177,7 +3148,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                       : 'No stalls available in this category',
               style: GoogleFonts.poppins(
                 fontSize: 13,
-                color: const Color(0xFF9E9E9E),
+                color: AppColors.inkMuted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -3311,7 +3282,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -3388,7 +3359,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               ),
             ),
 
-            const Divider(height: 1, color: Color(0xFFF0F0F0)),
+            const Divider(height: 1, color: AppColors.border),
 
             // SCROLLABLE CONTENT
             Expanded(
@@ -3420,7 +3391,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF212121),
+                        color: AppColors.ink,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -3428,7 +3399,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       'Show stalls open during this time range',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: const Color(0xFF9E9E9E),
+                        color: AppColors.inkMuted,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -3460,7 +3431,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
+                          color: AppColors.primaryLight,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -3469,7 +3440,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                             const Icon(
                               Icons.access_time_rounded,
                               size: 14,
-                              color: Color(0xFF2E7D32),
+                              color: AppColors.primary,
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -3477,7 +3448,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFF2E7D32),
+                                color: AppColors.primary,
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -3491,7 +3462,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                               child: const Icon(
                                 Icons.close_rounded,
                                 size: 14,
-                                color: Color(0xFF9E9E9E),
+                                color: AppColors.inkSubtle,
                               ),
                             ),
                           ],
@@ -3508,18 +3479,18 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF212121),
+                          color: AppColors.ink,
                         ),
                       ),
                       subtitle: Text(
                         'Show only currently open stalls',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: const Color(0xFF9E9E9E),
+                          color: AppColors.inkMuted,
                         ),
                       ),
                       value: _tempFilterOpenOnly,
-                      activeColor: const Color(0xFF1B5E20),
+                      activeTrackColor: AppColors.primary,
                       onChanged: (val) =>
                           setState(() => _tempFilterOpenOnly = val),
                     ),
@@ -3531,7 +3502,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF212121),
+                        color: AppColors.ink,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -3539,7 +3510,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       'Find stalls open or closed on a specific day',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: const Color(0xFF9E9E9E),
+                        color: AppColors.inkMuted,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -3547,7 +3518,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       'Select Day',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: const Color(0xFF9E9E9E),
+                        color: AppColors.inkMuted,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -3562,7 +3533,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         'Show stalls that are:',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: const Color(0xFF9E9E9E),
+                          color: AppColors.inkMuted,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -3573,7 +3544,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                               'Open on this day',
                               true,
                               Icons.check_circle_outline_rounded,
-                              const Color(0xFF2E7D32),
+                              AppColors.primary,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -3582,7 +3553,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                               'Closed on this day',
                               false,
                               Icons.cancel_outlined,
-                              const Color(0xFFE53935),
+                              AppColors.error,
                             ),
                           ),
                         ],
@@ -3599,34 +3570,21 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),
                 ),
                 border: Border(
                   top: BorderSide(
-                    color: Color(0xFFF0F0F0),
+                    color: AppColors.border,
                     width: 1,
                   ),
                 ),
               ),
-              child: Container(
+              child: SizedBox(
                 width: double.infinity,
-                height: 54,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x401B5E20),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
+                height: 48,
                 child: ElevatedButton(
                   onPressed: () {
                     widget.onApply(
@@ -3640,11 +3598,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
                     shadowColor: Colors.transparent,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 16),
-                    minimumSize: const Size(double.infinity, 54),
+                        horizontal: 24, vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -3654,10 +3612,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         ? 'Apply Filters (${getActiveFilterCount()})'
                         : 'Apply Filters',
                     style: GoogleFonts.poppins(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      letterSpacing: 0.3,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -3679,7 +3636,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             width: 3,
             height: 16,
             decoration: BoxDecoration(
-              color: const Color(0xFF1B5E20),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -3689,7 +3646,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF9E9E9E),
+              color: AppColors.inkSubtle,
               letterSpacing: 0.5,
             ),
           ),
@@ -3710,10 +3667,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       child: Container(
         height: 70,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+          color: isSelected ? AppColors.primaryLight : AppColors.surface,
           border: Border.all(
             color:
-                isSelected ? const Color(0xFF1B5E20) : const Color(0xFFE0E0E0),
+                isSelected ? AppColors.primary : AppColors.border,
             width: isSelected ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
@@ -3728,8 +3685,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     icon,
                     size: 22,
                     color: isSelected
-                        ? const Color(0xFF1B5E20)
-                        : const Color(0xFF757575),
+                        ? AppColors.primary
+                        : AppColors.inkMuted,
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -3738,8 +3695,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: isSelected
-                          ? const Color(0xFF1B5E20)
-                          : const Color(0xFF757575),
+                          ? AppColors.primary
+                          : AppColors.inkMuted,
                     ),
                   ),
                 ],
@@ -3752,7 +3709,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 child: Icon(
                   Icons.check_circle_rounded,
                   size: 18,
-                  color: Color(0xFF1B5E20),
+                  color: AppColors.primary,
                 ),
               ),
           ],
@@ -3770,7 +3727,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           label,
           style: GoogleFonts.poppins(
             fontSize: 12,
-            color: const Color(0xFF9E9E9E),
+            color: AppColors.inkMuted,
           ),
         ),
         const SizedBox(height: 8),
@@ -3780,12 +3737,12 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             height: 52,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: time != null
-                    ? const Color(0xFF1B5E20)
-                    : const Color(0xFFE0E0E0),
+                    ? AppColors.primary
+                    : AppColors.border,
                 width: 1.5,
               ),
             ),
@@ -3795,7 +3752,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 Icon(
                   icon,
                   size: 16,
-                  color: const Color(0xFF1B5E20),
+                  color: AppColors.primary,
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -3803,7 +3760,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF212121),
+                    color: AppColors.ink,
                   ),
                 ),
               ],
@@ -3827,19 +3784,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         width: 56,
         height: 40,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFFF5F5F5),
+          color: isSelected ? AppColors.primary : AppColors.surface,
           border:
-              isSelected ? null : Border.all(color: const Color(0xFFE0E0E0)),
+              isSelected ? null : Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected
-              ? [
-                  const BoxShadow(
-                    color: Color(0x301B5E20),
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
         ),
         child: Center(
           child: Text(
@@ -3847,7 +3795,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: isSelected ? Colors.white : const Color(0xFF757575),
+              color: isSelected ? Colors.white : AppColors.inkMuted,
             ),
           ),
         ),
@@ -3870,9 +3818,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         decoration: BoxDecoration(
           color: isSelected
               ? (value ? AppColors.primaryLight : AppColors.errorLight)
-              : const Color(0xFFF5F5F5),
+              : AppColors.surface,
           border: Border.all(
-            color: isSelected ? color : const Color(0xFFE0E0E0),
+            color: isSelected ? color : AppColors.border,
             width: isSelected ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(10),
@@ -3882,7 +3830,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? color : const Color(0xFF757575),
+              color: isSelected ? color : AppColors.inkMuted,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -3891,7 +3839,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: isSelected ? color : const Color(0xFF757575),
+                  color: isSelected ? color : AppColors.inkMuted,
                 ),
               ),
             ),

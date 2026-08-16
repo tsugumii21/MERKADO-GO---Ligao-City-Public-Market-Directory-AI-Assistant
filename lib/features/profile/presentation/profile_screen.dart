@@ -1,5 +1,6 @@
 // Part 10: User Profile Screen with modern, minimal UI design
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,12 +34,6 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         curve: Curves.easeOut,
       );
     }
-    // Nothing else to reset on profile page
-  }
-
-  @override
-  void initState() {
-    super.initState();
   }
 
   @override
@@ -51,20 +46,21 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
     final shouldSignOut = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.border, width: 1.0),
         ),
         title: Text(
           'Log Out',
           style: GoogleFonts.poppins(
             fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: AppColors.ink,
           ),
         ),
         content: Text(
-          'Are you sure you want to log out?',
+          'Are you sure you want to log out of your account?',
           style: GoogleFonts.poppins(
             fontSize: 14,
             color: AppColors.inkMuted,
@@ -139,22 +135,47 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final userDataAsync = ref.watch(userDataStreamProvider);
     final favoriteCount = ref.watch(favoriteCountProvider);
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.surface,
         elevation: 0,
+        scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
-        toolbarHeight: 60,
-        centerTitle: true,
-        title: Text(
-          'Profile',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            letterSpacing: 0.5,
+        centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        shape: const Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: 1.0,
+          ),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Profile',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Text(
+                'Ligao City Public Market',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.inkMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -180,52 +201,54 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                 controller: _scrollController,
                 physics: const ClampingScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 24 : 16,
+                    vertical: 24,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 24),
+                    children: [
+                      // SECTION 1: AVATAR CARD
+                      _buildAvatarCard(context, userData),
 
-                  // SECTION 1: AVATAR CARD
-                  _buildAvatarCard(context, userData),
+                      const SizedBox(height: 16),
 
-                  const SizedBox(height: 16),
+                      // SECTION 2: EDIT PROFILE BUTTON
+                      _buildEditProfileButton(context),
 
-                  // SECTION 2: EDIT PROFILE BUTTON
-                  _buildEditProfileButton(context),
+                      const SizedBox(height: 20),
 
-                  const SizedBox(height: 20),
+                      // SECTION 3: STATS ROW
+                      _buildStatsRow(favoriteCount, userData.createdAt.year),
 
-                  // SECTION 3: STATS ROW
-                  _buildStatsRow(favoriteCount, userData.createdAt.year),
+                      const SizedBox(height: 28),
 
-                  const SizedBox(height: 28),
+                      // SECTION 4: ACCOUNT INFO LABEL
+                      _buildSectionLabel('ACCOUNT INFORMATION'),
 
-                  // SECTION 4: ACCOUNT INFO LABEL
-                  _buildSectionLabel('ACCOUNT INFORMATION'),
+                      const SizedBox(height: 10),
 
-                  const SizedBox(height: 10),
+                      // SECTION 5: ACCOUNT INFO CARD
+                      _buildAccountInfoCard(userData),
 
-                  // SECTION 5: ACCOUNT INFO CARD
-                  _buildAccountInfoCard(userData),
+                      const SizedBox(height: 12),
 
-                  const SizedBox(height: 12),
+                      // SECTION 6: FAVORITE STALLS ROW
+                      _buildFavoriteStallsRow(context, favoriteCount),
 
-                  // SECTION 6: FAVORITE STALLS ROW
-                  _buildFavoriteStallsRow(context, favoriteCount),
+                      const SizedBox(height: 28),
 
-                  const SizedBox(height: 28),
+                      // SECTION 7: LOGOUT BUTTON
+                      _buildLogoutButton(context, ref),
 
-                  // SECTION 7: LOGOUT BUTTON
-                  _buildLogoutButton(context, ref),
-
-                ],
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      );
-    },
+          );
+        },
         loading: () => const Center(
           child: CircularProgressIndicator(
             color: AppColors.primary,
@@ -249,19 +272,16 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.border,
+          width: 1.0,
+        ),
       ),
       child: Column(
         children: [
-          // Avatar with camera badge
+          // Avatar with camera badge (48×48 touch target)
           Stack(
             children: [
               CircleAvatar(
@@ -281,23 +301,29 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: GestureDetector(
-                  onTap: () => context.push(RouteNames.editProfile),
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 2,
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () => context.push(RouteNames.editProfile),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 15,
+                        ),
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt_rounded,
-                      color: Colors.white,
-                      size: 14,
                     ),
                   ),
                 ),
@@ -313,7 +339,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: AppColors.primary,
+              color: AppColors.ink,
             ),
           ),
 
@@ -325,7 +351,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
             style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w400,
-              color: AppColors.inkSubtle,
+              color: AppColors.inkMuted,
             ),
           ),
         ],
@@ -334,20 +360,16 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildEditProfileButton(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      height: 52,
-      constraints: const BoxConstraints(
-        minHeight: 52,
-        maxHeight: 52,
-      ),
+      height: 50,
       child: ElevatedButton.icon(
         onPressed: () => context.push(RouteNames.editProfile),
         icon: const Icon(Icons.edit_rounded, size: 16, color: Colors.white),
         label: Text(
           'Edit Profile',
           style: GoogleFonts.poppins(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
@@ -355,11 +377,10 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           elevation: 0,
-          minimumSize: const Size(double.infinity, 52),
-          maximumSize: const Size(double.infinity, 52),
+          shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -374,15 +395,12 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 20),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.border,
+                width: 1.0,
+              ),
             ),
             child: Column(
               children: [
@@ -397,15 +415,16 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: AppColors.ink,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Favorite Stalls',
                   style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: AppColors.inkSubtle,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.inkMuted,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -421,15 +440,12 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 20),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.border,
+                width: 1.0,
+              ),
             ),
             child: Column(
               children: [
@@ -444,15 +460,16 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: AppColors.ink,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Member Since',
                   style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: AppColors.inkSubtle,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.inkMuted,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -471,7 +488,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         label,
         style: GoogleFonts.poppins(
           fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppColors.inkSubtle,
           letterSpacing: 1.2,
         ),
@@ -482,15 +499,12 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildAccountInfoCard(dynamic userData) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.border,
+          width: 1.0,
+        ),
       ),
       child: Column(
         children: [
@@ -510,15 +524,12 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.border,
+            width: 1.0,
+          ),
         ),
         child: Row(
           children: [
@@ -575,7 +586,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 50,
       child: OutlinedButton.icon(
         onPressed: () => _handleSignOut(context, ref),
         icon: const Icon(
@@ -586,16 +597,16 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         label: Text(
           'Log Out',
           style: GoogleFonts.poppins(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppColors.error,
           ),
         ),
         style: OutlinedButton.styleFrom(
           backgroundColor: AppColors.errorLight,
-          side: const BorderSide(color: AppColors.errorBorder, width: 1),
+          side: const BorderSide(color: AppColors.errorBorder, width: 1.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -643,7 +654,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.inkSubtle,
+                    color: AppColors.inkMuted,
                   ),
                 ),
               ],
@@ -659,5 +670,3 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
-
-

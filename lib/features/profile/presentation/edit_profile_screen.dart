@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../providers/user_provider.dart';
 import '../../../core/services/cloudinary_service.dart';
+import '../../../core/theme/app_colors.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -57,12 +58,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           SnackBar(
             content: Text(
               'Failed to pick image. Please try again.',
-              style: GoogleFonts.poppins(color: Colors.white),
+              style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
             ),
-            backgroundColor: const Color(0xFFE53935),
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             margin: const EdgeInsets.all(16),
           ),
@@ -126,15 +127,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             context: context,
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: AppColors.border, width: 1.0),
               ),
               title: Text(
                 'Verify New Email',
                 style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1B5E20),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: AppColors.ink,
                 ),
               ),
               content: Text(
@@ -142,7 +145,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 'Please check your inbox and click the link to confirm your new email address.',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: const Color(0xFF424242),
+                  color: AppColors.inkMuted,
                   height: 1.5,
                 ),
               ),
@@ -155,7 +158,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   child: Text(
                     'OK',
                     style: GoogleFonts.poppins(
-                      color: const Color(0xFF1B5E20),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -171,12 +174,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             SnackBar(
               content: Text(
                 'Profile updated successfully!',
-                style: GoogleFonts.poppins(color: Colors.white),
+                style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
               ),
-              backgroundColor: const Color(0xFF1B5E20),
+              backgroundColor: AppColors.primary,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               margin: const EdgeInsets.all(16),
             ),
@@ -190,12 +193,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           SnackBar(
             content: Text(
               'Error: ${e.toString()}',
-              style: GoogleFonts.poppins(color: Colors.white),
+              style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
             ),
-            backgroundColor: const Color(0xFFE53935),
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             margin: const EdgeInsets.all(16),
           ),
@@ -209,28 +212,54 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final userDataAsync = ref.watch(userDataStreamProvider);
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        toolbarHeight: 60,
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 20,
+            color: AppColors.ink,
+            size: 18,
           ),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          'Edit Profile',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+        shape: const Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: 1.0,
+          ),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Edit Profile',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Text(
+                'Ligao City Public Market',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.inkMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -242,7 +271,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 'No user data found',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: const Color(0xFF757575),
+                  color: AppColors.inkMuted,
                 ),
               ),
             );
@@ -256,280 +285,258 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             _isInitialized = true;
           }
 
-          return SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 32),
-
-                // PART 2: AVATAR SECTION
-                Center(
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 52,
-                        backgroundColor: const Color(0xFFE8F5E9),
-                        backgroundImage: _selectedImageBytes != null
-                            ? MemoryImage(_selectedImageBytes!)
-                            : (userData.profilePhotoUrl != null
-                                ? CachedNetworkImageProvider(userData.profilePhotoUrl!) as ImageProvider
-                                : null),
-                        child: (_selectedImageBytes == null && userData.profilePhotoUrl == null)
-                            ? const Icon(
-                                Icons.person_rounded,
-                                size: 52,
-                                color: Color(0xFF1B5E20),
-                              )
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _pickImage,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1B5E20),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              color: Colors.white,
-                              size: 16,
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isDesktop ? 24 : 16,
+                  vertical: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // PART 2: AVATAR SECTION
+                    Center(
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 48,
+                            backgroundColor: AppColors.primaryLight,
+                            backgroundImage: _selectedImageBytes != null
+                                ? MemoryImage(_selectedImageBytes!)
+                                : (userData.profilePhotoUrl != null
+                                    ? CachedNetworkImageProvider(userData.profilePhotoUrl!) as ImageProvider
+                                    : null),
+                            child: (_selectedImageBytes == null && userData.profilePhotoUrl == null)
+                                ? const Icon(
+                                    Icons.person_rounded,
+                                    size: 48,
+                                    color: AppColors.primary,
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Center(
+                                child: GestureDetector(
+                                  onTap: _pickImage,
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: AppColors.surface, width: 2),
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt_rounded,
+                                      color: Colors.white,
+                                      size: 15,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Center(
+                      child: Text(
+                        'Tap to change photo',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppColors.inkMuted,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                Center(
-                  child: Text(
-                    'Tap to change photo',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: const Color(0xFF9E9E9E),
                     ),
-                  ),
-                ),
 
-                const SizedBox(height: 32),
+                    const SizedBox(height: 28),
 
-                // PART 3: EDITABLE FIELDS SECTION
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'PERSONAL INFORMATION',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF9E9E9E),
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
+                    // PART 3: EDITABLE FIELDS SECTION
+                    _buildSectionLabel('PERSONAL INFORMATION'),
 
-                const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 12,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      _buildEditableRow(
-                        'Username',
-                        Icons.alternate_email_rounded,
-                        _usernameController,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 68),
-                        child: const Divider(
-                          height: 1,
-                          color: Color(0xFFF0F0F0),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 1.0,
                         ),
                       ),
-                      _buildEditableRow(
-                        'Full Name',
-                        Icons.person_outline_rounded,
-                        _fullNameController,
+                      child: Column(
+                        children: [
+                          _buildEditableRow(
+                            'Username',
+                            Icons.alternate_email_rounded,
+                            _usernameController,
+                          ),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.borderLight,
+                          ),
+                          _buildEditableRow(
+                            'Full Name',
+                            Icons.person_outline_rounded,
+                            _fullNameController,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // PART 4: EMAIL CHANGE SECTION
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'EMAIL ADDRESS',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF9E9E9E),
-                      letterSpacing: 1.2,
                     ),
-                  ),
-                ),
 
-                const SizedBox(height: 10),
+                    const SizedBox(height: 24),
 
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 12,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      _buildCurrentEmailRow(),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 68),
-                        child: const Divider(
-                          height: 1,
-                          color: Color(0xFFF0F0F0),
+                    // PART 4: EMAIL CHANGE SECTION
+                    _buildSectionLabel('EMAIL ADDRESS'),
+
+                    const SizedBox(height: 10),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 1.0,
                         ),
                       ),
-                      _buildEditableRow(
-                        'New Email Address',
-                        Icons.forward_to_inbox_rounded,
-                        _newEmailController,
-                        keyboardType: TextInputType.emailAddress,
+                      child: Column(
+                        children: [
+                          _buildCurrentEmailRow(),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.borderLight,
+                          ),
+                          _buildEditableRow(
+                            'New Email Address',
+                            Icons.forward_to_inbox_rounded,
+                            _newEmailController,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                // Email verification info box
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFDE7),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFFFE082), width: 1),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: Color(0xFFF57F17),
-                        size: 16,
+                    // Email verification info box
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.warningLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.warningBorder, width: 1.0),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'A verification link will be sent to your new email. '
-                          'The change only takes effect after you confirm it.',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: const Color(0xFF795548),
-                            height: 1.5,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.warning,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'A verification link will be sent to your new email. '
+                              'The change only takes effect after you confirm it.',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: AppColors.ink,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // PART 5: SAVE CHANGES BUTTON
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _saveChanges,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // PART 5: SAVE CHANGES BUTTON
-                Container(
-                  width: double.infinity,
-                  height: 54,
-                  constraints: const BoxConstraints(
-                    minHeight: 54,
-                    maxHeight: 54,
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _saveChanges,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B5E20),
-                      disabledBackgroundColor: const Color(0xFF1B5E20).withOpacity(0.6),
-                      elevation: 0,
-                      minimumSize: const Size(double.infinity, 54),
-                      maximumSize: const Size(double.infinity, 54),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: _isSaving
-                        ? Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                width: 18,
-                                height: 18,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
                                 child: CircularProgressIndicator(
                                   color: Colors.white,
                                   strokeWidth: 2,
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Saving...',
+                              )
+                            : Text(
+                                'Save Changes',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
                                 ),
                               ),
-                            ],
-                          )
-                        : Text(
-                            'Save Changes',
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
+                      ),
+                    ),
 
-                const SizedBox(height: 48),
-              ],
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
         error: (error, stack) => Center(
           child: Text(
             'Error loading profile',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: const Color(0xFFE53935),
+              color: AppColors.error,
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.inkSubtle,
+          letterSpacing: 1.2,
         ),
       ),
     );
@@ -541,22 +548,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     TextEditingController controller, {
     TextInputType? keyboardType,
   }) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 64),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F8E9),
+              color: AppColors.surfaceDim,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
               size: 18,
-              color: const Color(0xFF1B5E20),
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(width: 14),
@@ -564,23 +570,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             child: TextField(
               controller: controller,
               keyboardType: keyboardType,
+              cursorColor: AppColors.primary,
               style: GoogleFonts.poppins(
                 fontSize: 14,
-                color: const Color(0xFF212121),
-                fontWeight: FontWeight.w400,
+                color: AppColors.ink,
+                fontWeight: FontWeight.w500,
               ),
               decoration: InputDecoration(
                 labelText: fieldName,
                 labelStyle: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: const Color(0xFF9E9E9E),
+                  fontSize: 12,
+                  color: AppColors.inkMuted,
                   fontWeight: FontWeight.w500,
                 ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: const UnderlineInputBorder(
                   borderSide: BorderSide(
-                    color: Color(0xFF1B5E20),
+                    color: AppColors.primary,
                     width: 1.5,
                   ),
                 ),
@@ -597,20 +604,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Widget _buildCurrentEmailRow() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F8E9),
+              color: AppColors.surfaceDim,
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.email_outlined,
               size: 18,
-              color: Color(0xFF1B5E20),
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(width: 14),
@@ -622,7 +629,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   'Current Email',
                   style: GoogleFonts.poppins(
                     fontSize: 11,
-                    color: const Color(0xFF9E9E9E),
+                    color: AppColors.inkMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -631,25 +638,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   _currentEmail,
                   style: GoogleFonts.poppins(
                     fontSize: 14,
-                    color: const Color(0xFF212121),
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               'Active',
               style: GoogleFonts.poppins(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF1B5E20),
+                color: AppColors.primary,
               ),
             ),
           ),

@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/firebase_providers.dart';
 import '../../../core/exceptions/auth_exception.dart';
+import '../../../core/theme/app_colors.dart';
 import 'widgets/auth_layout.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -122,22 +122,26 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 
   Widget _buildFormFields(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Create Account',
-            style: GoogleFonts.dmSans(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A241A),
-              letterSpacing: -0.5,
+          if (isDesktop) ...[
+            Text(
+              'Create Account',
+              style: GoogleFonts.dmSans(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A241A),
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 36),
+            const SizedBox(height: 32),
+          ],
 
           // Username
           TextFormField(
@@ -328,55 +332,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 
-  Widget _buildMobileView(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1B5E20), size: 20),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            children: [
-              // App logo — white rounded-square container, transparent logo (consistent with desktop panel)
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.all(10),
-                child: Image.asset(
-                  'assets/icons/MerkadoGo_Transparent Logo.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 32),
-              _buildFormFields(context),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return AuthLayout(
-      mobileBody: _buildMobileView(context),
-      desktopFormContent: _buildFormFields(context),
-      heroTitle: 'Join Merkado Go',
+      formContent: _buildFormFields(context),
+      heroTitle: 'Create Account',
       heroSubtitle: 'Find every stall. Navigate the market. Discover more.',
       heroIcon: Icons.person_add_rounded,
       illustrationPath: 'assets/images/signup_illustration.png',
+      onBack: () => context.pop(),
     );
   }
 }

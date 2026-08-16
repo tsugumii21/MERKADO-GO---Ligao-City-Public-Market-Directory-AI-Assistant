@@ -190,22 +190,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildFormFields(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Welcome Back',
-            style: GoogleFonts.dmSans(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A241A),
-              letterSpacing: -0.5,
+          if (isDesktop) ...[
+            Text(
+              'Sign In',
+              style: GoogleFonts.dmSans(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A241A),
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 36),
+            const SizedBox(height: 32),
+          ],
           TextFormField(
             controller: _usernameOrEmailController,
             style: GoogleFonts.poppins(
@@ -410,67 +414,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildMobileView(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1B5E20),
-            size: 20,
-          ),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go(RouteNames.getStarted);
-            }
-          },
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              children: [
-                // App logo — white rounded-square container, transparent logo (consistent with desktop panel)
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: Image.asset(
-                    'assets/icons/MerkadoGo_Transparent Logo.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                _buildFormFields(context),
-                const SizedBox(height: 32),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return AuthLayout(
-      mobileBody: _buildMobileView(context),
-      desktopFormContent: _buildFormFields(context),
-      heroTitle: 'Welcome Back',
+      formContent: _buildFormFields(context),
+      heroTitle: 'Sign In',
       heroSubtitle: 'Ligao City Public Market, at your fingertips.',
       heroIcon: Icons.login_rounded,
       illustrationPath: 'assets/images/sign-in_illustration.png',
+      onBack: () {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(RouteNames.getStarted);
+        }
+      },
     );
   }
 }

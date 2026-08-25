@@ -1,27 +1,11 @@
-// Part 6: Interactive Market Map with camera bounds locked to market area
-// Part 7: Updated to use StallDetailSheet with full features
-// Part 9: Added Aling Suki AI Assistant as floating button
-// Part 10: Manual clustering implementation for better marker management
 import 'dart:async';
-import 'dart:math';
-import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../models/stall_model.dart';
-import '../../../providers/stall_provider.dart';
 import '../../../providers/chat_provider.dart';
-import '../../../features/chat/domain/chat_message.dart';
-import '../../stalls/presentation/stall_detail_sheet.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
-import '../../../core/utils/stall_utils.dart';
-import '../indoor_map_screen.dart';
 import '../../../core/theme/app_colors.dart';
+import 'widgets/market_svg_map_view.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -32,815 +16,78 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class MapScreenState extends ConsumerState<MapScreen>
     with TickerProviderStateMixin {
-  GoogleMapController? _mapController;
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
+  final GlobalKey<MarketSvgMapViewState> _svgMapKey = GlobalKey<MarketSvgMapViewState>();
 
   bool _isChatOpen = false;
+  double _mapRotationAngle = 0.0;
 
-  // Camera state
-  double? _currentZoom = 19.0;
-  static const double _stallVisibilityZoomThreshold = 20.0;
-
-  // Zoom limit tracking (prevent zooming out past opening view)
-  bool _initialZoomCaptured = false;
-
-  // Map initialization tracking (prevent repeated camera animations)
-  bool _mapInitialized = false;
-
-  Timer? _markerDebounce;
-  Timer? _countRefreshTimer;
-
-  // Ligao City Public Market coordinates (exact location from Google Maps)
-  static const LatLng _ligaoMarketCenter = LatLng(13.241861, 123.538917);
-
-  Set<Marker> _markers = {};
-  BitmapDescriptor? _openMarkerIcon;
-  BitmapDescriptor? _closedMarkerIcon;
-  StreamSubscription<QuerySnapshot>? _stallsSubscription;
-  List<StallModel> _allStalls = [];
-  List<StallModel> _filteredStalls = [];
-  List<StallModel> _searchResults = [];
-  StallModel? _selectedStall;
-  bool _showDropdown = false;
-  bool _isSearching = false;
-  String _searchQuery = '';
-  MapType _currentMapType = MapType.hybrid; // Default to hybrid mode
-
-  // GPS & live location
-  Position? _currentPosition;
-  bool _locationPermissionGranted = false;
-  bool _isLoadingLocation = false;
-  StreamSubscription<Position>? _positionStream;
-
-  // Indoor map trigger
-  static const double _indoorZoomThreshold = 20.0;
-  bool _showIndoorButton = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStalls();
-    _countRefreshTimer = Timer.periodic(
-      const Duration(seconds: 60),
-      (_) {
-        if (mounted) setState(() {});
-      },
-    );
-
-    _searchFocusNode.addListener(() {
-      if (!mounted) return;
-      setState(() {
-        _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
-      });
-    });
-
-    // Init GPS
-    _initLocationService();
-  }
-
-  // Reset UI state when user leaves this tab
   void resetUI() {
     if (!mounted) return;
 
-    // Close stall info bottom sheet if open
-    if (_selectedStall != null) {
-      setState(() => _selectedStall = null);
-      // Pop any open modal bottom sheets
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-    }
-
-    // Close chatbot bottom sheet if open
     if (_isChatOpen) {
       setState(() => _isChatOpen = false);
-      // Pop chatbot sheet if it's open
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
     }
-
-    // DO NOT reset: map camera, chat history, markers
-  }
-
-  Widget _buildStallCountBadge() {
-    final openCount =
-        _allStalls.where((s) => StallUtils.isStallOpenNow(s)).length;
-    final closedCount = _allStalls.length - openCount;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF2E7D32),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 5),
-              Text(
-                '$openCount open',
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2E7D32),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.errorLight,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.errorBorder,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: AppColors.error,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 5),
-              Text(
-                '$closedCount closed',
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.error,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  void dispose() {
-    _markerDebounce?.cancel();
-    _countRefreshTimer?.cancel();
-    _mapController?.dispose();
-    _stallsSubscription?.cancel();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    _positionStream?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadStalls() async {
-    _stallsSubscription?.cancel();
-    _stallsSubscription = FirebaseFirestore.instance
-        .collection('stalls')
-        .snapshots()
-        .listen((snap) {
-      if (!mounted) return;
-
-      final stalls = snap.docs.map((d) => StallModel.fromFirestore(d)).toList();
-      setState(() {
-        _allStalls = stalls;
-      });
-
-      if (_isSearching && _searchQuery.isNotEmpty) {
-        _onSearchChanged(_searchQuery);
-      } else {
-        _buildMarkers(stalls, _currentZoom ?? 18.0);
-      }
-    });
-  }
-
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
-    // Show the whole market area on creation (only once)
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted && !_mapInitialized) {
-        _mapInitialized = true;
-        _initMapView();
-      }
-    });
-  }
-
-  void _initMapView() {
-    if (_mapController == null) return;
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: const LatLng(13.2413, 123.5380),
-          northeast: const LatLng(13.2425, 123.5395),
-        ),
-        60.0, // pixel padding
-      ),
-    );
-  }
-
-  void _onCameraMove(CameraPosition position) {
-    // Indoor button appears only when sufficiently zoomed in
-    final showIndoor = position.zoom >= _indoorZoomThreshold;
-    // Only call setState if something actually changed to avoid jank
-    if (_currentZoom != position.zoom || _showIndoorButton != showIndoor) {
-      setState(() {
-        _currentZoom = position.zoom;
-        _showIndoorButton = showIndoor;
-      });
-    }
-  }
-
-  void _toggleMapType() {
-    setState(() {
-      _currentMapType =
-          _currentMapType == MapType.hybrid ? MapType.normal : MapType.hybrid;
-    });
-  }
-
-  void _recenterMap() {
-    _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        const CameraPosition(
-          target: _ligaoMarketCenter,
-          zoom: 19.0,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _buildMarkers(List<StallModel> stalls, double zoom) async {
-    if (zoom < _stallVisibilityZoomThreshold) {
-      if (mounted && _markers.isNotEmpty) {
-        setState(() => _markers = {});
-      }
-      return;
-    }
-
-    final Set<Marker> newMarkers = {};
-    for (final stall in stalls) {
-      final isOpen = StallUtils.isStallOpenNow(stall);
-      newMarkers.add(Marker(
-        markerId: MarkerId(stall.stallId),
-        position: LatLng(stall.latitude, stall.longitude),
-        icon: await _getSmallMarkerIcon(isOpen),
-        anchor: const Offset(0.5, 0.5),
-        infoWindow: InfoWindow(
-          title: stall.name,
-          snippet: '${_getCategoryLabel(stall.category)} • ${stall.openTime}',
-        ),
-        onTap: () => _onStallMarkerTapped(stall),
-      ));
-    }
-
-    if (mounted) {
-      setState(() => _markers = newMarkers);
-    }
-  }
-
-  Future<BitmapDescriptor> _getSmallMarkerIcon(bool isOpen) async {
-    if (isOpen) {
-      _openMarkerIcon ??= await _createSmallMarker(const Color(0xFF2E7D32));
-      return _openMarkerIcon!;
-    }
-
-    _closedMarkerIcon ??= await _createSmallMarker(const Color(0xFFC62828));
-    return _closedMarkerIcon!;
-  }
-
-  // Create small custom marker for individual stalls (44x44px)
-  Future<BitmapDescriptor> _createSmallMarker(Color markerColor) async {
-    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(pictureRecorder);
-    const double size = 32.0;
-    const double radius = 16.0;
-
-    // Marker circle background (green=open, red=closed)
-    final paint = Paint()..color = markerColor;
-    canvas.drawCircle(const Offset(radius, radius), radius, paint);
-
-    // White border
-    final borderPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-    canvas.drawCircle(
-      const Offset(radius, radius),
-      radius - 1,
-      borderPaint,
-    );
-
-    final picture = pictureRecorder.endRecording();
-    final image = await picture.toImage(size.toInt(), size.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-
-    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
-  }
-
-  String _getCategoryLabel(String category) {
-    switch (category.toLowerCase()) {
-      case 'seafood':
-      case 'fish':
-        return '🐟 Seafood';
-      case 'meat':
-      case 'karne':
-      case 'pork':
-      case 'beef':
-        return '🥩 Karne';
-      case 'poultry':
-      case 'manok':
-        return '🐔 Manok';
-      case 'vegetables':
-      case 'gulay':
-        return '🥦 Gulay';
-      case 'fruits':
-      case 'prutas':
-        return '🍎 Prutas';
-      case 'rice':
-      case 'bigas':
-        return '🌾 Bigas';
-      case 'eatery':
-        return '🍽️ Eatery';
-      case 'sari-sari':
-      case 'sari_sari':
-        return '🏪 Sari-Sari';
-      case 'spices':
-      case 'pampalasa':
-        return '🌶️ Pampalasa';
-      case 'dry goods':
-      case 'dry_goods':
-        return '📦 Dry Goods';
-      case 'ukay-ukay':
-      case 'ukay_ukay':
-        return '👕 Ukay-Ukay';
-      default:
-        return '🏪 Stall';
-    }
-  }
-
-  void _onStallMarkerTapped(StallModel stall) {
-    setState(() {
-      _selectedStall = stall;
-    });
-
-    // Show full stall detail sheet
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StallDetailSheet(
-        stall: stall,
-        onClose: () {
-          Navigator.of(context).pop();
-          setState(() {
-            _selectedStall = null;
-          });
-        },
-      ),
-    );
-  }
-
-  void _onSearchChanged(String query) {
-    final trimmedQuery = query.trim();
-    setState(() {
-      _searchQuery = trimmedQuery;
-    });
-
-    if (trimmedQuery.isEmpty) {
-      setState(() {
-        _isSearching = false;
-        _filteredStalls = [];
-        _searchResults = [];
-        _showDropdown = false;
-      });
-      _buildMarkers(_allStalls, _currentZoom ?? 18.0);
-      return;
-    }
-
-    final queryLower = trimmedQuery.toLowerCase();
-    final allMatches = _allStalls.where((stall) {
-      if (stall.name.toLowerCase().contains(queryLower)) return true;
-      if (stall.category.toLowerCase().contains(queryLower)) return true;
-      if (stall.categories.any((c) => c.toLowerCase().contains(queryLower))) {
-        return true;
-      }
-      if (stall.tags.any((t) =>
-          t.toLowerCase().contains(queryLower) ||
-          StallUtils.getTagLabel(t).toLowerCase().contains(queryLower))) {
-        return true;
-      }
-      if (stall.products.any((p) => p.toLowerCase().contains(queryLower))) {
-        return true;
-      }
-      if (stall.section != null &&
-          stall.section!.toLowerCase().contains(queryLower)) {
-        return true;
-      }
-      return false;
-    }).toList();
-
-    setState(() {
-      _isSearching = true;
-      _filteredStalls = allMatches;
-      _searchResults = allMatches.take(8).toList();
-      _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
-    });
-
-    if (allMatches.isNotEmpty) {
-      _buildMarkers(allMatches, _currentZoom ?? 18.0);
-    } else {
-      _buildMarkers([], _currentZoom ?? 18.0);
-    }
-  }
-
-  void _onStallSelected(StallModel stall) {
-    _searchFocusNode.unfocus();
-    setState(() {
-      _showDropdown = false;
-      _searchController.text = stall.name;
-      _searchQuery = stall.name;
-    });
-
-    if (stall.latitude != 0.0 || stall.longitude != 0.0) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(stall.latitude, stall.longitude),
-          20.0,
-        ),
-      );
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          _openStallDetail(stall);
-        }
-      });
-    } else {
-      _openStallDetail(stall);
-    }
-  }
-
-  void _openStallDetail(StallModel stall) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StallDetailSheet(
-        stall: stall,
-        onClose: () {
-          Navigator.of(context).pop();
-        },
-      ),
-    );
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-      _searchResults = [];
-      _filteredStalls = [];
-      _showDropdown = false;
-      _isSearching = false;
-    });
-    _buildMarkers(_allStalls, _currentZoom ?? 18.0);
-    _searchFocusNode.unfocus();
-  }
-
-  Widget _buildHighlightedText(String text, String query) {
-    if (query.isEmpty) {
-      return Text(
-        text,
-        style: GoogleFonts.poppins(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF212121),
-        ),
-      );
-    }
-
-    final lowerText = text.toLowerCase();
-    final lowerQuery = query.toLowerCase();
-    final matchIndex = lowerText.indexOf(lowerQuery);
-
-    if (matchIndex == -1) {
-      return Text(
-        text,
-        style: GoogleFonts.poppins(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF212121),
-        ),
-      );
-    }
-
-    return RichText(
-      text: TextSpan(
-        children: [
-          if (matchIndex > 0)
-            TextSpan(
-              text: text.substring(0, matchIndex),
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF212121),
-              ),
-            ),
-          TextSpan(
-            text: text.substring(matchIndex, matchIndex + query.length),
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1B5E20),
-              backgroundColor: const Color(0xFFE8F5E9),
-            ),
-          ),
-          if (matchIndex + query.length < text.length)
-            TextSpan(
-              text: text.substring(matchIndex + query.length),
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF212121),
-              ),
-            ),
-        ],
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  String? _getMatchedProduct(StallModel stall) {
-    final q = _searchQuery.toLowerCase();
-    if (q.isEmpty) return null;
-    try {
-      return stall.products.firstWhere((p) => p.toLowerCase().contains(q));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void _animateToCameraPosition(LatLng position, double zoom) {
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(position, zoom),
-    );
-  }
-
-  void _animateToStalls(List<StallModel> stalls) {
-    if (stalls.isEmpty) return;
-
-    if (stalls.length == 1) {
-      // Single stall: zoom to it
-      _animateToCameraPosition(
-        LatLng(stalls.first.latitude, stalls.first.longitude),
-        19.5,
-      );
-    } else {
-      // Multiple stalls: fit bounds
-      final bounds = _calculateBounds(stalls);
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 80),
-      );
-    }
-  }
-
-  LatLngBounds _calculateBounds(List<StallModel> stalls) {
-    double minLat = stalls.first.latitude;
-    double maxLat = stalls.first.latitude;
-    double minLng = stalls.first.longitude;
-    double maxLng = stalls.first.longitude;
-
-    for (final stall in stalls) {
-      if (stall.latitude < minLat) minLat = stall.latitude;
-      if (stall.latitude > maxLat) maxLat = stall.latitude;
-      if (stall.longitude < minLng) minLng = stall.longitude;
-      if (stall.longitude > maxLng) maxLng = stall.longitude;
-    }
-
-    return LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final stallsAsync = ref.watch(allStallsProvider);
-
     return Scaffold(
-      body: stallsAsync.when(
-        data: (stalls) {
-          if (_allStalls.isEmpty || _allStalls.length != stalls.length) {
-            _allStalls = stalls;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _buildMarkers(stalls, _currentZoom ?? 18.0);
-            });
-          }
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Master Interactive Vector Floor Plan
+          Positioned.fill(
+            child: MarketSvgMapView(
+              key: _svgMapKey,
+              onRotationChanged: (angle) {
+                if (mounted) {
+                  setState(() => _mapRotationAngle = angle);
+                }
+              },
+            ),
+          ),
 
-          final double dropdownListHeight =
-              ((_searchResults.length * 72.0) + 8.0)
-                  .clamp(72.0, 260.0)
-                  .toDouble();
-
-          return Stack(
-            children: [
-              // Google Map with strict camera bounds (hybrid mode)
-              GoogleMap(
-                onMapCreated: _onMapCreated,
-                onTap: (latLng) {
-                  if (_showDropdown) {
-                    setState(() {
-                      _showDropdown = false;
-                    });
-                    _searchFocusNode.unfocus();
-                    return;
-                  }
-                },
-                onCameraMove: _onCameraMove,
-                onCameraIdle: () async {
-                  // Capture initial zoom level after first map load for reference
-                  if (!_initialZoomCaptured && _mapController != null) {
-                    _initialZoomCaptured = true;
-                    await _mapController!.getZoomLevel();
-                  }
-
-                  // Debounce marker rebuilding to avoid lag
-                  _markerDebounce?.cancel();
-                  _markerDebounce = Timer(
-                    const Duration(milliseconds: 300),
-                    () {
-                      final stalls =
-                          _isSearching ? _filteredStalls : _allStalls;
-                      _buildMarkers(stalls, _currentZoom ?? 18.0);
-                    },
-                  );
-                },
-                initialCameraPosition: const CameraPosition(
-                  target: _ligaoMarketCenter,
-                  zoom: 17.0, // matches opening view zoom level
-                ),
-                markers: _markers,
-                myLocationEnabled: _locationPermissionGranted,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                compassEnabled: false,
-                rotateGesturesEnabled: true,
-                tiltGesturesEnabled: false,
-                scrollGesturesEnabled: true,
-                zoomGesturesEnabled: true,
-                trafficEnabled: false,
-                buildingsEnabled: false,
-                indoorViewEnabled: false,
-                mapType: _currentMapType,
-                minMaxZoomPreference: const MinMaxZoomPreference(
-                  17.0, // minimum zoom matches opening view (prevents zoom out)
-                  22.0, // maximum zoom (allow closer zoom for individual markers)
-                ),
-                cameraTargetBounds: CameraTargetBounds.unbounded,
-              ),
-
-              // Top Search Bar + Filter Button paired row & Status Pills
+              // Floating Controls (Compass, Zoom +/- , Recenter Button & Aling Suki AI Chatbot)
               Positioned(
-                top: MediaQuery.of(context).viewPadding.top + 12,
-                left: 16,
+                bottom: MediaQuery.sizeOf(context).width >= 600 ? 24 : 76,
                 right: 16,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Search bar + Filter button row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: _showDropdown
-                                  ? const BorderRadius.only(
-                                      topLeft: Radius.circular(12),
-                                      topRight: Radius.circular(12),
-                                    )
-                                  : BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                Icon(
-                                  Icons.search_rounded,
-                                  color: _searchQuery.isNotEmpty
-                                      ? AppColors.primary
-                                      : AppColors.inkSubtle,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchController,
-                                    focusNode: _searchFocusNode,
-                                    cursorColor: AppColors.primary,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      color: AppColors.ink,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: 'Search stalls, products...',
-                                      hintStyle: GoogleFonts.poppins(
-                                        fontSize: 13,
-                                        color: AppColors.inkSubtle,
-                                      ),
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      disabledBorder: InputBorder.none,
-                                      errorBorder: InputBorder.none,
-                                      focusedErrorBorder: InputBorder.none,
-                                      filled: false,
-                                      contentPadding: EdgeInsets.zero,
-                                      isDense: true,
-                                    ),
-                                    onChanged: _onSearchChanged,
-                                    textInputAction: TextInputAction.search,
-                                    onSubmitted: (_) {
-                                      if (_searchResults.length == 1) {
-                                        _onStallSelected(_searchResults.first);
-                                      } else if (_searchResults.isNotEmpty) {
-                                        _animateToStalls(_searchResults);
-                                      }
-                                    },
-                                  ),
-                                ),
-                                if (_searchQuery.isNotEmpty)
-                                  GestureDetector(
-                                    onTap: _clearSearch,
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(12),
-                                      child: Icon(
-                                        Icons.close_rounded,
-                                        color: AppColors.inkSubtle,
-                                        size: 18,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  const SizedBox(width: 12),
-                              ],
+                    // Compass Reset Button (Only appears when rotation != 0)
+                    AnimatedOpacity(
+                      opacity: _mapRotationAngle.abs() > 0.02 ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: AnimatedScale(
+                        scale: _mapRotationAngle.abs() > 0.02 ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutBack,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 1,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Paired Filter / Layer Button
-                        Tooltip(
-                          message: _currentMapType == MapType.hybrid
-                              ? 'Satellite View'
-                              : 'Map View',
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: 1,
-                              ),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _toggleMapType,
-                                borderRadius: BorderRadius.circular(12),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.layers_rounded,
-                                    color: _currentMapType == MapType.hybrid
-                                        ? AppColors.primary
-                                        : AppColors.inkMuted,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => _svgMapKey.currentState?.resetRotation(),
+                              borderRadius: BorderRadius.circular(22),
+                              child: Center(
+                                child: Transform.rotate(
+                                  angle: -_mapRotationAngle,
+                                  child: const Icon(
+                                    Icons.navigation_rounded,
+                                    color: AppColors.primary,
                                     size: 22,
                                   ),
                                 ),
@@ -848,502 +95,166 @@ class MapScreenState extends ConsumerState<MapScreen>
                             ),
                           ),
                         ),
-                      ],
-                    ),
-
-                    // Dropdown results under search bar if active
-                    if (_showDropdown)
-                      Container(
-                        constraints: const BoxConstraints(maxHeight: 320),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(12),
-                            bottomRight: Radius.circular(12),
-                          ),
-                          border: Border.all(
-                            color: AppColors.border,
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              height: 1,
-                              color: AppColors.border,
-                              margin: const EdgeInsets.symmetric(horizontal: 12),
-                            ),
-                            if (_searchResults.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Text(
-                                  'No stalls found for "$_searchQuery"',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    color: AppColors.inkSubtle,
-                                  ),
-                                ),
-                              )
-                            else
-                              SizedBox(
-                                height: dropdownListHeight,
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
-                                  itemCount: _searchResults.length,
-                                  itemBuilder: (_, i) {
-                                    final stall = _searchResults[i];
-                                    final isOpen = StallUtils.isStallOpenNow(stall);
-                                    final matchedProduct = _getMatchedProduct(stall);
-
-                                    return GestureDetector(
-                                      onTap: () => _onStallSelected(stall),
-                                      child: Container(
-                                        color: Colors.transparent,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 10,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 40,
-                                              height: 40,
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primaryLight,
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: stall.photoUrls.isNotEmpty
-                                                  ? ClipRRect(
-                                                      borderRadius: BorderRadius.circular(8),
-                                                      child: Image.network(
-                                                        stall.photoUrls.first,
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (_, __, ___) => const Icon(
-                                                          Icons.store_rounded,
-                                                          color: AppColors.primary,
-                                                          size: 20,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : const Icon(
-                                                      Icons.store_rounded,
-                                                      color: AppColors.primary,
-                                                      size: 20,
-                                                    ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  _buildHighlightedText(
-                                                    stall.name,
-                                                    _searchQuery,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        stall.category,
-                                                        style: GoogleFonts.poppins(
-                                                          fontSize: 11,
-                                                          color: AppColors.inkMuted,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      Container(
-                                                        width: 6,
-                                                        height: 6,
-                                                        decoration: BoxDecoration(
-                                                          color: isOpen
-                                                              ? const Color(0xFF2E7D32)
-                                                              : AppColors.error,
-                                                          shape: BoxShape.circle,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        isOpen ? 'Open' : 'Closed',
-                                                        style: GoogleFonts.poppins(
-                                                          fontSize: 11,
-                                                          color: isOpen
-                                                              ? const Color(0xFF2E7D32)
-                                                              : AppColors.error,
-                                                          fontWeight: FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  if (matchedProduct != null)
-                                                    Text(
-                                                      'Sells: $matchedProduct',
-                                                      style: GoogleFonts.poppins(
-                                                        fontSize: 10,
-                                                        color: AppColors.primary,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                            if (stall.latitude != 0.0 || stall.longitude != 0.0)
-                                              const Icon(
-                                                Icons.location_on_rounded,
-                                                size: 16,
-                                                color: AppColors.inkSubtle,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 8),
-
-                    // Status Pills below search row
-                    _buildStallCountBadge(),
-                  ],
-                ),
-              ),
-
-              // Zoom controls (right side, centered vertically)
-              Positioned(
-                right: 16,
-                top: MediaQuery.of(context).size.height * 0.42,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.border,
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Zoom In button
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            _mapController?.animateCamera(
-                              CameraUpdate.zoomIn(),
-                            );
-                          },
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.add_rounded,
-                              color: AppColors.primary,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Divider line
-                      Container(
-                        width: 44,
-                        height: 1,
-                        color: AppColors.border,
-                      ),
-
-                      // Zoom Out button
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            _mapController?.animateCamera(
-                              CameraUpdate.zoomOut(),
-                            );
-                          },
-                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.remove_rounded,
-                              color: AppColors.primary,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // My Location button
-              Positioned(
-                bottom: MediaQuery.sizeOf(context).width >= 600 ? 152 : 202,
-                right: 16,
-                child: Tooltip(
-                  message: 'My Location',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.border,
-                        width: 1,
                       ),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _goToMyLocation,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          alignment: Alignment.center,
-                          child: _isLoadingLocation
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: AppColors.primary,
-                                  ),
-                                )
-                              : Icon(
-                                  _locationPermissionGranted
-                                      ? Icons.my_location_rounded
-                                      : Icons.location_disabled_rounded,
-                                  color: _locationPermissionGranted
-                                      ? AppColors.primary
-                                      : AppColors.inkSubtle,
-                                  size: 22,
-                                ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
 
-              // Indoor Map button (visible only at zoom >= 20)
-              Positioned(
-                bottom: MediaQuery.sizeOf(context).width >= 600 ? 92 : 144,
-                left: 16,
-                child: AnimatedOpacity(
-                  opacity: _showIndoorButton ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: IgnorePointer(
-                    ignoring: !_showIndoorButton,
-                    child: GestureDetector(
-                      onTap: _openIndoorMap,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: AppColors.border,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.map_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Indoor Map',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Recenter button (bottom right)
-              Positioned(
-                bottom: MediaQuery.sizeOf(context).width >= 600 ? 92 : 144,
-                right: 16,
-                child: Tooltip(
-                  message: 'Back to Market',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.border,
-                        width: 1,
-                      ),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _recenterMap,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.center_focus_strong_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Floating Aling Suki AI Assistant button (bottom right)
-              Positioned(
-                bottom: MediaQuery.sizeOf(context).width >= 600 ? 24 : 76,
-                right: 16,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Main button
+                    // Zoom In / Out Controls Stack
                     Container(
-                      width: 56,
-                      height: 56,
+                      margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Zoom In (+)
+                          SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _svgMapKey.currentState?.zoomIn(),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(22),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    color: AppColors.ink,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.borderLight,
+                          ),
+                          // Zoom Out (-)
+                          SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _svgMapKey.currentState?.zoomOut(),
+                                borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(22),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.remove_rounded,
+                                    color: AppColors.ink,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Recenter / Reset View Button
+                    Container(
+                      width: 44,
+                      height: 44,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white,
-                          width: 2,
+                          color: AppColors.border,
+                          width: 1,
                         ),
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _isChatOpen = true;
-                            });
-                            _showAlingSukiOverlay();
-                          },
-                          borderRadius: BorderRadius.circular(28),
+                          onTap: () => _svgMapKey.currentState?.resetView(),
+                          borderRadius: BorderRadius.circular(22),
                           child: const Center(
-                            child: CircleAvatar(
-                              backgroundColor: Colors.transparent,
-                              backgroundImage:
-                                  AssetImage('assets/images/aling_suki.png'),
-                              radius: 24,
+                            child: Icon(
+                              Icons.center_focus_strong_rounded,
+                              color: AppColors.ink,
+                              size: 20,
                             ),
                           ),
                         ),
                       ),
                     ),
 
-                    // Unread badge (red dot)
-                    if (!_isChatOpen && ref.watch(chatProvider).length > 1)
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: Container(
-                          width: 12,
-                          height: 12,
+                    // Aling Suki AI Assistant Button
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
                           decoration: BoxDecoration(
-                            color: AppColors.error,
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: Colors.white,
                               width: 2,
                             ),
                           ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() => _isChatOpen = true);
+                                _showAlingSukiOverlay();
+                              },
+                              borderRadius: BorderRadius.circular(28),
+                              child: const Center(
+                                child: CircleAvatar(
+                                  backgroundColor: Colors.transparent,
+                                  backgroundImage:
+                                      AssetImage('assets/images/aling_suki.png'),
+                                  radius: 24,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+
+                        // Unread indicator dot
+                        if (!_isChatOpen && ref.watch(chatProvider).length > 1)
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: AppColors.error,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ],
-          );
-        },
-        loading: () => Container(
-          color: const Color(0xFF1B5E20),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const CircularProgressIndicator(
-                  color: Colors.white,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Loading market map...',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
           ),
-        ),
-        error: (error, stack) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 60,
-                  color: colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Error loading map',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.error,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error.toString(),
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+        );
+      }
 
-  // Show Aling Suki chat overlay (docked dialog on desktop, full bottom sheet on mobile)
   void _showAlingSukiOverlay() {
     final isDesktop = MediaQuery.sizeOf(context).width >= 600;
     if (isDesktop) {
@@ -1423,110 +334,6 @@ class MapScreenState extends ConsumerState<MapScreen>
       });
     }
   }
-
-  // ── GPS / Location ─────────────────────────────────────────────────────────
-
-  Future<void> _initLocationService() async {
-    if (kIsWeb) {
-      if (mounted) {
-        setState(() {
-          _locationPermissionGranted = true;
-          _isLoadingLocation = true;
-        });
-      }
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 10),
-        );
-        if (mounted) {
-          setState(() {
-            _currentPosition = position;
-            _isLoadingLocation = false;
-          });
-        }
-      } catch (_) {
-        if (mounted) setState(() => _isLoadingLocation = false);
-      }
-      _positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
-        ),
-      ).listen((position) {
-        if (mounted) setState(() => _currentPosition = position);
-      });
-      return;
-    }
-
-    final permission = await Permission.locationWhenInUse.request();
-    if (permission.isGranted) {
-      if (mounted) {
-        setState(() {
-          _locationPermissionGranted = true;
-          _isLoadingLocation = true;
-        });
-      }
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 10),
-        );
-        if (mounted) {
-          setState(() {
-            _currentPosition = position;
-            _isLoadingLocation = false;
-          });
-        }
-      } catch (_) {
-        if (mounted) setState(() => _isLoadingLocation = false);
-      }
-      _positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
-        ),
-      ).listen((position) {
-        if (mounted) setState(() => _currentPosition = position);
-      });
-    } else if (permission.isPermanentlyDenied) {
-      openAppSettings();
-    }
-  }
-
-  void _goToMyLocation() async {
-    if (!kIsWeb && !_locationPermissionGranted) {
-      final permission = await Permission.locationWhenInUse.request();
-      if (!permission.isGranted) return;
-    }
-    if (_currentPosition != null) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          16.0,
-        ),
-      );
-    } else {
-      _initLocationService();
-    }
-  }
-
-  void _openIndoorMap() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const IndoorMapScreen(),
-        transitionsBuilder: (_, anim, __, child) => SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: child,
-        ),
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
-  }
 }
 
 // Aling Suki Chat Overlay Widget
@@ -1547,13 +354,9 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
   @override
   void initState() {
     super.initState();
-
-    // Scroll to bottom when sheet opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom(instant: true);
     });
-
-    // Refresh stall data when chat opens (without clearing chat)
     _initializeChat();
   }
 
@@ -1566,53 +369,18 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
 
   Future<void> _initializeChat() async {
     if (_isRefreshing) return;
-
     setState(() => _isRefreshing = true);
-
     await ref.read(chatProvider.notifier).initializeChat();
     _language = ref.read(chatProvider.notifier).language;
-
-    setState(() => _isRefreshing = false);
-  }
-
-  Future<void> _refreshStallData() async {
-    if (_isRefreshing) return;
-
-    setState(() => _isRefreshing = true);
-
-    await ref.read(chatProvider.notifier).initializeChat(reset: true);
-
     setState(() => _isRefreshing = false);
   }
 
   Future<void> _toggleLanguage() async {
     final newLanguage = _language == 'english' ? 'tagalog' : 'english';
-
     setState(() {
       _language = newLanguage;
     });
-
     await ref.read(chatProvider.notifier).setLanguage(newLanguage);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _language == 'english'
-                ? 'Switched to English'
-                : 'Lumipat sa Tagalog',
-            style: GoogleFonts.poppins(color: Colors.white),
-          ),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   List<String> get _suggestions => _language == 'english'
@@ -1621,19 +389,16 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
           'Where to buy fish?',
           'Meat section',
           'Vegetable stalls',
-          'What stalls are here?',
         ]
       : [
           'Anong bukas ngayon?',
           'Saan makabili ng isda?',
           'Meat section',
           'Mga gulay na stall',
-          'Anong mga stall dito?',
         ];
 
   void _scrollToBottom({bool instant = false}) {
     if (!_scrollController.hasClients) return;
-
     if (instant) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     } else {
@@ -1672,7 +437,6 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final hasUserMessages = messages.where((m) => m.role == 'user').isNotEmpty;
 
-    // Scroll to bottom when messages update
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (messages.isNotEmpty && messages.last.isStreaming) {
         _scrollToBottom();
@@ -1709,15 +473,12 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
             ),
             child: Row(
               children: [
-                // Avatar
                 const CircleAvatar(
                   backgroundColor: Colors.white,
                   backgroundImage: AssetImage('assets/images/aling_suki.png'),
                   radius: 20,
                 ),
                 const SizedBox(width: 12),
-
-                // Name and status
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1733,7 +494,6 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          // Online indicator
                           Container(
                             width: 6,
                             height: 6,
@@ -1748,133 +508,152 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                       Text(
                         notifier.stallsLoaded
                             ? '${notifier.stallsCount} stalls in directory'
-                            : 'Loading stalls...',
+                            : 'AI Market Assistant',
                         style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          color: Colors.white60,
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.8),
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                GestureDetector(
-                  onTap: _toggleLanguage,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                IconButton(
+                  onPressed: _toggleLanguage,
+                  tooltip: 'Switch Language',
+                  icon: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.4)),
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _language == 'english' ? '🇵🇭' : '🇺🇸',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _language == 'english' ? 'Filipino' : 'English',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      _language == 'english' ? 'EN' : 'TL',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 4),
-
-                // Refresh button
                 IconButton(
-                  icon: _isRefreshing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation(AppColors.primary),
-                          ),
-                        )
-                      : const Icon(Icons.refresh_rounded),
-                  color: Colors.white,
-                  onPressed: _isRefreshing ? null : _refreshStallData,
-                  tooltip: 'Reset Chat',
-                ),
-
-                // Close button
-                IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  color: Colors.white,
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
                   onPressed: () => Navigator.pop(context),
-                  tooltip: 'Close',
                 ),
               ],
             ),
           ),
 
-          // Messages list
+          // Messages List
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.all(16),
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final message = messages[index];
-                return _buildMessageBubble(message);
+                final isUser = message.role == 'user';
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    mainAxisAlignment:
+                        isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!isUser) ...[
+                        const CircleAvatar(
+                          backgroundColor: Colors.white,
+                          backgroundImage:
+                              AssetImage('assets/images/aling_suki.png'),
+                          radius: 14,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isUser
+                                ? AppColors.primary
+                                : AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isUser
+                                  ? AppColors.primary
+                                  : AppColors.border,
+                              width: 1,
+                            ),
+                          ),
+                          child: isUser
+                              ? Text(
+                                  message.content,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : MarkdownBody(
+                                  data: message.content,
+                                  styleSheet: MarkdownStyleSheet(
+                                    p: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: AppColors.ink,
+                                    ),
+                                    strong: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
           ),
 
-          // Quick suggestions (show only when no user messages)
-          if (!hasUserMessages) ...[
+          // Suggestions Bar (if no messages)
+          if (!hasUserMessages)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _language == 'english'
-                        ? 'Try asking:'
-                        : 'Mga tanong na maaari mong itanong:',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: AppColors.inkMuted,
-                      fontWeight: FontWeight.w500,
+              height: 40,
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _suggestions.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  return ActionChip(
+                    label: Text(
+                      _suggestions[index],
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: AppColors.ink,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: _suggestions
-                        .map((s) => _buildSuggestionChip(s))
-                        .toList(),
-                  ),
-                ],
+                    backgroundColor: AppColors.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                    onPressed: () => _sendSuggestion(_suggestions[index]),
+                  );
+                },
               ),
             ),
-          ],
 
-          // Input bar
+          // Input Bar
           Container(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: 12 + MediaQuery.of(context).padding.bottom,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               border: Border(
-                top: BorderSide(color: AppColors.borderLight, width: 1),
+                top: BorderSide(color: AppColors.border, width: 1),
               ),
             ),
             child: Row(
@@ -1882,277 +661,37 @@ class _AlingSukiChatSheetState extends ConsumerState<_AlingSukiChatSheet> {
                 Expanded(
                   child: TextField(
                     controller: _inputController,
-                    onSubmitted: (_) => _sendMessage(),
-                    onChanged: (_) => setState(() {}),
-                    style: GoogleFonts.poppins(fontSize: 14),
+                    style: GoogleFonts.poppins(fontSize: 13, color: AppColors.ink),
                     decoration: InputDecoration(
                       hintText: _language == 'english'
                           ? 'Ask Aling Suki...'
                           : 'Magtanong kay Aling Suki...',
                       hintStyle: GoogleFonts.poppins(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: AppColors.inkSubtle,
                       ),
                       filled: true,
-                      fillColor: AppColors.chatBubbleBot,
+                      fillColor: AppColors.canvas,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      isDense: true,
                     ),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Send button
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _inputController.text.trim().isEmpty
-                        ? AppColors.inkSubtle
-                        : AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _inputController.text.trim().isEmpty
-                          ? null
-                          : _sendMessage,
-                      borderRadius: BorderRadius.circular(22),
-                      child: const Icon(
-                        Icons.send_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
+                IconButton(
+                  onPressed: _sendMessage,
+                  icon: const Icon(Icons.send_rounded, color: AppColors.primary),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSuggestionChip(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: () => _sendSuggestion(text),
-        child: Container(
-          margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.navActive),
-          ),
-          child: Text(
-            text,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: AppColors.primary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(ChatMessage message) {
-    final isUser = message.role == 'user';
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    if (!isUser && message.isStreaming) {
-      return _buildTypingIndicator();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            // Small avatar for Aling Suki
-            const CircleAvatar(
-              backgroundColor: Colors.white,
-              backgroundImage: AssetImage('assets/images/aling_suki.png'),
-              radius: 12,
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: min(screenWidth * 0.75, 320.0),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: isUser ? AppColors.primary : AppColors.chatBubbleBot,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(isUser ? 18 : 4),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: const Radius.circular(18),
-                  bottomRight: Radius.circular(isUser ? 4 : 18),
-                ),
-              ),
-              child: isUser
-                  ? Text(
-                      message.content,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.white,
-                        height: 1.5,
-                      ),
-                    )
-                  : MarkdownBody(
-                      data: message.content,
-                      softLineBreak: true,
-                      styleSheet: MarkdownStyleSheet(
-                        p: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: AppColors.ink,
-                          height: 1.5,
-                        ),
-                        strong: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
-                          height: 1.5,
-                        ),
-                        listBullet: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: AppColors.primaryLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.smart_toy_rounded,
-              size: 14,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-              border: const Border.fromBorderSide(
-                BorderSide(color: AppColors.borderLight),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDot(0),
-                const SizedBox(width: 4),
-                _buildDot(1),
-                const SizedBox(width: 4),
-                _buildDot(2),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDot(int index) {
-    return _TypingDot(delay: index * 200);
-  }
-}
-
-// Typing indicator animation
-class _TypingDot extends StatefulWidget {
-  final int delay;
-
-  const _TypingDot({required this.delay});
-
-  @override
-  State<_TypingDot> createState() => _TypingDotState();
-}
-
-class _TypingDotState extends State<_TypingDot>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) {
-        _controller.repeat(reverse: true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        );
-      },
-      child: Container(
-        width: 8,
-        height: 8,
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        decoration: const BoxDecoration(
-          color: AppColors.primary,
-          shape: BoxShape.circle,
-        ),
       ),
     );
   }

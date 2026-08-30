@@ -1,562 +1,299 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../models/stall_model.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../stalls/presentation/stall_detail_sheet.dart';
 
-class ManageStallsScreen extends StatefulWidget {
+/// Modern Admin Stall Management Screen for Merkado Go
+class ManageStallsScreen extends ConsumerStatefulWidget {
   const ManageStallsScreen({super.key});
 
   @override
-  State<ManageStallsScreen> createState() => _ManageStallsScreenState();
+  ConsumerState<ManageStallsScreen> createState() =>
+      _ManageStallsScreenState();
 }
 
-class _ManageStallsScreenState extends State<ManageStallsScreen> {
+class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  Timer? _refreshTimer;
+  final FocusNode _searchFocusNode = FocusNode();
+
   String _searchQuery = '';
-  String _selectedType = 'all';
-  String? _selectedSubcategory;
-  String? _selectedTag;
-  bool _subcategoryRowOpen = false;
+  String _selectedCategory = 'All';
 
-  final Map<String, Map<String, dynamic>> _categoryMap = {
-    'all': {
-      'label': 'All',
-      'icon': Icons.store_rounded,
-      'hasSubcategories': false,
-      'categories': <String>[],
-      'subcategories': <Map>[],
-    },
-    'fresh': {
-      'label': 'Fresh Produce',
-      'icon': Icons.eco_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'fresh','seafood','fish','meat',
-        'beef','pork','karne','poultry',
-        'chicken','manok','vegetables',
-        'gulay','fruits','prutas',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Fresh',
-          'tag': null,
-          'categories': [
-            'fresh','seafood','fish','meat',
-            'beef','pork','karne','poultry',
-            'chicken','manok','vegetables',
-            'gulay','fruits','prutas',
-          ],
-        },
-        {
-          'label': 'Seafood',
-          'tag': null,
-          'categories': ['seafood','fish'],
-        },
-        {
-          'label': 'Meat',
-          'tag': null,
-          'categories': [
-            'meat','beef','pork','karne'],
-        },
-        {
-          'label': 'Poultry',
-          'tag': null,
-          'categories': [
-            'poultry','chicken','manok'],
-        },
-        {
-          'label': 'Vegetables',
-          'tag': null,
-          'categories': [
-            'vegetables','gulay'],
-        },
-        {
-          'label': 'Fruits',
-          'tag': null,
-          'categories': [
-            'fruits','prutas'],
-        },
-      ],
-    },
-    'processed': {
-      'label': 'Frozen & Processed',
-      'icon': Icons.kitchen_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'frozen','frozen_goods','processed',
-        'processed_foods','spices','pampalasa',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Processed',
-          'tag': null,
-          'categories': [
-            'frozen','frozen_goods',
-            'processed','processed_foods',
-            'spices','pampalasa',
-          ],
-        },
-        {
-          'label': 'Frozen Goods',
-          'tag': null,
-          'categories': [
-            'frozen','frozen_goods'],
-        },
-        {
-          'label': 'Processed Foods',
-          'tag': null,
-          'categories': [
-            'processed','processed_foods'],
-        },
-        {
-          'label': 'Spices',
-          'tag': null,
-          'categories': [
-            'spices','pampalasa'],
-        },
-      ],
-    },
-    'dry_goods': {
-      'label': 'Dry Goods',
-      'icon': Icons.inventory_2_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'dry_goods','drygoods','rice',
-        'rice_dealer','bigas','dried_fish',
-        'bulad','daing',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Dry Goods',
-          'tag': null,
-          'categories': [
-            'dry_goods','drygoods','rice',
-            'rice_dealer','bigas',
-            'dried_fish','bulad','daing',
-          ],
-        },
-        {
-          'label': 'Rice Dealer',
-          'tag': 'rice_dealer',
-          'categories': [
-            'dry_goods','drygoods','rice',
-            'rice_dealer','bigas',
-            'dried_fish','bulad','daing',
-          ],
-        },
-        {
-          'label': 'Dried Fish',
-          'tag': 'dried_fish',
-          'categories': [
-            'dry_goods','drygoods','rice',
-            'rice_dealer','bigas',
-            'dried_fish','bulad','daing',
-          ],
-        },
-      ],
-    },
-    'cooked': {
-      'label': 'Cooked Food',
-      'icon': Icons.restaurant_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'eatery','carinderia','cooked',
-        'cooked_food','bakery','kakanin',
-        'snack_stand','lutong_ulam',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Cooked',
-          'tag': null,
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Carinderia',
-          'tag': 'carinderia',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Bakery',
-          'tag': 'bakery',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Kakanin',
-          'tag': 'kakanin',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Snack Stand',
-          'tag': 'snack_stand',
-          'categories': [
-            'eatery','carinderia','cooked',
-            'cooked_food','bakery','kakanin',
-            'snack_stand','lutong_ulam',
-          ],
-        },
-      ],
-    },
-    'sari_sari': {
-      'label': 'Sari-Sari Store',
-      'icon': Icons.store_rounded,
-      'hasSubcategories': false,
-      'categories': [
-        'sari_sari','sarisari','sari-sari',
-        'sari_sari_store',
-      ],
-      'subcategories': <Map>[],
-    },
-    'retail': {
-      'label': 'Clothing & Tailoring',
-      'icon': Icons.checkroom_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'retail','clothing','ukay_ukay',
-        'ukay-ukay','ukay','tailor',
-        'tailor_shop',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Clothing',
-          'tag': null,
-          'categories': [
-            'retail','clothing','ukay_ukay',
-            'ukay-ukay','ukay','tailor',
-            'tailor_shop',
-          ],
-        },
-        {
-          'label': 'Ukay-Ukay',
-          'tag': 'ukay_ukay',
-          'categories': [
-            'retail','clothing','ukay_ukay',
-            'ukay-ukay','ukay',
-          ],
-        },
-        {
-          'label': 'Tailor Shop',
-          'tag': 'tailor_shop',
-          'categories': [
-            'tailor','tailor_shop',
-          ],
-        },
-      ],
-    },
-    'general': {
-      'label': 'General Merchandise',
-      'icon': Icons.shopping_bag_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'general','hardware','hardware_tools',
-        'school_supplies','home_supplies',
-        'agrivet','agrivet_supplies',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Merchandise',
-          'tag': null,
-          'categories': [
-            'general','hardware','hardware_tools',
-            'school_supplies','home_supplies',
-            'agrivet','agrivet_supplies',
-          ],
-        },
-        {
-          'label': 'Hardware & Tools',
-          'tag': 'hardware',
-          'categories': [
-            'general','hardware','hardware_tools',
-          ],
-        },
-        {
-          'label': 'School & Office',
-          'tag': 'school_supplies',
-          'categories': [
-            'general','school_supplies',
-          ],
-        },
-        {
-          'label': 'Home Supplies',
-          'tag': 'home_supplies',
-          'categories': [
-            'general','home_supplies',
-          ],
-        },
-        {
-          'label': 'Agrivet Supplies',
-          'tag': 'agrivet',
-          'categories': [
-            'general','agrivet','agrivet_supplies',
-          ],
-        },
-      ],
-    },
-    'services': {
-      'label': 'Services & Repair',
-      'icon': Icons.build_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'services','electronics_repair',
-        'barber_salon',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Services',
-          'tag': null,
-          'categories': [
-            'services','electronics_repair',
-            'barber_salon',
-          ],
-        },
-        {
-          'label': 'Electronics Repair',
-          'tag': 'electronics_repair',
-          'categories': [
-            'services','electronics_repair',
-          ],
-        },
-        {
-          'label': 'Barber & Salon',
-          'tag': 'barber_salon',
-          'categories': [
-            'services','barber_salon',
-          ],
-        },
-      ],
-    },
-  };
+  // Sort & Filter state variables (Matching User Stalls Directory)
+  String? sortAlpha; // 'az' | 'za' | null
+  TimeOfDay? filterOpenTime;
+  TimeOfDay? filterCloseTime;
+  String? selectedDay; // 'Monday' | 'Tuesday' | ... | null
+  bool showOpenOnDay = true;
+  bool _filterOpenOnly = false; // Open now only toggle
 
-  List<String> _keywordsForFilterKeys(List<String> keys) {
-    const keywordMap = {
-      'seafood': ['fish', 'isda', 'tilapia', 'bangus', 'galunggong', 'tuna', 'shrimp', 'hipon', 'crab', 'squid', 'pusit', 'mussels', 'tahong'],
-      'fish': ['fish', 'isda', 'tilapia', 'bangus', 'galunggong', 'tuna'],
-      'meat': ['meat', 'karne', 'pork', 'baboy', 'beef', 'baka', 'carabao', 'chicken', 'manok'],
-      'beef': ['beef', 'baka', 'carabao'],
-      'pork': ['pork', 'baboy', 'liempo', 'ribs'],
-      'poultry': ['chicken', 'manok', 'duck', 'itlog', 'eggs', 'poultry'],
-      'chicken': ['chicken', 'manok'],
-      'vegetables': ['vegetable', 'gulay', 'tomato', 'onion', 'garlic', 'eggplant', 'kangkong', 'sitaw', 'okra', 'pechay', 'cabbage', 'carrot'],
-      'gulay': ['vegetable', 'gulay', 'tomato', 'onion', 'garlic', 'eggplant', 'kangkong', 'sitaw', 'okra', 'pechay', 'cabbage', 'carrot'],
-      'fruits': ['fruit', 'prutas', 'mango', 'mangga', 'banana', 'saging', 'papaya', 'watermelon', 'pakwan', 'rambutan', 'lansones'],
-      'prutas': ['fruit', 'prutas', 'mango', 'mangga', 'banana', 'saging', 'papaya', 'watermelon', 'pakwan', 'rambutan', 'lansones'],
-      'frozen': ['frozen', 'processed', 'tocino', 'longganisa', 'hotdog', 'ham'],
-      'frozen_goods': ['frozen', 'processed', 'tocino', 'longganisa', 'hotdog', 'ham'],
-      'processed': ['processed', 'canned', 'de lata', 'instant'],
-      'processed_foods': ['processed', 'canned', 'de lata', 'instant'],
-      'spices': ['spice', 'pampalasa', 'seasoning', 'pepper', 'asin', 'toyo', 'suka'],
-      'pampalasa': ['spice', 'pampalasa', 'seasoning', 'pepper', 'asin', 'toyo', 'suka'],
-      'dry_goods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
-      'drygoods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
-      'rice': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
-      'rice_dealer': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
-      'bigas': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
-      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'bulad': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'daing': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'eatery': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
-      'carinderia': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
-      'cooked': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
-      'cooked_food': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong', 'cooked', 'meal'],
-      'lutong_ulam': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'lutong'],
-      'bakery': ['bread', 'tinapay', 'pan', 'cake', 'pastry', 'bakery'],
-      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
-      'snack_stand': ['snack', 'merienda', 'street food'],
-      'sari_sari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
-      'sarisari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
-      'sari-sari': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
-      'sari_sari_store': ['canned', 'snacks', 'softdrinks', 'toiletries', 'condiments', 'sari'],
-      'retail': ['clothes', 'clothing', 'ukay', 'shirt', 'pants', 'dress', 'tailor', 'tela'],
-      'clothing': ['clothes', 'clothing', 'ukay', 'shirt', 'pants', 'dress', 'tailor', 'tela'],
-      'ukay_ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
-      'ukay-ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
-      'ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
-      'tailor': ['tailor', 'repair', 'alter'],
-      'tailor_shop': ['tailor', 'repair', 'alter'],
-      'general': ['hardware', 'tools', 'school', 'home', 'agrivet', 'merchandise'],
-      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
-      'tools': ['hardware', 'tools', 'martilyo', 'pako'],
-      'hardware_tools': ['hardware', 'tools', 'martilyo', 'pako'],
-      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
-      'school': ['notebook', 'paper', 'ballpen', 'school'],
-      'home_supplies': ['home', 'cleaner', 'household'],
-      'home': ['home', 'cleaner', 'household'],
-      'agrivet': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
-      'agrivet_supplies': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
-      'services': ['repair', 'barber', 'salon', 'service'],
-      'electronics': ['electronics', 'cellphone', 'repair'],
-      'repair': ['repair', 'fix'],
-      'electronics_repair': ['electronics', 'cellphone', 'repair'],
-      'barber': ['barber', 'gupit', 'haircut', 'salon'],
-      'salon': ['barber', 'gupit', 'haircut', 'salon'],
-      'barber_salon': ['barber', 'gupit', 'haircut', 'salon'],
-    };
-
-    final all = <String>{};
-    for (final key in keys) {
-      all.addAll(keywordMap[key.toLowerCase()] ?? const <String>[]);
-    }
-    return all.toList();
-  }
-
-  String _normalizeFilterKey(String value) {
-    return value
-        .toLowerCase()
-        .trim()
-        .replaceAll('-', '_')
-        .replaceAll(' ', '_');
-  }
-
-  bool _containsKeyword(String text, String keyword) {
-    final cleanKeyword = keyword.toLowerCase().trim();
-    if (cleanKeyword.isEmpty) return false;
-
-    if (cleanKeyword.contains(' ')) {
-      return text.contains(cleanKeyword);
-    }
-
-    final pattern = RegExp(
-      '(^|[^a-z0-9])${RegExp.escape(cleanKeyword)}([^a-z0-9]|\$)',
-    );
-    return pattern.hasMatch(text);
-  }
-
-  bool _matchesSellingData(StallModel stall, List<String> filterKeys) {
-    final productText = stall.products.join(' ').toLowerCase();
-    final tagSet = stall.tags.map((t) => _normalizeFilterKey(t)).toSet();
-    final keySet = filterKeys.map((k) => _normalizeFilterKey(k)).toSet();
-    const strictSubcategoryKeywords = {
-      'rice_dealer': ['rice', 'bigas', 'sinandomeng', 'dinorado', 'jasmine', 'malagkit'],
-      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'carinderia': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'carinderia', 'lutong'],
-      'bakery': ['bread', 'tinapay', 'cake', 'pastry', 'bakery', 'pan de'],
-      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
-      'snack_stand': ['snack', 'merienda', 'street food'],
-      'ukay_ukay': ['ukay', 'secondhand', 'clothes'],
-      'tailor_shop': ['tailor', 'alter', 'repair'],
-      'electronics_repair': ['electronics', 'cellphone', 'repair'],
-      'barber_salon': ['barber', 'haircut', 'gupit', 'salon'],
-      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
-      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
-      'home_supplies': ['household', 'cleaner', 'home'],
-      'agrivet': ['agrivet', 'feed', 'veterinary', 'fertilizer'],
-    };
-
-    if (tagSet.intersection(keySet).isNotEmpty) {
-      return true;
-    }
-
-    final strictKeys =
-        keySet.where((k) => strictSubcategoryKeywords.containsKey(k)).toList();
-    if (strictKeys.isNotEmpty) {
-      final strictMatched = strictKeys.any((key) {
-        final words = strictSubcategoryKeywords[key] ?? const <String>[];
-        return words.any((word) => _containsKeyword(productText, word));
-      });
-      if (strictMatched) {
-        return true;
-      }
-      if (keySet.length == 1) {
-        return false;
-      }
-    }
-
-    final keywords = _keywordsForFilterKeys(filterKeys);
-    return keywords.any((kw) => _containsKeyword(productText, kw));
-  }
-
-  List<StallModel> _filterStalls(List<StallModel> stalls) {
-    if (_selectedType == 'all') return stalls;
-    
-    final typeData = _categoryMap[_selectedType]!;
-    final categories = List<String>.from(
-        typeData['categories'] as List);
-    
-    List<StallModel> filtered = stalls.where((s) {
-      final stallCats = s.categories.map((c) => c.toLowerCase().trim()).toList();
-      final singleCat = s.category.toLowerCase().trim();
-      final categoryMatch =
-          stallCats.any((c) => categories.contains(c)) || categories.contains(singleCat);
-      final sellingMatch = _matchesSellingData(s, categories);
-      return categoryMatch || sellingMatch;
-    }).toList();
-    
-    if (_selectedTag != null) {
-      filtered = filtered
-          .where((s) {
-            final tagMatch = s.tags
-                .map((t) => t.toLowerCase().trim())
-                .contains(_selectedTag!.toLowerCase().trim());
-            return tagMatch || _matchesSellingData(s, <String>[_selectedTag!]);
-          })
-          .toList();
-    }
-    
-    return filtered;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 60),
-      (_) {
-        if (mounted) setState(() {});
-      },
-    );
-  }
+  final List<String> _categories = [
+    'All',
+    'Fresh Produce',
+    'Meat & Poultry',
+    'Seafood',
+    'Dry Goods',
+    'Agrivet / Feeds',
+  ];
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _deleteStall(BuildContext context, String stallId, String stallName) async {
+  int getActiveFilterCount() {
+    int count = 0;
+    if (sortAlpha != null) count++;
+    if (filterOpenTime != null || filterCloseTime != null) count++;
+    if (selectedDay != null) count++;
+    if (_filterOpenOnly) count++;
+    return count;
+  }
+
+  void resetAllFilters() {
+    setState(() {
+      sortAlpha = null;
+      filterOpenTime = null;
+      filterCloseTime = null;
+      selectedDay = null;
+      showOpenOnDay = true;
+      _filterOpenOnly = false;
+    });
+  }
+
+  TimeOfDay? _parseTimeOfDay(String timeStr) {
+    try {
+      final clean = timeStr.trim().toUpperCase();
+      final isPM = clean.contains('PM');
+      final isAM = clean.contains('AM');
+      final numPart = clean.replaceAll(RegExp(r'[^\d:]'), '');
+      final parts = numPart.split(':');
+      if (parts.isEmpty) return null;
+
+      var hour = int.parse(parts[0]);
+      final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
+
+      if (isPM && hour < 12) hour += 12;
+      if (isAM && hour == 12) hour = 0;
+
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Visual metadata for stall categories
+  ({IconData icon, Color color}) _getCategoryVisuals(String category) {
+    final cat = category.toLowerCase();
+
+    if (cat.contains('meat') ||
+        cat.contains('pork') ||
+        cat.contains('beef') ||
+        cat.contains('karne')) {
+      return (icon: Icons.set_meal_rounded, color: const Color(0xFFEF4444));
+    }
+    if (cat.contains('poultry') ||
+        cat.contains('chicken') ||
+        cat.contains('manok') ||
+        cat.contains('egg')) {
+      return (icon: Icons.egg_outlined, color: const Color(0xFFF97316));
+    }
+    if (cat.contains('seafood') ||
+        cat.contains('fish') ||
+        cat.contains('isda')) {
+      return (icon: Icons.water_drop_rounded, color: const Color(0xFF0284C7));
+    }
+    if (cat.contains('vegetable') ||
+        cat.contains('gulay') ||
+        cat.contains('fruit') ||
+        cat.contains('prutas') ||
+        cat.contains('fresh')) {
+      return (icon: Icons.eco_rounded, color: const Color(0xFF16A34A));
+    }
+    if (cat.contains('dry') ||
+        cat.contains('rice') ||
+        cat.contains('bigas') ||
+        cat.contains('grains')) {
+      return (
+        icon: Icons.inventory_2_outlined,
+        color: const Color(0xFFD97706)
+      );
+    }
+    if (cat.contains('agrivet') || cat.contains('feed')) {
+      return (icon: Icons.pets_rounded, color: const Color(0xFF8B5CF6));
+    }
+    return (icon: Icons.storefront_rounded, color: const Color(0xFF1B5E20));
+  }
+
+  bool _matchesCategory(StallModel stall, String category) {
+    if (category == 'All') return true;
+
+    final stallCat = stall.category.toLowerCase();
+    final categories = stall.categories.map((c) => c.toLowerCase()).toList();
+
+    switch (category) {
+      case 'Fresh Produce':
+        const targets = [
+          'fresh',
+          'produce',
+          'vegetables',
+          'gulay',
+          'fruits',
+          'prutas',
+        ];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Meat & Poultry':
+        const targets = [
+          'meat',
+          'pork',
+          'beef',
+          'karne',
+          'poultry',
+          'chicken',
+          'manok',
+        ];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Seafood':
+        const targets = ['seafood', 'fish', 'isda', 'marine'];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Dry Goods':
+        const targets = [
+          'dry',
+          'dry goods',
+          'rice',
+          'grains',
+          'bigas',
+          'spices',
+          'condiments',
+        ];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Agrivet / Feeds':
+        const targets = ['agrivet', 'feeds', 'poultry supply', 'veterinary'];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      default:
+        return stallCat.contains(category.toLowerCase()) ||
+            categories.any((c) => c.contains(category.toLowerCase()));
+    }
+  }
+
+  List<StallModel> _filterAndSortStalls(List<StallModel> stalls) {
+    var result = stalls.where((stall) {
+      // 1. Search Query
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final matchesName = stall.name.toLowerCase().contains(query);
+        final matchesCategory = stall.category.toLowerCase().contains(query);
+        final matchesProduct =
+            stall.products.any((p) => p.toLowerCase().contains(query));
+        final matchesTags =
+            stall.tags.any((t) => t.toLowerCase().contains(query));
+        if (!matchesName &&
+            !matchesCategory &&
+            !matchesProduct &&
+            !matchesTags) {
+          return false;
+        }
+      }
+
+      // 2. Category Filter
+      if (!_matchesCategory(stall, _selectedCategory)) {
+        return false;
+      }
+
+      // 3. Open Now Only
+      if (_filterOpenOnly) {
+        if (!StallUtils.isStallOpenNow(stall)) return false;
+      }
+
+      // 4. Day & Status Filter
+      if (selectedDay != null) {
+        final isOpenOnDay = stall.daysOpen.any((day) {
+          final d = day.trim().toLowerCase();
+          final target = selectedDay!.toLowerCase();
+          return d == target ||
+              d.startsWith(target.substring(0, 3)) ||
+              d == 'daily' ||
+              d == 'everyday';
+        });
+        if (showOpenOnDay && !isOpenOnDay) return false;
+        if (!showOpenOnDay && isOpenOnDay) return false;
+      }
+
+      // 5. Time Range Filter
+      if (filterOpenTime != null && filterCloseTime != null) {
+        if (stall.openTime.isEmpty || stall.closeTime.isEmpty) return false;
+        final stallOpen = _parseTimeOfDay(stall.openTime);
+        final stallClose = _parseTimeOfDay(stall.closeTime);
+
+        if (stallOpen != null && stallClose != null) {
+          final filterOpenMinutes =
+              filterOpenTime!.hour * 60 + filterOpenTime!.minute;
+          final filterCloseMinutes =
+              filterCloseTime!.hour * 60 + filterCloseTime!.minute;
+          final stallOpenMinutes = stallOpen.hour * 60 + stallOpen.minute;
+          final stallCloseMinutes = stallClose.hour * 60 + stallClose.minute;
+
+          if (stallOpenMinutes > filterOpenMinutes ||
+              stallCloseMinutes < filterCloseMinutes) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    }).toList();
+
+    // 6. Alphabetical Sorting
+    if (sortAlpha == 'az') {
+      result.sort((a, b) =>
+          a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else if (sortAlpha == 'za') {
+      result.sort((a, b) =>
+          b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+    }
+
+    return result;
+  }
+
+  Future<void> _deleteStall(
+    BuildContext context,
+    String stallId,
+    String stallName,
+  ) async {
+    unawaited(HapticFeedback.selectionClick());
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border, width: 1.0),
         ),
         title: Text(
-          'Delete "$stallName"?',
+          'Delete Stall',
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.ink,
+            color: const Color(0xFF1B5E20),
           ),
         ),
         content: Text(
-          'This stall will be permanently removed from the directory and the market map. This action cannot be undone.',
+          'Are you sure you want to delete "$stallName"? This action cannot be undone.',
           style: GoogleFonts.poppins(
-            fontSize: 13,
-            color: AppColors.inkMuted,
+            fontSize: 14,
+            color: const Color(0xFF4B5563),
           ),
         ),
         actions: [
@@ -567,21 +304,18 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.inkMuted,
+                color: const Color(0xFF9CA3AF),
               ),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.error,
-            ),
             child: Text(
               'Delete',
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.error,
+                color: const Color(0xFFDC2626),
               ),
             ),
           ),
@@ -589,43 +323,31 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true) {
       try {
         await FirebaseFirestore.instance
             .collection('stalls')
             .doc(stallId)
             .delete();
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+        if (mounted) {
+          ScaffoldMessenger.of(this.context).showSnackBar(
             SnackBar(
-              content: Text(
-                '"$stallName" has been deleted.',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-              backgroundColor: AppColors.primary,
+              content: Text('Stall "$stallName" deleted successfully'),
+              backgroundColor: const Color(0xFF1B5E20),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
-              margin: const EdgeInsets.all(16),
             ),
           );
         }
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+        if (mounted) {
+          ScaffoldMessenger.of(this.context).showSnackBar(
             SnackBar(
-              content: Text(
-                'Error deleting stall: $e',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-              backgroundColor: AppColors.error,
+              content: Text('Failed to delete stall: $e'),
+              backgroundColor: const Color(0xFFDC2626),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              margin: const EdgeInsets.all(16),
             ),
           );
         }
@@ -633,24 +355,66 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     }
   }
 
+  void _openStallDetails(StallModel stall) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StallDetailSheet(
+        stall: stall,
+        onClose: () => Navigator.pop(ctx),
+      ),
+    );
+  }
+
+  void _showSortFilterModal() {
+    unawaited(HapticFeedback.selectionClick());
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SortFilterModal(
+        sortAlpha: sortAlpha,
+        filterOpenTime: filterOpenTime,
+        filterCloseTime: filterCloseTime,
+        selectedDay: selectedDay,
+        showOpenOnDay: showOpenOnDay,
+        filterOpenOnly: _filterOpenOnly,
+        onApply: (newSort, newOpenTime, newCloseTime, newDay, newShowOpen,
+            newFilterOpenOnly) {
+          setState(() {
+            sortAlpha = newSort;
+            filterOpenTime = newOpenTime;
+            filterCloseTime = newCloseTime;
+            selectedDay = newDay;
+            showOpenOnDay = newShowOpen;
+            _filterOpenOnly = newFilterOpenOnly;
+          });
+        },
+        onReset: () {
+          resetAllFilters();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+    final activeFilters = getActiveFilterCount();
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: const Color(0xFFF8FAF8),
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: const Color(0xFF1B5E20),
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-        shape: const Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: 1.0,
-          ),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
         ),
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -659,11 +423,11 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Manage Stalls',
+                'Stall Management',
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: Colors.white,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -672,7 +436,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.inkMuted,
+                  color: const Color(0xFFE8F5E9),
                 ),
               ),
             ],
@@ -680,662 +444,1026 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         onPressed: () => context.push(RouteNames.adminAddStall),
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+        backgroundColor: const Color(0xFF1B5E20),
+        foregroundColor: Colors.white,
+        elevation: 3,
+        icon: const Icon(Icons.add_rounded, size: 20),
         label: Text(
           'Add Stall',
           style: GoogleFonts.poppins(
-            color: Colors.white,
+            fontSize: 13.5,
             fontWeight: FontWeight.w600,
-            fontSize: 13,
           ),
         ),
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child: Column(
-            children: [
-              Container(
-                color: AppColors.surface,
-                padding: EdgeInsets.fromLTRB(
-                  isDesktop ? 24 : 16,
-                  14,
-                  isDesktop ? 24 : 16,
-                  12,
-                ),
-                child: SizedBox(
-                  height: 44,
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.toLowerCase();
-                      });
-                    },
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: AppColors.ink,
+      body: Column(
+        children: [
+          // 1. Search Bar & Filter Button Container
+          Container(
+            color: Colors.white,
+            padding: EdgeInsets.fromLTRB(
+              isDesktop ? 24 : 16,
+              12,
+              isDesktop ? 24 : 16,
+              10,
+            ),
+            child: Row(
+              children: [
+                // Search Input Field
+                Expanded(
+                  child: Container(
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                      ),
                     ),
-                    decoration: InputDecoration(
-                      hintText: 'Search stalls by name, category...',
-                      hintStyle: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: AppColors.inkMuted,
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        color: const Color(0xFF1F2937),
                       ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.inkMuted,
-                        size: 20,
+                      decoration: InputDecoration(
+                        hintText: 'Search stalls, products, categories...',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: Color(0xFF1B5E20),
+                          size: 20,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear_rounded,
+                                  color: Color(0xFF9CA3AF),
+                                  size: 18,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
                       ),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(
-                                Icons.clear_rounded,
-                                color: AppColors.inkMuted,
-                                size: 18,
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: AppColors.canvas,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
                     ),
                   ),
                 ),
-              ),
-              Container(
-                color: AppColors.surface,
-                padding: EdgeInsets.fromLTRB(
-                  isDesktop ? 24 : 16,
-                  0,
-                  isDesktop ? 24 : 16,
-                  12,
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('all'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('fresh'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('processed'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('dry_goods'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('cooked'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('sari_sari'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('retail'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('general'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('services'),
-                    ],
+                const SizedBox(width: 10),
+
+                // Sort & Filter Button
+                Material(
+                  color: activeFilters > 0
+                      ? const Color(0xFF1B5E20)
+                      : const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: _showSortFilterModal,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      height: 46,
+                      width: 46,
+                      alignment: Alignment.center,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(
+                            Icons.tune_rounded,
+                            size: 20,
+                            color: activeFilters > 0
+                                ? Colors.white
+                                : const Color(0xFF4B5563),
+                          ),
+                          if (activeFilters > 0)
+                            Positioned(
+                              top: -4,
+                              right: -4,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFE53935),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '$activeFilters',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                child: _subcategoryRowOpen
-                    ? Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isDesktop ? 24 : 16,
-                          vertical: 8,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: AppColors.canvas,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: AppColors.border,
-                              width: 1,
-                            ),
+              ],
+            ),
+          ),
+
+          // 2. Category Chips Carousel
+          Container(
+            color: Colors.white,
+            padding: EdgeInsets.fromLTRB(
+              isDesktop ? 24 : 16,
+              0,
+              isDesktop ? 24 : 16,
+              12,
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _categories.map((category) {
+                  final isSelected = _selectedCategory == category;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Material(
+                      color: isSelected
+                          ? const Color(0xFF1B5E20)
+                          : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(20),
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _selectedCategory = category);
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
                           ),
-                        ),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: _buildSubcategoryChips(),
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('stalls')
-                      .orderBy('name')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      );
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline_rounded, size: 44, color: AppColors.error),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Error loading stalls',
-                              style: GoogleFonts.poppins(color: AppColors.error),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF1B5E20)
+                                  : const Color(0xFFE5E7EB),
                             ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.storefront_outlined,
-                              size: 64,
-                              color: AppColors.inkSubtle,
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'No stalls yet',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Tap "+ Add Stall" to add your first stall',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: AppColors.inkMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    var allStalls = snapshot.data!.docs
-                        .map((doc) => StallModel.fromFirestore(doc))
-                        .toList();
-
-                    var stalls = _filterStalls(allStalls);
-
-                    if (_searchQuery.isNotEmpty) {
-                      stalls = stalls.where((stall) {
-                        return stall.name.toLowerCase().contains(_searchQuery) ||
-                            stall.category.toLowerCase().contains(_searchQuery) ||
-                            stall.tags.any((tag) => tag.toLowerCase().contains(_searchQuery));
-                      }).toList();
-                    }
-
-                    if (stalls.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 56,
-                              color: AppColors.inkSubtle,
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'No stalls found',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _searchQuery.isNotEmpty
-                                  ? 'Try a different search term'
-                                  : 'No stalls match this category',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: AppColors.inkMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            isDesktop ? 24 : 16,
-                            12,
-                            isDesktop ? 24 : 16,
-                            8,
                           ),
                           child: Text(
-                            '${stalls.length} stalls registered',
+                            category,
                             style: GoogleFonts.poppins(
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.inkMuted,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF4B5563),
                             ),
                           ),
                         ),
-                        
-                        Expanded(
-                          child: RefreshIndicator(
-                            onRefresh: () async {
-                              await Future.delayed(const Duration(milliseconds: 500));
-                            },
-                            color: AppColors.primary,
-                            child: ListView.builder(
-                              padding: EdgeInsets.fromLTRB(
-                                isDesktop ? 24 : 16,
-                                4,
-                                isDesktop ? 24 : 16,
-                                80,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+
+          // 3. Stalls Stream List
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('stalls')
+                  .orderBy('name')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF1B5E20),
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          size: 44,
+                          color: Color(0xFFDC2626),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Error loading stalls',
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFFDC2626),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final rawStalls = snapshot.data?.docs
+                        .map((doc) => StallModel.fromFirestore(doc))
+                        .toList() ??
+                    [];
+
+                final filteredStalls = _filterAndSortStalls(rawStalls);
+
+                if (filteredStalls.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF3F4F6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.storefront_outlined,
+                              size: 32,
+                              color: Color(0xFF9CA3AF),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'No stalls found',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1F2937),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _searchQuery.isNotEmpty
+                                ? 'Try adjusting your search query or filters'
+                                : 'No stalls match this category',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: const Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    await Future.delayed(const Duration(milliseconds: 400));
+                  },
+                  color: const Color(0xFF1B5E20),
+                  child: ListView.builder(
+                    padding: EdgeInsets.fromLTRB(
+                      isDesktop ? 24 : 16,
+                      12,
+                      isDesktop ? 24 : 16,
+                      80,
+                    ),
+                    itemCount: filteredStalls.length,
+                    itemBuilder: (context, index) {
+                      final stall = filteredStalls[index];
+                      return _buildModernAdminStallCard(stall);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Modernized Stall Card with Admin Quick Actions
+  Widget _buildModernAdminStallCard(StallModel stall) {
+    final isOpen = StallUtils.isStallOpenNow(stall);
+    final visuals = _getCategoryVisuals(stall.category);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFFE5E7EB),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: () => _openStallDetails(stall),
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Header: Category Avatar + Title + Status Pill + Admin Actions
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Visual Category Avatar
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: visuals.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        visuals.icon,
+                        color: visuals.color,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Stall Name & Category Pill
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            stall.name,
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1F2937),
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              // Category Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF3F4F6),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  StallUtils.getCategoryLabel(stall.category),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF4B5563),
+                                  ),
+                                ),
                               ),
-                              itemCount: stalls.length,
-                              itemBuilder: (context, index) {
-                                final stall = stalls[index];
-                                return _buildStallCard(context, stall);
-                              },
+                              const SizedBox(width: 6),
+
+                              // Status Pill
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isOpen
+                                      ? const Color(0xFFDCFCE7)
+                                      : const Color(0xFFFEE2E2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  isOpen ? 'Open Now' : 'Closed',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isOpen
+                                        ? const Color(0xFF16A34A)
+                                        : const Color(0xFFDC2626),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Admin Action Buttons (Edit & Delete)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Material(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () {
+                              context.push(
+                                '${RouteNames.adminStalls}/${stall.stallId}/edit',
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(7),
+                              child: const Icon(
+                                Icons.edit_rounded,
+                                size: 17,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Material(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () => _deleteStall(
+                              context,
+                              stall.stallId,
+                              stall.name,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(7),
+                              child: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 17,
+                                color: Color(0xFFDC2626),
+                              ),
                             ),
                           ),
                         ),
                       ],
-                    );
-                  },
+                    ),
+                  ],
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 12),
+
+                // Operating Hours & Days Summary
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.access_time_rounded,
+                      size: 13,
+                      color: Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${stall.openTime} – ${stall.closeTime}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 12,
+                      color: Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        StallUtils.formatOperatingDays(
+                            stall.daysOpen.join(', ')),
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          color: const Color(0xFF6B7280),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Tags / Products Summary Chips
+                if (stall.tags.isNotEmpty || stall.products.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      ...stall.tags.take(3).map((tag) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
+                            ),
+                            child: Text(
+                              StallUtils.getTagLabel(tag),
+                              style: GoogleFonts.poppins(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF4B5563),
+                              ),
+                            ),
+                          )),
+                      if (stall.tags.length > 3)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFE5E7EB),
+                            ),
+                          ),
+                          child: Text(
+                            '+${stall.tags.length - 3} more',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF6B7280),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildFilterChip(String type) {
-    final typeData = _categoryMap[type]!;
-    final isSelected = _selectedType == type;
-    final hasSubcategories = typeData['hasSubcategories'] as bool;
+/// 4-Section Sort & Filter Modal (Matching User Stall Directory)
+class _SortFilterModal extends StatefulWidget {
+  final String? sortAlpha;
+  final TimeOfDay? filterOpenTime;
+  final TimeOfDay? filterCloseTime;
+  final String? selectedDay;
+  final bool showOpenOnDay;
+  final bool filterOpenOnly;
+  final Function(
+    String? sortAlpha,
+    TimeOfDay? filterOpenTime,
+    TimeOfDay? filterCloseTime,
+    String? selectedDay,
+    bool showOpenOnDay,
+    bool filterOpenOnly,
+  ) onApply;
+  final VoidCallback onReset;
 
-    return Material(
-      color: isSelected ? AppColors.primary : AppColors.surface,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          setState(() {
-            if (_selectedType == type) return;
+  const _SortFilterModal({
+    required this.sortAlpha,
+    required this.filterOpenTime,
+    required this.filterCloseTime,
+    required this.selectedDay,
+    required this.showOpenOnDay,
+    required this.filterOpenOnly,
+    required this.onApply,
+    required this.onReset,
+  });
 
-            _selectedType = type;
-            _selectedSubcategory = null;
-            _selectedTag = null;
+  @override
+  State<_SortFilterModal> createState() => _SortFilterModalState();
+}
 
-            if (hasSubcategories) {
-              _subcategoryRowOpen = true;
-            } else {
-              _subcategoryRowOpen = false;
-            }
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-              width: 1,
+class _SortFilterModalState extends State<_SortFilterModal> {
+  late String? _sortAlpha;
+  late TimeOfDay? _filterOpenTime;
+  late TimeOfDay? _filterCloseTime;
+  late String? _selectedDay;
+  late bool _showOpenOnDay;
+  late bool _filterOpenOnly;
+
+  final List<String> _days = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _sortAlpha = widget.sortAlpha;
+    _filterOpenTime = widget.filterOpenTime;
+    _filterCloseTime = widget.filterCloseTime;
+    _selectedDay = widget.selectedDay;
+    _showOpenOnDay = widget.showOpenOnDay;
+    _filterOpenOnly = widget.filterOpenOnly;
+  }
+
+  Future<void> _selectTime(bool isOpenTime) async {
+    final initial = isOpenTime
+        ? (_filterOpenTime ?? const TimeOfDay(hour: 6, minute: 0))
+        : (_filterCloseTime ?? const TimeOfDay(hour: 18, minute: 0));
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1B5E20),
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                typeData['icon'] as IconData,
-                size: 15,
-                color: isSelected ? Colors.white : AppColors.inkMuted,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                typeData['label'] as String,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? Colors.white : AppColors.ink,
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isOpenTime) {
+          _filterOpenTime = picked;
+        } else {
+          _filterCloseTime = picked;
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        top: 20,
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Modal Handle Bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              if (hasSubcategories) ...[
-                const SizedBox(width: 4),
-                AnimatedRotation(
-                  turns: _subcategoryRowOpen && isSelected ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: isSelected ? Colors.white : AppColors.inkMuted,
+            ),
+            const SizedBox(height: 16),
+
+            // Header Title & Reset Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Sort & Filter Stalls',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F2937),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _sortAlpha = null;
+                      _filterOpenTime = null;
+                      _filterCloseTime = null;
+                      _selectedDay = null;
+                      _showOpenOnDay = true;
+                      _filterOpenOnly = false;
+                    });
+                    widget.onReset();
+                  },
+                  child: Text(
+                    'Reset All',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFDC2626),
+                    ),
                   ),
                 ),
               ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+            ),
+            const SizedBox(height: 16),
 
-  List<Widget> _buildSubcategoryChips() {
-    if (_selectedType == 'all') return [];
-
-    final typeData = _categoryMap[_selectedType];
-    if (typeData == null) return [];
-
-    final subcategories = typeData['subcategories'] as List;
-    if (subcategories.isEmpty) return [];
-
-    List<Widget> chips = [];
-    for (var i = 0; i < subcategories.length; i++) {
-      final subcat = subcategories[i] as Map;
-      final label = subcat['label'] as String;
-      final tag = subcat['tag'] as String?;
-
-      final isSelected = (_selectedSubcategory == label) ||
-          (_selectedSubcategory == null && label.startsWith('All'));
-
-      chips.add(
-        Material(
-          color: isSelected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              setState(() {
-                _selectedSubcategory = label;
-                _selectedTag = tag;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? Colors.white : AppColors.inkMuted,
-                ),
+            // 01. Alphabetical Sorting
+            Text(
+              '01  SORT ALPHABETICALLY',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF6B7280),
+                letterSpacing: 0.5,
               ),
             ),
-          ),
-        ),
-      );
-
-      if (i < subcategories.length - 1) {
-        chips.add(const SizedBox(width: 6));
-      }
-    }
-
-    return chips;
-  }
-
-  String _getSectionLabel(String value) {
-    const labels = {
-      'dry_goods_section': 'Dry Goods Section',
-      'fruit_section': 'Fruit Section',
-      'vegetable_section': 'Vegetable Section',
-      'rice_section': 'Rice Section',
-      'fish_chicken_section': 'Fish & Chicken Section',
-      'meat_section': 'Meat Section',
-      'cooked_food_section': 'Food Section',
-    };
-    return labels[value] ??
-        value
-            .replaceAll('_', ' ')
-            .split(' ')
-            .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
-            .join(' ');
-  }
-
-  Widget _buildStallCard(BuildContext context, StallModel stall) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.border,
-          width: 1.0,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  stall.name,
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildChoiceChip(
+                    label: 'A to Z',
+                    selected: _sortAlpha == 'az',
+                    onTap: () {
+                      setState(() {
+                        _sortAlpha = _sortAlpha == 'az' ? null : 'az';
+                      });
+                    },
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildChoiceChip(
+                    label: 'Z to A',
+                    selected: _sortAlpha == 'za',
+                    onTap: () {
+                      setState(() {
+                        _sortAlpha = _sortAlpha == 'za' ? null : 'za';
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // 02. Quick Filter: Open Now Only
+            Text(
+              '02  STATUS FILTER',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF6B7280),
+                letterSpacing: 0.5,
               ),
-              const SizedBox(width: 8),
-              Material(
-                color: AppColors.surfaceDim,
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () {
-                    context.push(
-                      '${RouteNames.adminStalls}/${stall.stallId}/edit',
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(
-                      Icons.edit_rounded,
-                      size: 16,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 6,
               ),
-              const SizedBox(width: 8),
-              Material(
-                color: AppColors.errorLight,
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => _deleteStall(
-                    context,
-                    stall.stallId,
-                    stall.name,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(
-                      Icons.delete_outline_rounded,
-                      size: 16,
-                      color: AppColors.error,
-                    ),
-                  ),
-                ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceDim,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Text(
-                  StallUtils.getCategoryLabel(stall.category),
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              StallUtils.buildStatusBadge(stall),
-            ],
-          ),
-          
-          if (stall.section != null && stall.section!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(
-                    Icons.location_on_outlined,
-                    size: 13,
-                    color: AppColors.inkMuted,
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule_rounded,
+                        size: 18,
+                        color: Color(0xFF1B5E20),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Open Now Only',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1F2937),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _getSectionLabel(stall.section!),
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: AppColors.inkMuted,
-                    ),
+                  Switch(
+                    value: _filterOpenOnly,
+                    activeThumbColor: const Color(0xFF1B5E20),
+                    activeTrackColor: const Color(0xFF86EFAC),
+                    onChanged: (val) {
+                      setState(() => _filterOpenOnly = val);
+                    },
                   ),
                 ],
               ),
             ),
 
-          if (stall.tags.isNotEmpty) ...[
+            const SizedBox(height: 20),
+
+            // 03. Time Range Picker
+            Text(
+              '03  OPERATING HOURS RANGE',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF6B7280),
+                letterSpacing: 0.5,
+              ),
+            ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
+            Row(
               children: [
-                ...stall.tags.take(3).map((tag) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.canvas,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(
-                    StallUtils.getTagLabel(tag),
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.inkMuted,
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _selectTime(true),
+                    icon: const Icon(Icons.wb_sunny_outlined, size: 16),
+                    label: Text(
+                      _filterOpenTime != null
+                          ? 'Opens: ${_filterOpenTime!.format(context)}'
+                          : 'Opens From',
+                      style: GoogleFonts.poppins(fontSize: 12),
                     ),
-                  ),
-                )),
-                if (stall.tags.length > 3)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.canvas,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(
-                      '+${stall.tags.length - 3} more',
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.inkMuted,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _filterOpenTime != null
+                          ? const Color(0xFF1B5E20)
+                          : const Color(0xFF4B5563),
+                      side: BorderSide(
+                        color: _filterOpenTime != null
+                            ? const Color(0xFF1B5E20)
+                            : const Color(0xFFE5E7EB),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _selectTime(false),
+                    icon: const Icon(Icons.nightlight_outlined, size: 16),
+                    label: Text(
+                      _filterCloseTime != null
+                          ? 'Closes: ${_filterCloseTime!.format(context)}'
+                          : 'Closes By',
+                      style: GoogleFonts.poppins(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _filterCloseTime != null
+                          ? const Color(0xFF1B5E20)
+                          : const Color(0xFF4B5563),
+                      side: BorderSide(
+                        color: _filterCloseTime != null
+                            ? const Color(0xFF1B5E20)
+                            : const Color(0xFFE5E7EB),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ],
 
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(
-                Icons.access_time_rounded,
-                size: 13,
-                color: AppColors.inkMuted,
+            const SizedBox(height: 20),
+
+            // 04. Day & Status
+            Text(
+              '04  DAY OF THE WEEK',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF6B7280),
+                letterSpacing: 0.5,
               ),
-              const SizedBox(width: 4),
-              Text(
-                '${stall.openTime} - ${stall.closeTime}',
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: AppColors.inkMuted,
-                ),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _days.map((day) {
+                  final isSelected = _selectedDay == day;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(day.substring(0, 3)),
+                      selected: isSelected,
+                      selectedColor: const Color(0xFF1B5E20),
+                      labelStyle: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : const Color(0xFF4B5563),
+                      ),
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedDay = selected ? day : null;
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
               ),
-              const SizedBox(width: 12),
-              const Icon(
-                Icons.calendar_today_rounded,
-                size: 12,
-                color: AppColors.inkMuted,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  StallUtils.formatOperatingDays(stall.daysOpen.join(', ')),
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: AppColors.inkMuted,
+            ),
+
+            const SizedBox(height: 24),
+
+            // Apply Button
+            SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  widget.onApply(
+                    _sortAlpha,
+                    _filterOpenTime,
+                    _filterCloseTime,
+                    _selectedDay,
+                    _showOpenOnDay,
+                    _filterOpenOnly,
+                  );
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1B5E20),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                ),
+                child: Text(
+                  'Apply Filters',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChoiceChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected ? const Color(0xFF1B5E20) : const Color(0xFFF9FAFB),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF1B5E20)
+                  : const Color(0xFFE5E7EB),
+            ),
           ),
-        ],
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : const Color(0xFF4B5563),
+            ),
+          ),
+        ),
       ),
     );
   }

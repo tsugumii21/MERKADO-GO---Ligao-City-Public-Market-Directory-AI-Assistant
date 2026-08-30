@@ -8,15 +8,16 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../providers/stall_provider.dart';
 import '../../../providers/user_provider.dart';
 
+/// Refactored Modern Admin Dashboard Screen for Merkado Go
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  ConsumerState<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+  ConsumerState<AdminDashboardScreen> createState() =>
+      _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
@@ -25,7 +26,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Update every 60 seconds to recalculate open/closed stalls
+    // Update every 60 seconds to recalculate open/closed stalls based on time
     _timer = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted) setState(() {});
     });
@@ -38,27 +39,26 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Future<void> _handleLogout(BuildContext context) async {
+    unawaited(HapticFeedback.selectionClick());
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border, width: 1.0),
         ),
         title: Text(
           'Sign Out',
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.ink,
+            color: const Color(0xFF1B5E20),
           ),
         ),
         content: Text(
           'Are you sure you want to sign out of the Admin Portal?',
           style: GoogleFonts.poppins(
             fontSize: 14,
-            color: AppColors.inkMuted,
+            color: const Color(0xFF4B5563),
           ),
         ),
         actions: [
@@ -69,21 +69,18 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.inkMuted,
+                color: const Color(0xFF9CA3AF),
               ),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.error,
-            ),
             child: Text(
               'Sign Out',
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.error,
+                color: const Color(0xFFDC2626),
               ),
             ),
           ),
@@ -106,19 +103,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final isDesktop = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: const Color(0xFFF8FAF8),
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: const Color(0xFF1B5E20),
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-        shape: const Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: 1.0,
-          ),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
         ),
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -131,7 +126,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: Colors.white,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -140,7 +135,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.inkMuted,
+                  color: const Color(0xFFE8F5E9),
                 ),
               ),
             ],
@@ -150,297 +145,344 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           IconButton(
             icon: const Icon(
               Icons.logout_rounded,
-              color: AppColors.error,
+              color: Colors.white,
               size: 20,
             ),
             tooltip: 'Sign Out',
             onPressed: () => _handleLogout(context),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(allStallsProvider);
-          ref.invalidate(userDataStreamProvider);
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
-        color: AppColors.primary,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1000),
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.symmetric(
-                horizontal: isDesktop ? 24 : 16,
-                vertical: 20,
+              onRefresh: () async {
+                ref.invalidate(allStallsProvider);
+                ref.invalidate(userDataStreamProvider);
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              color: const Color(0xFF1B5E20),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 24 : 16,
+                      vertical: 20,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 2. Welcome Admin Hero Banner
+                        userDataAsync.when(
+                          data: (userData) {
+                            final adminName =
+                                userData?.fullName.isNotEmpty == true
+                                    ? userData!.fullName
+                                    : 'System Admin';
+                            return _buildWelcomeBanner(adminName);
+                          },
+                          loading: () => _buildWelcomeBanner('System Admin'),
+                          error: (_, __) =>
+                              _buildWelcomeBanner('System Admin'),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // 3. Statistics Overview (2x2 KPI Grid)
+                        _buildSectionLabel('STATISTICS OVERVIEW'),
+                        const SizedBox(height: 12),
+
+                        allStallsAsync.when(
+                          data: (stalls) {
+                            final openCount = stalls
+                                .where((s) => StallUtils.isStallOpenNow(s))
+                                .length;
+                            final closedCount = stalls.length - openCount;
+
+                            return StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('users')
+                                  .snapshots(),
+                              builder: (context, usersSnapshot) {
+                                final totalUsersCount =
+                                    usersSnapshot.data?.docs.length ?? 0;
+
+                                return StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('reports')
+                                      .where('status', isEqualTo: 'pending')
+                                      .snapshots(),
+                                  builder: (context, reportsSnapshot) {
+                                    final pendingReportsCount =
+                                        reportsSnapshot.data?.docs.length ?? 0;
+
+                                    return Column(
+                                      children: [
+                                        // 2x2 KPI Grid
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _KpiCard(
+                                                icon:
+                                                    Icons.storefront_rounded,
+                                                iconColor:
+                                                    const Color(0xFF1B5E20),
+                                                bgColor:
+                                                    const Color(0xFFE8F5E9),
+                                                count:
+                                                    stalls.length.toString(),
+                                                label: 'Total Stalls',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: _KpiCard(
+                                                icon:
+                                                    Icons.people_alt_rounded,
+                                                iconColor:
+                                                    const Color(0xFF7C3AED),
+                                                bgColor:
+                                                    const Color(0xFFEDE9FE),
+                                                count: totalUsersCount
+                                                    .toString(),
+                                                label: 'Active Users',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _KpiCard(
+                                                icon: Icons
+                                                    .check_circle_rounded,
+                                                iconColor:
+                                                    const Color(0xFF16A34A),
+                                                bgColor:
+                                                    const Color(0xFFDCFCE7),
+                                                count: openCount.toString(),
+                                                label: 'Open Now',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: _KpiCard(
+                                                icon: Icons.cancel_rounded,
+                                                iconColor:
+                                                    const Color(0xFFDC2626),
+                                                bgColor:
+                                                    const Color(0xFFFEE2E2),
+                                                count: closedCount
+                                                    .toString(),
+                                                label: 'Closed Now',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+
+                                        const SizedBox(height: 28),
+
+                                        // 4. Quick Actions Section
+                                        _buildSectionLabel('QUICK ACTIONS'),
+                                        const SizedBox(height: 12),
+
+                                        // Action 1: Add New Stall
+                                        _buildActionCard(
+                                          icon: Icons.add_business_rounded,
+                                          iconColor:
+                                              const Color(0xFF1B5E20),
+                                          iconBgColor:
+                                              const Color(0xFFE8F5E9),
+                                          title: 'Add New Stall',
+                                          subtitle:
+                                              'Register a new stall to the market directory',
+                                          onTap: () => context.push(
+                                              RouteNames.adminAddStall),
+                                        ),
+
+                                        const SizedBox(height: 12),
+
+                                        // Action 2: Stall Reports (With Pending Badge)
+                                        _buildActionCard(
+                                          icon:
+                                              Icons.report_problem_rounded,
+                                          iconColor:
+                                              const Color(0xFFF59E0B),
+                                          iconBgColor:
+                                              const Color(0xFFFEF3C7),
+                                          title: 'Stall Reports',
+                                          subtitle:
+                                              'Review and resolve user-submitted stall reports',
+                                          badgeText:
+                                              '$pendingReportsCount Pending',
+                                          badgeColor: pendingReportsCount > 0
+                                              ? const Color(0xFFDC2626)
+                                              : const Color(0xFF6B7280),
+                                          badgeBg: pendingReportsCount > 0
+                                              ? const Color(0xFFFEE2E2)
+                                              : const Color(0xFFF3F4F6),
+                                          onTap: () => context.push(
+                                              RouteNames.adminReports),
+                                        ),
+
+                                        const SizedBox(height: 12),
+
+                                        // Action 3: Market Map Editor
+                                        _buildActionCard(
+                                          icon: Icons.map_rounded,
+                                          iconColor:
+                                              const Color(0xFF2563EB),
+                                          iconBgColor:
+                                              const Color(0xFFDBEAFE),
+                                          title: 'Market Map Editor',
+                                          subtitle:
+                                              'Inspect and edit stall marker coordinates',
+                                          onTap: () => context.go(
+                                              RouteNames.adminMap),
+                                        ),
+
+                                        const SizedBox(height: 28),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                          loading: () => const Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                  color: Color(0xFF1B5E20)),
+                            ),
+                          ),
+                          error: (_, __) => Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Center(
+                              child: Text(
+                                'Error loading statistics',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // === WELCOME CARD ===
-                  userDataAsync.when(
-                    data: (userData) {
-                      final adminName = userData?.fullName ?? 'Admin';
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.border,
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryLight,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.admin_panel_settings_rounded,
-                                color: AppColors.primary,
-                                size: 26,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Welcome back,',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.inkMuted,
-                                    ),
-                                  ),
-                                  Text(
-                                    adminName,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.ink,
-                                      letterSpacing: -0.3,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Market Overview & Control Center',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 11,
-                                      color: AppColors.inkSubtle,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    loading: () => Container(
-                      height: 88,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border, width: 1.0),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      ),
-                    ),
-                    error: (_, __) => Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border, width: 1.0),
-                      ),
-                      child: Text(
-                        'Welcome to Admin Portal',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ),
-                  ),
+            ),
+    );
+  }
 
-                  const SizedBox(height: 24),
-
-                  // === STATISTICS SECTION ===
-                  _buildSectionLabel('STATISTICS OVERVIEW'),
-
-                  const SizedBox(height: 12),
-
-                  allStallsAsync.when(
-                    data: (stalls) {
-                      final openCount = stalls
-                          .where((s) => StallUtils.isStallOpenNow(s))
-                          .length;
-                      final closedCount = stalls.length - openCount;
-
-                      return StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('reports')
-                            .where('status', isEqualTo: 'pending')
-                            .snapshots(),
-                        builder: (context, reportsSnapshot) {
-                          final pendingReportsCount = reportsSnapshot.data?.docs.length ?? 0;
-
-                          return StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('users')
-                                .snapshots(),
-                            builder: (context, usersSnapshot) {
-                              final totalUsersCount = usersSnapshot.data?.docs.length ?? 0;
-
-                              return Column(
-                                children: [
-                                  // Row 1: Total Stalls + Total Users
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _StatCard(
-                                          icon: Icons.storefront_rounded,
-                                          iconColor: AppColors.primary,
-                                          bgColor: AppColors.surfaceDim,
-                                          count: stalls.length.toString(),
-                                          label: 'Total Stalls',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _StatCard(
-                                          icon: Icons.people_alt_rounded,
-                                          iconColor: const Color(0xFF5E35B1),
-                                          bgColor: const Color(0xFFEDE7F6),
-                                          count: totalUsersCount.toString(),
-                                          label: 'Total Users',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Row 2: Open Now + Closed Now
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _StatCard(
-                                          icon: Icons.check_circle_rounded,
-                                          iconColor: AppColors.primary,
-                                          bgColor: AppColors.primaryLight,
-                                          count: openCount.toString(),
-                                          label: 'Open Now',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _StatCard(
-                                          icon: Icons.cancel_rounded,
-                                          iconColor: AppColors.error,
-                                          bgColor: AppColors.errorLight,
-                                          count: closedCount.toString(),
-                                          label: 'Closed Now',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Row 3: Pending Reports
-                                  _StatCard(
-                                    icon: Icons.report_problem_rounded,
-                                    iconColor: AppColors.warning,
-                                    bgColor: AppColors.warningLight,
-                                    count: pendingReportsCount.toString(),
-                                    label: 'Pending Reports',
-                                    fullWidth: true,
-                                    onTap: () => context.push(RouteNames.adminReports),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      ),
-                    ),
-                    error: (error, _) => Padding(
-                      padding: const EdgeInsets.all(40),
-                      child: Center(
-                        child: Text(
-                          'Error loading statistics',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: AppColors.error,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // === QUICK ACTIONS SECTION ===
-                  _buildSectionLabel('QUICK ACTIONS'),
-
-                  const SizedBox(height: 12),
-
-                  // Action 1: Add New Stall
-                  _buildActionCard(
-                    icon: Icons.add_business_rounded,
-                    iconColor: AppColors.primary,
-                    iconBgColor: AppColors.surfaceDim,
-                    title: 'Add New Stall',
-                    subtitle: 'Register a new stall to the market directory',
-                    onTap: () => context.push(RouteNames.adminAddStall),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Action 2: View Reports
-                  _buildActionCard(
-                    icon: Icons.report_problem_rounded,
-                    iconColor: AppColors.warning,
-                    iconBgColor: AppColors.warningLight,
-                    title: 'Stall Reports',
-                    subtitle: 'Review and resolve user-submitted stall reports',
-                    onTap: () => context.push(RouteNames.adminReports),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Action 3: Market Map Editor
-                  _buildActionCard(
-                    icon: Icons.map_rounded,
-                    iconColor: AppColors.primary,
-                    iconBgColor: AppColors.primaryLight,
-                    title: 'Market Map Editor',
-                    subtitle: 'Inspect and edit stall marker coordinates',
-                    onTap: () => context.go(RouteNames.adminMap),
-                  ),
-
-                  const SizedBox(height: 32),
-                ],
+  // Welcome Hero Banner
+  Widget _buildWelcomeBanner(String adminName) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFFE5E7EB),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF86EFAC),
+                width: 1,
+              ),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.admin_panel_settings_rounded,
+                color: Color(0xFF1B5E20),
+                size: 28,
               ),
             ),
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Welcome back,',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF86EFAC),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        'Control Center',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF16A34A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  adminName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F2937),
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  'Ligao Public Market Management',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -449,10 +491,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     return Text(
       label,
       style: GoogleFonts.poppins(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.2,
-        color: AppColors.inkSubtle,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        color: const Color(0xFF6B7280),
+        letterSpacing: 0.8,
       ),
     );
   }
@@ -464,35 +506,48 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    String? badgeText,
+    Color? badgeColor,
+    Color? badgeBg,
   }) {
     return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 0,
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColors.border,
-              width: 1.0,
+              color: const Color(0xFFE5E7EB),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: iconBgColor,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   icon,
                   color: iconColor,
-                  size: 20,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 14),
@@ -500,20 +555,45 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1F2937),
+                          ),
+                        ),
+                        if (badgeText != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeBg ?? const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              badgeText,
+                              style: GoogleFonts.poppins(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: badgeColor ?? const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: AppColors.inkMuted,
+                        color: const Color(0xFF6B7280),
                       ),
                     ),
                   ],
@@ -521,7 +601,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.inkSubtle,
+                color: Color(0xFF9CA3AF),
                 size: 20,
               ),
             ],
@@ -532,102 +612,81 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 }
 
-// === REUSABLE FLAT STAT CARD WIDGET ===
-class _StatCard extends StatelessWidget {
+/// Symmetrical KPI Card for the 2x2 Grid
+class _KpiCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color bgColor;
   final String count;
   final String label;
-  final bool fullWidth;
-  final VoidCallback? onTap;
 
-  const _StatCard({
+  const _KpiCard({
     required this.icon,
     required this.iconColor,
     required this.bgColor,
     required this.count,
     required this.label,
-    this.fullWidth = false,
-    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cardContent = Container(
-      width: fullWidth ? double.infinity : null,
+    return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.border,
-          width: 1.0,
+          color: const Color(0xFFE5E7EB),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 20,
+                ),
+              ),
+              Text(
+                count,
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1F2937),
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  count,
-                  style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.inkMuted,
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF6B7280),
             ),
           ),
-          if (onTap != null)
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.inkSubtle,
-              size: 20,
-            ),
         ],
       ),
     );
-
-    if (onTap != null) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: cardContent,
-        ),
-      );
-    }
-
-    return cardContent;
   }
 }

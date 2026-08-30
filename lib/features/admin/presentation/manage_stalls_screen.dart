@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../models/stall_model.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
+import '../../../core/theme/app_colors.dart';
 
 class ManageStallsScreen extends StatefulWidget {
   const ManageStallsScreen({super.key});
@@ -23,7 +25,6 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
   String? _selectedTag;
   bool _subcategoryRowOpen = false;
 
-  // Complete category map (exact copy from stalls_directory_screen.dart)
   final Map<String, Map<String, dynamic>> _categoryMap = {
     'all': {
       'label': 'All',
@@ -220,16 +221,16 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     },
     'sari_sari': {
       'label': 'Sari-Sari Store',
-      'icon': Icons.storefront_rounded,
+      'icon': Icons.store_rounded,
       'hasSubcategories': false,
       'categories': [
-        'sari_sari','sarisari',
-        'sari-sari','sari_sari_store',
+        'sari_sari','sarisari','sari-sari',
+        'sari_sari_store',
       ],
       'subcategories': <Map>[],
     },
     'retail': {
-      'label': 'Retail / Clothing',
+      'label': 'Clothing & Tailoring',
       'icon': Icons.checkroom_rounded,
       'hasSubcategories': true,
       'categories': [
@@ -239,7 +240,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
       ],
       'subcategories': [
         {
-          'label': 'All Retail',
+          'label': 'All Clothing',
           'tag': null,
           'categories': [
             'retail','clothing','ukay_ukay',
@@ -252,17 +253,14 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
           'tag': 'ukay_ukay',
           'categories': [
             'retail','clothing','ukay_ukay',
-            'ukay-ukay','ukay','tailor',
-            'tailor_shop',
+            'ukay-ukay','ukay',
           ],
         },
         {
           'label': 'Tailor Shop',
           'tag': 'tailor_shop',
           'categories': [
-            'retail','clothing','ukay_ukay',
-            'ukay-ukay','ukay','tailor',
-            'tailor_shop',
+            'tailor','tailor_shop',
           ],
         },
       ],
@@ -272,20 +270,17 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
       'icon': Icons.shopping_bag_rounded,
       'hasSubcategories': true,
       'categories': [
-        'general','hardware','tools',
-        'hardware_tools','school_supplies',
-        'school','home_supplies','home',
+        'general','hardware','hardware_tools',
+        'school_supplies','home_supplies',
         'agrivet','agrivet_supplies',
       ],
       'subcategories': [
         {
-          'label': 'All General',
+          'label': 'All Merchandise',
           'tag': null,
           'categories': [
-            'general','hardware','tools',
-            'hardware_tools',
-            'school_supplies','school',
-            'home_supplies','home',
+            'general','hardware','hardware_tools',
+            'school_supplies','home_supplies',
             'agrivet','agrivet_supplies',
           ],
         },
@@ -293,83 +288,61 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
           'label': 'Hardware & Tools',
           'tag': 'hardware',
           'categories': [
-            'general','hardware','tools',
-            'hardware_tools',
-            'school_supplies','school',
-            'home_supplies','home',
-            'agrivet','agrivet_supplies',
+            'general','hardware','hardware_tools',
           ],
         },
         {
-          'label': 'School Supplies',
+          'label': 'School & Office',
           'tag': 'school_supplies',
           'categories': [
-            'general','hardware','tools',
-            'hardware_tools',
-            'school_supplies','school',
-            'home_supplies','home',
-            'agrivet','agrivet_supplies',
+            'general','school_supplies',
           ],
         },
         {
           'label': 'Home Supplies',
           'tag': 'home_supplies',
           'categories': [
-            'general','hardware','tools',
-            'hardware_tools',
-            'school_supplies','school',
-            'home_supplies','home',
-            'agrivet','agrivet_supplies',
+            'general','home_supplies',
           ],
         },
         {
           'label': 'Agrivet Supplies',
           'tag': 'agrivet',
           'categories': [
-            'general','hardware','tools',
-            'hardware_tools',
-            'school_supplies','school',
-            'home_supplies','home',
-            'agrivet','agrivet_supplies',
+            'general','agrivet','agrivet_supplies',
           ],
         },
       ],
     },
     'services': {
-      'label': 'Services',
+      'label': 'Services & Repair',
       'icon': Icons.build_rounded,
       'hasSubcategories': true,
       'categories': [
-        'services','electronics',
-        'repair','electronics_repair',
-        'barber','salon','barber_salon',
+        'services','electronics_repair',
+        'barber_salon',
       ],
       'subcategories': [
         {
           'label': 'All Services',
           'tag': null,
           'categories': [
-            'services','electronics',
-            'repair','electronics_repair',
-            'barber','salon','barber_salon',
+            'services','electronics_repair',
+            'barber_salon',
           ],
         },
         {
-          'label': 'Electronics & Repair',
+          'label': 'Electronics Repair',
           'tag': 'electronics_repair',
           'categories': [
-            'services','electronics',
-            'repair','electronics_repair',
-            'barber','salon','barber_salon',
+            'services','electronics_repair',
           ],
         },
         {
-          'label': 'Barber / Salon',
+          'label': 'Barber & Salon',
           'tag': 'barber_salon',
           'categories': [
-            'services','electronics',
-            'repair','electronics_repair',
-            'barber','salon','barber_salon',
+            'services','barber_salon',
           ],
         },
       ],
@@ -460,13 +433,12 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     final cleanKeyword = keyword.toLowerCase().trim();
     if (cleanKeyword.isEmpty) return false;
 
-    // Multi-word keywords should stay phrase-based, while single words use boundaries.
     if (cleanKeyword.contains(' ')) {
       return text.contains(cleanKeyword);
     }
 
     final pattern = RegExp(
-      '(^|[^a-z0-9])' + RegExp.escape(cleanKeyword) + r'([^a-z0-9]|$)',
+      '(^|[^a-z0-9])${RegExp.escape(cleanKeyword)}([^a-z0-9]|\$)',
     );
     return pattern.hasMatch(text);
   }
@@ -531,7 +503,6 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
       return categoryMatch || sellingMatch;
     }).toList();
     
-    // Apply subcategory tag filter
     if (_selectedTag != null) {
       filtered = filtered
           .where((s) {
@@ -567,42 +538,51 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
   Future<void> _deleteStall(BuildContext context, String stallId, String stallName) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.border, width: 1.0),
+        ),
         title: Text(
           'Delete "$stallName"?',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
         ),
         content: Text(
-          'This stall will be permanently removed from the directory and the market map. This cannot be undone.',
+          'This stall will be permanently removed from the directory and the market map. This action cannot be undone.',
           style: GoogleFonts.poppins(
             fontSize: 13,
-            color: const Color(0xFF666666),
+            color: AppColors.inkMuted,
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: Text(
               'Cancel',
               style: GoogleFonts.poppins(
-                color: const Color(0xFF666666),
-                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkMuted,
               ),
             ),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
             ),
             child: Text(
               'Delete',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.error,
+              ),
             ),
           ),
         ],
@@ -611,7 +591,6 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
 
     if (confirmed == true && context.mounted) {
       try {
-        // Delete from Firestore - map auto-updates via stream
         await FirebaseFirestore.instance
             .collection('stalls')
             .doc(stallId)
@@ -624,7 +603,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
                 '"$stallName" has been deleted.',
                 style: GoogleFonts.poppins(color: Colors.white),
               ),
-              backgroundColor: const Color(0xFF2E7D32),
+              backgroundColor: AppColors.primary,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -641,7 +620,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
                 'Error deleting stall: $e',
                 style: GoogleFonts.poppins(color: Colors.white),
               ),
-              backgroundColor: const Color(0xFFE53935),
+              backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -656,288 +635,355 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        title: Text(
-          'Manage Stalls',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        shape: const Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: 1.0,
           ),
         ),
-        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Manage Stalls',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              Text(
+                'Ligao City Public Market',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.inkMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         onPressed: () => context.push(RouteNames.adminAddStall),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
         label: Text(
           'Add Stall',
           style: GoogleFonts.poppins(
             color: Colors.white,
             fontWeight: FontWeight.w600,
+            fontSize: 13,
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search stalls by name, category...',
-                hintStyle: GoogleFonts.poppins(color: const Color(0xFF999999)),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF1B5E20)),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, color: Color(0xFF999999)),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: Column(
+            children: [
+              Container(
+                color: AppColors.surface,
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 24 : 16,
+                  14,
+                  isDesktop ? 24 : 16,
+                  12,
+                ),
+                child: SizedBox(
+                  height: 44,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: AppColors.ink,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search stalls by name, category...',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: AppColors.inkMuted,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.inkMuted,
+                        size: 20,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                color: AppColors.inkMuted,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: AppColors.canvas,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                color: AppColors.surface,
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 24 : 16,
+                  0,
+                  isDesktop ? 24 : 16,
+                  12,
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('all'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('fresh'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('processed'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('dry_goods'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('cooked'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('sari_sari'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('retail'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('general'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('services'),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                child: _subcategoryRowOpen
+                    ? Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isDesktop ? 24 : 16,
+                          vertical: 8,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: AppColors.canvas,
+                          border: Border(
+                            bottom: BorderSide(
+                              color: AppColors.border,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _buildSubcategoryChips(),
+                          ),
+                        ),
                       )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF8F9FA),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 2),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    : const SizedBox.shrink(),
               ),
-            ),
-          ),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('stalls')
+                      .orderBy('name')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      );
+                    }
 
-          // Filter Chips
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip('all'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('fresh'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('processed'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('dry_goods'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('cooked'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('sari_sari'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('retail'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('general'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('services'),
-                ],
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline_rounded, size: 44, color: AppColors.error),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Error loading stalls',
+                              style: GoogleFonts.poppins(color: AppColors.error),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.storefront_outlined,
+                              size: 64,
+                              color: AppColors.inkSubtle,
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'No stalls yet',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Tap "+ Add Stall" to add your first stall',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    var allStalls = snapshot.data!.docs
+                        .map((doc) => StallModel.fromFirestore(doc))
+                        .toList();
+
+                    var stalls = _filterStalls(allStalls);
+
+                    if (_searchQuery.isNotEmpty) {
+                      stalls = stalls.where((stall) {
+                        return stall.name.toLowerCase().contains(_searchQuery) ||
+                            stall.category.toLowerCase().contains(_searchQuery) ||
+                            stall.tags.any((tag) => tag.toLowerCase().contains(_searchQuery));
+                      }).toList();
+                    }
+
+                    if (stalls.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 56,
+                              color: AppColors.inkSubtle,
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'No stalls found',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'Try a different search term'
+                                  : 'No stalls match this category',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            isDesktop ? 24 : 16,
+                            12,
+                            isDesktop ? 24 : 16,
+                            8,
+                          ),
+                          child: Text(
+                            '${stalls.length} stalls registered',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.inkMuted,
+                            ),
+                          ),
+                        ),
+                        
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: () async {
+                              await Future.delayed(const Duration(milliseconds: 500));
+                            },
+                            color: AppColors.primary,
+                            child: ListView.builder(
+                              padding: EdgeInsets.fromLTRB(
+                                isDesktop ? 24 : 16,
+                                4,
+                                isDesktop ? 24 : 16,
+                                80,
+                              ),
+                              itemCount: stalls.length,
+                              itemBuilder: (context, index) {
+                                final stall = stalls[index];
+                                return _buildStallCard(context, stall);
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
           ),
-
-          // Subcategory Row
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            child: _subcategoryRowOpen
-                ? Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF8F9FA),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Color(0xFFE0E0E0),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _buildSubcategoryChips(),
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-
-          // Stalls List
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('stalls')
-                  .orderBy('name')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF1B5E20)),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading stalls',
-                          style: GoogleFonts.poppins(color: Colors.red),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.store_outlined,
-                          size: 80,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No stalls yet',
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF666666),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Tap + to add your first stall',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: const Color(0xFF999999),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                var allStalls = snapshot.data!.docs
-                    .map((doc) => StallModel.fromFirestore(doc))
-                    .toList();
-
-                // Apply category filter
-                var stalls = _filterStalls(allStalls);
-
-                // Apply search filter
-                if (_searchQuery.isNotEmpty) {
-                  stalls = stalls.where((stall) {
-                    return stall.name.toLowerCase().contains(_searchQuery) ||
-                        stall.category.toLowerCase().contains(_searchQuery) ||
-                        stall.tags.any((tag) => tag.toLowerCase().contains(_searchQuery));
-                  }).toList();
-                }
-
-                if (stalls.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 64,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No stalls found',
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            color: const Color(0xFF666666),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? 'Try a different search term'
-                              : 'No stalls match this filter',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: const Color(0xFF999999),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Stall count
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: Text(
-                        '${stalls.length} stalls',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: const Color(0xFF666666),
-                        ),
-                      ),
-                    ),
-                    
-                    // Stall list
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: () async {
-                          await Future.delayed(const Duration(milliseconds: 500));
-                        },
-                        color: const Color(0xFF1B5E20),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 80),
-                          itemCount: stalls.length,
-                          itemBuilder: (context, index) {
-                            final stall = stalls[index];
-                            return _buildStallCard(context, stall);
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -947,66 +993,66 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
     final isSelected = _selectedType == type;
     final hasSubcategories = typeData['hasSubcategories'] as bool;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (_selectedType == type) {
-            // Same chip tapped - do nothing or optionally reset to 'all'
-            return;
-          }
+    return Material(
+      color: isSelected ? AppColors.primary : AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          setState(() {
+            if (_selectedType == type) return;
 
-          _selectedType = type;
-          _selectedSubcategory = null;
-          _selectedTag = null;
+            _selectedType = type;
+            _selectedSubcategory = null;
+            _selectedTag = null;
 
-          // Open subcategory row if this type has subcategories
-          if (hasSubcategories) {
-            _subcategoryRowOpen = true;
-          } else {
-            _subcategoryRowOpen = false;
-          }
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFF1B5E20),
-            width: 1,
+            if (hasSubcategories) {
+              _subcategoryRowOpen = true;
+            } else {
+              _subcategoryRowOpen = false;
+            }
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+              width: 1,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              typeData['icon'] as IconData,
-              size: 16,
-              color: isSelected ? Colors.white : const Color(0xFF1B5E20),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              typeData['label'] as String,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : const Color(0xFF1B5E20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                typeData['icon'] as IconData,
+                size: 15,
+                color: isSelected ? Colors.white : AppColors.inkMuted,
               ),
-            ),
-            if (hasSubcategories) ...[
-              const SizedBox(width: 4),
-              AnimatedRotation(
-                turns: _subcategoryRowOpen && isSelected ? 0.5 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 16,
-                  color: isSelected ? Colors.white : const Color(0xFF1B5E20),
+              const SizedBox(width: 6),
+              Text(
+                typeData['label'] as String,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? Colors.white : AppColors.ink,
                 ),
               ),
+              if (hasSubcategories) ...[
+                const SizedBox(width: 4),
+                AnimatedRotation(
+                  turns: _subcategoryRowOpen && isSelected ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: isSelected ? Colors.white : AppColors.inkMuted,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1031,29 +1077,33 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
           (_selectedSubcategory == null && label.startsWith('All'));
 
       chips.add(
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedSubcategory = label;
-              _selectedTag = tag;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF1B5E20),
-                width: 1,
+        Material(
+          color: isSelected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              setState(() {
+                _selectedSubcategory = label;
+                _selectedTag = tag;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                  width: 1,
+                ),
               ),
-            ),
-            child: Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : const Color(0xFF1B5E20),
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? Colors.white : AppColors.inkMuted,
+                ),
               ),
             ),
           ),
@@ -1061,7 +1111,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
       );
 
       if (i < subcategories.length - 1) {
-        chips.add(const SizedBox(width: 8));
+        chips.add(const SizedBox(width: 6));
       }
     }
 
@@ -1088,24 +1138,19 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
 
   Widget _buildStallCard(BuildContext context, StallModel stall) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: AppColors.border,
+          width: 1.0,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Stall Name + Edit/Delete buttons
           Row(
             children: [
               Expanded(
@@ -1114,57 +1159,73 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF212121),
+                    color: AppColors.ink,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.edit_rounded, size: 20),
-                color: const Color(0xFF1B5E20),
-                onPressed: () {
-                  context.push(
-                    '${RouteNames.adminStalls}/${stall.stallId}/edit',
-                  );
-                },
-                tooltip: 'Edit',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+              const SizedBox(width: 8),
+              Material(
+                color: AppColors.surfaceDim,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    context.push(
+                      '${RouteNames.adminStalls}/${stall.stallId}/edit',
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.delete_rounded, size: 20),
-                color: const Color(0xFFE53935),
-                onPressed: () => _deleteStall(
-                  context,
-                  stall.stallId,
-                  stall.name,
+              Material(
+                color: AppColors.errorLight,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _deleteStall(
+                    context,
+                    stall.stallId,
+                    stall.name,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 16,
+                      color: AppColors.error,
+                    ),
+                  ),
                 ),
-                tooltip: 'Delete',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
               ),
             ],
           ),
           const SizedBox(height: 8),
 
-          // Row 2: Category chip + status badge
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
+                  color: AppColors.surfaceDim,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF4CAF50)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   StallUtils.getCategoryLabel(stall.category),
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF2E7D32),
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -1173,30 +1234,28 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
             ],
           ),
           
-          // Row 3: Tags (limit to 3)
           if (stall.section != null && stall.section!.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 6),
               child: Row(
                 children: [
                   const Icon(
-                    Icons.location_on_rounded,
-                    size: 12,
-                    color: Color(0xFF9E9E9E),
+                    Icons.location_on_outlined,
+                    size: 13,
+                    color: AppColors.inkMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     _getSectionLabel(stall.section!),
                     style: GoogleFonts.poppins(
                       fontSize: 11,
-                      color: const Color(0xFF9E9E9E),
+                      color: AppColors.inkMuted,
                     ),
                   ),
                 ],
               ),
             ),
 
-          // Row 4: Tags (limit to 3)
           if (stall.tags.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
@@ -1206,33 +1265,33 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
                 ...stall.tags.take(3).map((tag) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3E5F5),
+                    color: AppColors.canvas,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFCE93D8)),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
                     StallUtils.getTagLabel(tag),
                     style: GoogleFonts.poppins(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF6A1B9A),
+                      color: AppColors.inkMuted,
                     ),
                   ),
-                )).toList(),
+                )),
                 if (stall.tags.length > 3)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3E5F5),
+                      color: AppColors.canvas,
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFCE93D8)),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Text(
                       '+${stall.tags.length - 3} more',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6A1B9A),
+                        color: AppColors.inkMuted,
                       ),
                     ),
                   ),
@@ -1240,28 +1299,27 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
             ),
           ],
 
-          // Row 5: Operating hours + days
           const SizedBox(height: 8),
           Row(
             children: [
               const Icon(
                 Icons.access_time_rounded,
-                size: 12,
-                color: Color(0xFF9E9E9E),
+                size: 13,
+                color: AppColors.inkMuted,
               ),
               const SizedBox(width: 4),
               Text(
                 '${stall.openTime} - ${stall.closeTime}',
                 style: GoogleFonts.poppins(
                   fontSize: 11,
-                  color: const Color(0xFF9E9E9E),
+                  color: AppColors.inkMuted,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               const Icon(
                 Icons.calendar_today_rounded,
                 size: 12,
-                color: Color(0xFF9E9E9E),
+                color: AppColors.inkMuted,
               ),
               const SizedBox(width: 4),
               Expanded(
@@ -1269,7 +1327,7 @@ class _ManageStallsScreenState extends State<ManageStallsScreen> {
                   StallUtils.formatOperatingDays(stall.daysOpen.join(', ')),
                   style: GoogleFonts.poppins(
                     fontSize: 11,
-                    color: const Color(0xFF9E9E9E),
+                    color: AppColors.inkMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

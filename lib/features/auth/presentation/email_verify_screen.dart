@@ -433,7 +433,6 @@ class _EmailVerifyScreenState extends ConsumerState<EmailVerifyScreen>
   Widget build(BuildContext context) {
     return AuthLayout(
       heroIcon: Icons.mark_email_read_outlined,
-      illustrationPath: 'assets/images/email_verification_illustration.png',
       heroTitle: 'Verify Email',
       heroSubtitle: 'One last step — confirm your email address to activate your account.',
       showBackButton: false,

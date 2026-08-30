@@ -215,6 +215,8 @@ class MainShellState extends ConsumerState<MainShell> {
                         padding: const EdgeInsets.all(5),
                         child: Image.asset(
                           'assets/icons/MerkadoGo_Transparent Logo.png',
+                          cacheWidth: 120,
+                          cacheHeight: 120,
                           fit: BoxFit.contain,
                         ),
                       ),
@@ -293,6 +295,8 @@ class MainShellState extends ConsumerState<MainShell> {
                       padding: const EdgeInsets.all(5),
                       child: Image.asset(
                         'assets/icons/MerkadoGo_Transparent Logo.png',
+                        cacheWidth: 100,
+                        cacheHeight: 100,
                         fit: BoxFit.contain,
                       ),
                     ),

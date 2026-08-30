@@ -2,7 +2,7 @@
 // ignore_for_file: type=lint
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+    show defaultTargetPlatform, TargetPlatform;
 import 'core/constants/app_secrets.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
@@ -17,9 +17,6 @@ import 'core/constants/app_secrets.dart';
 /// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
-    if (kIsWeb) {
-      return web;
-    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
@@ -55,15 +52,5 @@ class DefaultFirebaseOptions {
     messagingSenderId: '25184120050',
     projectId: 'merkado-go',
     storageBucket: 'merkado-go.firebasestorage.app',
-  );
-
-  static FirebaseOptions get web => FirebaseOptions(
-    apiKey: AppSecrets.firebaseWebApiKey,
-    appId: '1:25184120050:web:a4fc524db9f7d15b5ef46b',
-    messagingSenderId: '25184120050',
-    projectId: 'merkado-go',
-    authDomain: 'merkado-go.firebaseapp.com',
-    storageBucket: 'merkado-go.firebasestorage.app',
-    measurementId: 'G-74NRG5GHMP',
   );
 }

@@ -1,274 +1,134 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../models/stall_model.dart';
+import '../../../providers/stall_provider.dart';
+import '../stalls/presentation/stall_detail_sheet.dart';
+import 'presentation/widgets/market_svg_map_view.dart';
 
-class IndoorMapScreen extends StatelessWidget {
+class IndoorMapScreen extends ConsumerStatefulWidget {
   const IndoorMapScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1B5E20),
-      body: Stack(
-        children: [
-          // Background decorations
-          Positioned(
-            top: -60,
-            right: -60,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -80,
-            left: -80,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                // AppBar with back button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Indoor Map',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'Ligao City Public Market',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: Colors.white60,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(28),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                              width: 2,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.map_outlined,
-                            size: 64,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE53935),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'COMING SOON',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Indoor Navigation',
-                          style: GoogleFonts.poppins(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 40),
-                          child: Text(
-                            'We are working on a detailed indoor map of Ligao City Public Market to help you navigate every stall and section with ease.',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              color: Colors.white60,
-                              height: 1.6,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Column(
-                            children: const [
-                              _FeatureCard(
-                                icon: Icons.explore_rounded,
-                                title: 'Stall Locator',
-                                description: 'Find any stall inside the market',
-                              ),
-                              SizedBox(height: 10),
-                              _FeatureCard(
-                                icon: Icons.turn_right_rounded,
-                                title: 'Turn-by-Turn Directions',
-                                description: 'Step-by-step indoor navigation',
-                              ),
-                              SizedBox(height: 10),
-                              _FeatureCard(
-                                icon: Icons.grid_view_rounded,
-                                title: 'Section View',
-                                description: 'See all market sections at a glance',
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(
-                                  Icons.arrow_back_rounded,
-                                  color: Color(0xFF1B5E20),
-                                  size: 18,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Back to Map',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1B5E20),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  ConsumerState<IndoorMapScreen> createState() => _IndoorMapScreenState();
+}
+
+class _IndoorMapScreenState extends ConsumerState<IndoorMapScreen> {
+  final GlobalKey<MarketSvgMapViewState> _svgMapKey = GlobalKey<MarketSvgMapViewState>();
+  StallModel? _selectedStall;
+
+  void _onStallSelected(StallModel stall) {
+    setState(() {
+      _selectedStall = stall;
+    });
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StallDetailSheet(
+        stall: stall,
+        onClose: () {
+          Navigator.of(context).pop();
+          if (mounted) {
+            setState(() => _selectedStall = null);
+          }
+        },
       ),
     );
   }
-}
-
-class _FeatureCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-
-  const _FeatureCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+    final stallsAsync = ref.watch(allStallsProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1E1E1E),
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Public Market Floor Plan',
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 20,
+            Text(
+              'Ligao City Public Market • Architectural Vector View',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: AppColors.inkMuted,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  )),
-                Text(description,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.white60,
-                  )),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.lock_rounded,
-            color: Colors.white30,
-            size: 16,
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.center_focus_strong_rounded, color: AppColors.ink),
+            tooltip: 'Reset View',
+            onPressed: () => _svgMapKey.currentState?.resetView(),
           ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1.0),
+          child: Divider(height: 1.0, thickness: 1.0, color: AppColors.border),
+        ),
+      ),
+      body: stallsAsync.when(
+        data: (stalls) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: MarketSvgMapView(
+                  key: _svgMapKey,
+                  stalls: stalls,
+                  selectedStall: _selectedStall,
+                  onStallSelected: _onStallSelected,
+                ),
+              ),
+
+              // Floating Bottom Reset / Fit Button
+              Positioned(
+                bottom: 24,
+                right: 24,
+                child: FloatingActionButton.extended(
+                  onPressed: () => _svgMapKey.currentState?.resetView(),
+                  backgroundColor: AppColors.primary,
+                  elevation: 0,
+                  icon: const Icon(Icons.fit_screen_rounded, color: Colors.white),
+                  label: Text(
+                    'Fit Screen',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+        error: (err, _) => Center(
+          child: Text(
+            'Error: $err',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+        ),
       ),
     );
   }

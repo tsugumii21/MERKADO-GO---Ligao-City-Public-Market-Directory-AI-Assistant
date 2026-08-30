@@ -91,3 +91,6 @@ coverage/
 
 # AI Agents Local Rules
 AGENTS.md
+.agent/
+.agents/
+.gemini/

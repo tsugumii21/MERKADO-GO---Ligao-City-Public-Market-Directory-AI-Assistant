@@ -6,6 +6,8 @@ class StallRepository {
 
   StallRepository(this._firestore);
 
+  FirebaseFirestore get firestore => _firestore;
+
   // Planned: Implement stall CRUD methods
   Stream<List<Map<String, dynamic>>> getStalls() {
     // Planned: Get all stalls from Firestore

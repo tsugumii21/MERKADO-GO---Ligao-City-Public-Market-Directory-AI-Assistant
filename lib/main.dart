@@ -7,7 +7,6 @@ import 'firebase_options.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
-import 'core/utils/google_maps_web_loader.dart';
 
 void main() async {
   // CRITICAL: Catch all Flutter errors before anything else
@@ -24,9 +23,8 @@ void main() async {
   
   try {
     await dotenv.load(fileName: '.env');
-    await loadGoogleMapsWebScript();
   } catch (e) {
-    debugPrint('❌ Failed: dotenv / Maps loader failed: $e');
+    debugPrint('❌ Failed: dotenv load failed: $e');
   }
   
   try {
@@ -49,14 +47,33 @@ void main() async {
   );
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precache brand logo in memory with bounded resolution for instant zero-lag loading
+    precacheImage(
+      const ResizeImage(
+        AssetImage('assets/icons/MerkadoGo_Transparent Logo.png'),
+        width: 300,
+        height: 300,
+      ),
+      context,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = AppRouter.router();
     final themeMode = ref.watch(themeModeProvider);
-    
+
     return MaterialApp.router(
       title: 'Merkado Go',
       debugShowCheckedModeBanner: false,

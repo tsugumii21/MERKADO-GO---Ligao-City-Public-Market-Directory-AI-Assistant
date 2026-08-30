@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../models/stall_model.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
+import '../../../core/theme/app_colors.dart';
 
 class AdminMapScreen extends StatefulWidget {
   const AdminMapScreen({super.key});
@@ -125,8 +126,8 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
       return;
     }
 
-    _openMarkerIcon ??= await _createMarkerIcon(const Color(0xFF2E7D32));
-    _closedMarkerIcon ??= await _createMarkerIcon(const Color(0xFFC62828));
+    _openMarkerIcon ??= await _createMarkerIcon(AppColors.primary);
+    _closedMarkerIcon ??= await _createMarkerIcon(AppColors.error);
 
     for (var stall in stallsToShow) {
       // Skip stalls without coordinates
@@ -233,8 +234,11 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
   Widget _buildStallActionSheet(StallModel stall) {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border(
+          top: BorderSide(color: AppColors.border, width: 1.0),
+        ),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -247,7 +251,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E0),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -269,7 +273,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF212121),
+                        color: AppColors.ink,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -282,16 +286,18 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
+                        color: AppColors.primaryLight,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF4CAF50)),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Text(
                         StallUtils.getCategoryLabel(stall.category),
                         style: GoogleFonts.poppins(
                           fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF2E7D32),
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
@@ -302,7 +308,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                       'Lng: ${stall.longitude.toStringAsFixed(6)}',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
-                        color: const Color(0xFF9E9E9E),
+                        color: AppColors.inkMuted,
                       ),
                     ),
                   ],
@@ -318,10 +324,10 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               // Edit Stall Details button
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
+                    backgroundColor: AppColors.primary,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     shape: RoundedRectangleBorder(
@@ -360,11 +366,11 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               // Edit Location on Map button
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 50,
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    side: const BorderSide(color: Color(0xFF1B5E20), width: 1.5),
+                    side: const BorderSide(color: AppColors.primary, width: 1.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -377,14 +383,14 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.location_on_rounded, size: 18, color: Color(0xFF1B5E20)),
+                      const Icon(Icons.location_on_rounded, size: 18, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
                         'Edit Location on Map',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1B5E20),
+                          color: AppColors.primary,
                         ),
                         overflow: TextOverflow.visible,
                         softWrap: false,
@@ -398,11 +404,11 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               // Delete Stall button
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 50,
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
+                    side: const BorderSide(color: AppColors.error, width: 1.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -412,14 +418,14 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.delete_rounded, size: 18, color: Color(0xFFE53935)),
+                      const Icon(Icons.delete_rounded, size: 18, color: AppColors.error),
                       const SizedBox(width: 8),
                       Text(
                         'Delete Stall',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFFE53935),
+                          color: AppColors.error,
                         ),
                         overflow: TextOverflow.visible,
                         softWrap: false,
@@ -441,8 +447,8 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
       height: 72,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        color: const Color(0xFFF5F5F5),
+        border: Border.all(color: AppColors.border),
+        color: AppColors.surfaceDim,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
@@ -457,13 +463,13 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                 errorBuilder: (_, __, ___) => _buildPhotoPlaceholder(),
                 loadingBuilder: (_, child, progress) {
                   if (progress == null) return child;
-                  return Center(
+                  return const Center(
                     child: SizedBox(
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: const Color(0xFF1B5E20),
+                        color: AppColors.primary,
                       ),
                     ),
                   );
@@ -478,46 +484,62 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     return Container(
       width: 72,
       height: 72,
-      color: const Color(0xFFE8F5E9),
+      color: AppColors.surfaceDim,
       child: const Icon(
         Icons.store_rounded,
-        color: Color(0xFF4CAF50),
+        color: AppColors.primary,
         size: 32,
       ),
     );
   }
-
   Future<void> _deleteStall(StallModel stall) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.border, width: 1.0),
         ),
         title: Text(
           'Delete Stall?',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
         ),
         content: Text(
           'Are you sure you want to delete "${stall.name}"?\n\nThis action cannot be undone.',
-          style: GoogleFonts.poppins(fontSize: 14),
+          style: GoogleFonts.poppins(
+            fontSize: 13,
+            color: AppColors.inkMuted,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancel',
-              style: GoogleFonts.poppins(color: const Color(0xFF666666)),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkMuted,
+              ),
             ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935),
-            ),
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
+            ),
             child: Text(
               'Delete',
-              style: GoogleFonts.poppins(color: Colors.white),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.error,
+              ),
             ),
           ),
         ],
@@ -538,7 +560,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                 '${stall.name} deleted successfully',
                 style: GoogleFonts.poppins(),
               ),
-              backgroundColor: const Color(0xFF2E7D32),
+              backgroundColor: AppColors.primary,
             ),
           );
           await _loadStalls();
@@ -551,7 +573,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                 'Error deleting stall: $e',
                 style: GoogleFonts.poppins(),
               ),
-              backgroundColor: const Color(0xFFE53935),
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -563,21 +585,36 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.border, width: 1.0),
+        ),
         title: Text(
           'Edit Location',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
         ),
         content: Text(
           'Tap anywhere on the map to set a new location for "${stall.name}".',
-          style: GoogleFonts.poppins(fontSize: 14),
+          style: GoogleFonts.poppins(
+            fontSize: 13,
+            color: AppColors.inkMuted,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => context.pop(),
             child: Text(
               'Cancel',
-              style: GoogleFonts.poppins(color: const Color(0xFF666666)),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkMuted,
+              ),
             ),
           ),
           ElevatedButton(
@@ -586,13 +623,20 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               _enterEditLocationMode(stall);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20),
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text('OK', style: GoogleFonts.poppins()),
+            child: Text(
+              'OK',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -606,7 +650,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
           'Tap on the map to set new location for ${stall.name}',
           style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: AppColors.primary,
         actions: [
           TextButton(
             onPressed: () {
@@ -615,7 +659,10 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
             },
             child: Text(
               'Cancel',
-              style: GoogleFonts.poppins(color: Colors.white),
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -629,32 +676,45 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.border, width: 1.0),
+        ),
         title: Text(
           'Add Stall Here?',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Set stall location at:',
-              style: GoogleFonts.poppins(fontSize: 14),
+              'Set stall location at coordinates:',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: AppColors.inkMuted,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
+                color: AppColors.surfaceDim,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
               ),
               child: Text(
                 'Lat: ${position.latitude.toStringAsFixed(6)}\nLng: ${position.longitude.toStringAsFixed(6)}',
                 style: const TextStyle(
                   fontSize: 12,
                   fontFamily: 'monospace',
-                  color: Color(0xFF666666),
+                  color: AppColors.ink,
+                  height: 1.4,
                 ),
               ),
             ),
@@ -665,7 +725,11 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
             onPressed: () => context.pop(),
             child: Text(
               'Cancel',
-              style: GoogleFonts.poppins(color: const Color(0xFF666666)),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkMuted,
+              ),
             ),
           ),
           ElevatedButton(
@@ -680,13 +744,20 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20),
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text('Add Stall Here', style: GoogleFonts.poppins()),
+            child: Text(
+              'Add Stall Here',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -695,40 +766,34 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      height: 48,
+      height: 46,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border, width: 1.0),
       ),
       child: TextField(
         controller: _searchController,
         style: GoogleFonts.poppins(
           fontSize: 13,
-          color: const Color(0xFF212121),
+          color: AppColors.ink,
         ),
         decoration: InputDecoration(
-          hintText: 'Search stalls...',
+          hintText: 'Search stalls on map...',
           hintStyle: GoogleFonts.poppins(
             fontSize: 13,
-            color: const Color(0xFF9E9E9E),
+            color: AppColors.inkSubtle,
           ),
           prefixIcon: const Icon(
             Icons.search_rounded,
-            color: Color(0xFF1B5E20),
+            color: AppColors.primary,
             size: 20,
           ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
                   icon: const Icon(
                     Icons.clear_rounded,
-                    color: Color(0xFF9E9E9E),
+                    color: AppColors.inkMuted,
                     size: 18,
                   ),
                   onPressed: () {
@@ -743,7 +808,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 14,
+            vertical: 12,
           ),
         ),
         onChanged: (value) {
@@ -763,23 +828,17 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border, width: 1.0),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: const BoxDecoration(
-              color: Color(0xFFE8F5E9),
+              color: AppColors.primaryLight,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
                 bottomLeft: Radius.circular(20),
@@ -789,10 +848,10 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 8,
-                  height: 8,
+                  width: 7,
+                  height: 7,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF2E7D32),
+                    color: AppColors.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -802,7 +861,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2E7D32),
+                    color: AppColors.primary,
                   ),
                 ),
               ],
@@ -810,13 +869,13 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
           ),
           Container(
             width: 1,
-            height: 28,
-            color: const Color(0xFFE0E0E0),
+            height: 24,
+            color: AppColors.border,
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: const BoxDecoration(
-              color: Color(0xFFFFEBEE),
+              color: AppColors.errorLight,
               borderRadius: BorderRadius.only(
                 topRight: Radius.circular(20),
                 bottomRight: Radius.circular(20),
@@ -826,10 +885,10 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 8,
-                  height: 8,
+                  width: 7,
+                  height: 7,
                   decoration: const BoxDecoration(
-                    color: Color(0xFFC62828),
+                    color: AppColors.error,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -839,7 +898,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFFC62828),
+                    color: AppColors.error,
                   ),
                 ),
               ],
@@ -882,7 +941,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
               color: Colors.black45,
               child: const Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFF1B5E20),
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -897,42 +956,36 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
 
           // Open/Closed Count Badge
           Positioned(
-            top: topInset + 12 + 48 + 8,
+            top: topInset + 12 + 46 + 8,
             left: 16,
             child: _buildOpenClosedCountBadge(),
           ),
 
-          // Recenter button (bottom right) - same as user map
+          // Recenter button (bottom right)
           Positioned(
-            bottom: 100,
+            bottom: 96,
             right: 16,
             child: Tooltip(
               message: 'Back to Market',
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1B5E20),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border, width: 1.0),
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: _recenterMap,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      width: 50,
-                      height: 50,
+                      width: 44,
+                      height: 44,
                       alignment: Alignment.center,
                       child: const Icon(
                         Icons.center_focus_strong_rounded,
-                        color: Colors.white,
-                        size: 24,
+                        color: AppColors.ink,
+                        size: 22,
                       ),
                     ),
                   ),
@@ -945,17 +998,21 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(RouteNames.adminAddStall),
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         icon: const Icon(Icons.add_location_rounded, color: Colors.white),
         label: Text(
           'Add Stall',
           style: GoogleFonts.poppins(
             color: Colors.white,
             fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
       ),
     );
   }
-
 }

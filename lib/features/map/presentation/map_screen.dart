@@ -87,7 +87,7 @@ class MapScreenState extends ConsumerState<MapScreen>
                                   angle: -_mapRotationAngle,
                                   child: const Icon(
                                     Icons.navigation_rounded,
-                                    color: AppColors.primary,
+                                    color: Color(0xFFE53935),
                                     size: 22,
                                   ),
                                 ),

@@ -1,13 +1,13 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../../models/stall_model.dart';
 import '../../../core/services/cloudinary_service.dart';
 import '../../../core/utils/stall_utils.dart';
+import '../../../core/theme/app_colors.dart';
 
 class AddEditStallScreen extends StatefulWidget {
   final String? stallId;
@@ -752,16 +752,6 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     }
   }
 
-  String _getOperatingDaysString() {
-    if (_selectedDays.isEmpty) return '';
-    if (_selectedDays.length == 7) return 'Mon-Sun';
-    if (_selectedDays.length == 6 && !_selectedDays.contains('Sun')) return 'Mon-Sat';
-    if (_selectedDays.length == 5 && 
-        !_selectedDays.contains('Sat') && 
-        !_selectedDays.contains('Sun')) return 'Mon-Fri';
-    return _selectedDays.join(', ');
-  }
-
   List<String> _getDaysOpenArray() {
     final Map<String, String> dayMap = {
       'Mon': 'Monday',
@@ -854,11 +844,12 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         width: double.infinity,
         height: 180,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: AppColors.surfaceDim,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFE0E0E0),
+            color: AppColors.border,
             style: BorderStyle.solid,
+            width: 1.0,
           ),
         ),
         child: Column(
@@ -866,15 +857,16 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
           children: [
             const Icon(
               Icons.add_photo_alternate_rounded,
-              size: 48,
-              color: Color(0xFF9E9E9E),
+              size: 44,
+              color: AppColors.primary,
             ),
             const SizedBox(height: 8),
             Text(
               'Tap to add stall photo',
               style: GoogleFonts.poppins(
                 fontSize: 13,
-                color: const Color(0xFF9E9E9E),
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
               ),
             ),
             const SizedBox(height: 4),
@@ -882,7 +874,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               'JPG, PNG up to 5MB',
               style: GoogleFonts.poppins(
                 fontSize: 11,
-                color: const Color(0xFFBDBDBD),
+                color: AppColors.inkMuted,
               ),
             ),
           ],
@@ -899,7 +891,9 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF1B5E20),
+              primary: AppColors.primary,
+              surface: AppColors.surface,
+              onSurface: AppColors.ink,
             ),
           ),
           child: child!,
@@ -916,14 +910,13 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   }
 
   Future<void> _pickLocationOnMap() async {
-    // Navigate to map picker screen (implement if available)
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Map picker feature coming soon',
+          'Map coordinate picker feature coming soon',
           style: GoogleFonts.poppins(),
         ),
-        backgroundColor: const Color(0xFF666666),
+        backgroundColor: AppColors.ink,
       ),
     );
   }
@@ -942,7 +935,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               color: Colors.white,
             ),
           ),
-          backgroundColor: const Color(0xFFE53935),
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -960,7 +953,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
             'Please select at least one operating day',
             style: GoogleFonts.poppins(),
           ),
-          backgroundColor: const Color(0xFFE53935),
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -1018,7 +1011,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               widget.stallId != null ? 'Stall updated successfully' : 'Stall created successfully',
               style: GoogleFonts.poppins(),
             ),
-            backgroundColor: const Color(0xFF2E7D32),
+            backgroundColor: AppColors.primary,
           ),
         );
         context.pop();
@@ -1031,7 +1024,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               'Error saving stall: $e',
               style: GoogleFonts.poppins(),
             ),
-            backgroundColor: const Color(0xFFE53935),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1051,19 +1044,19 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
+          color: isSelected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFFE0E0E0),
-            width: 1.5,
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: 1.0,
           ),
         ),
         child: Text(
           label,
           style: GoogleFonts.poppins(
             fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF212121),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.ink,
           ),
         ),
       ),
@@ -1080,35 +1073,35 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       hintText: hint,
       labelStyle: GoogleFonts.poppins(
         fontSize: 13,
-        color: const Color(0xFF666666),
+        color: AppColors.inkMuted,
       ),
       hintStyle: GoogleFonts.poppins(
         fontSize: 13,
-        color: const Color(0xFF9E9E9E),
+        color: AppColors.inkSubtle,
       ),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AppColors.surface,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 2),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE53935)),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE53935), width: 2),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
       ),
-      prefixIcon: Icon(icon, color: const Color(0xFF1B5E20), size: 20),
+      prefixIcon: Icon(icon, color: AppColors.inkMuted, size: 20),
     );
   }
 
@@ -1116,16 +1109,23 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
+        backgroundColor: AppColors.canvas,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF1B5E20),
+          backgroundColor: AppColors.surface,
           elevation: 0,
-          toolbarHeight: 60,
-          centerTitle: true,
+          scrolledUnderElevation: 0,
+          centerTitle: false,
+          systemOverlayStyle: SystemUiOverlayStyle.dark,
+          shape: const Border(
+            bottom: BorderSide(
+              color: AppColors.border,
+              width: 1.0,
+            ),
+          ),
           leading: IconButton(
             icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Colors.white,
+              Icons.arrow_back_rounded,
+              color: AppColors.ink,
               size: 20,
             ),
             onPressed: () => context.pop(),
@@ -1133,54 +1133,80 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
           title: Text(
             widget.stallId != null ? 'Edit Stall' : 'Add Stall',
             style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
             ),
           ),
         ),
         body: const Center(
-          child: CircularProgressIndicator(color: Color(0xFF1B5E20)),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B5E20),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        toolbarHeight: 60,
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        shape: const Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: 1.0,
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
+            Icons.arrow_back_rounded,
+            color: AppColors.ink,
             size: 20,
           ),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          widget.stallId != null ? 'Edit Stall' : 'Add Stall',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.stallId != null ? 'Edit Stall' : 'Add Stall',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+                letterSpacing: -0.2,
+              ),
+            ),
+            Text(
+              widget.stallId != null ? 'Update stall details & hours' : 'Register a new market stall',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.inkMuted,
+              ),
+            ),
+          ],
         ),
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Stall Name
-              TextFormField(
-                controller: _nameController,
-                decoration: _buildInputDecoration(
-                  label: 'Stall Name *',
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Stall Name
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: _buildInputDecoration(
+                      label: 'Stall Name *',
                   hint: 'Enter stall name',
                   icon: Icons.store_rounded,
                 ),
@@ -2415,14 +2441,12 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               // 10. Save Button
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveStall,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    disabledBackgroundColor: const Color(0xFF1B5E20).withOpacity(0.6),
-                    minimumSize: const Size(double.infinity, 56),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2430,8 +2454,8 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                   ),
                   child: _isSaving
                       ? const SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2,
@@ -2440,19 +2464,20 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                       : Text(
                           'Save Stall',
                           style: GoogleFonts.poppins(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
-                            letterSpacing: 0.5,
                           ),
                         ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }

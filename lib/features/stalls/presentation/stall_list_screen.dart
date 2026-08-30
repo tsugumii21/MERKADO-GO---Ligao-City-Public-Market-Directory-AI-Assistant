@@ -1,19 +1,19 @@
-// Part 8: Rebuilt Sort & Filter System - 3 Options (Alphabetical, Time Range, Day+Status)
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
 import '../../../providers/favorite_provider.dart';
-import 'stall_detail_sheet.dart';
 import '../../../core/utils/stall_utils.dart';
 import '../../../core/theme/app_colors.dart';
+import 'stall_detail_sheet.dart';
 
+/// Alias for DirectoryScreen to ensure seamless naming compatibility
+typedef DirectoryScreen = StallListScreen;
+
+/// Modern Stalls Directory Screen for Merkado Go
 class StallListScreen extends ConsumerStatefulWidget {
   const StallListScreen({super.key});
 
@@ -24,1588 +24,50 @@ class StallListScreen extends ConsumerStatefulWidget {
 class StallListScreenState extends ConsumerState<StallListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  final ScrollController _scrollController = ScrollController();
-  final ScrollController _categoryScrollController = ScrollController();
-  String _selectedType = 'all';
-  String? _selectedSubLabel;
-  String? _selectedTag; // for product-level filtering (sari_sari only)
-  bool _subcategoryRowVisible = false;
-  String _searchQuery = '';
-  List<StallModel> _allStalls = [];
-  List<StallModel> _searchResults = [];
-  bool _showDropdown = false;
-  OverlayEntry? _overlayEntry;
-  final LayerLink _layerLink = LayerLink();
-  List<String> _recentlyViewedIds = [];
 
-  // Sort/Filter state variables
+  String _selectedCategory = 'All';
+  
+  // Sort & Filter state variables
   String? sortAlpha; // 'az' | 'za' | null
   TimeOfDay? filterOpenTime;
   TimeOfDay? filterCloseTime;
-  String? selectedDay; // 'Mon'|'Tue'|...|null
+  String? selectedDay; // 'Monday' | 'Tuesday' | ... | null
   bool showOpenOnDay = true;
-  bool _filterOpenOnly = false; // Filter to show only currently open stalls
-  Timer? _statusTimer;
+  bool _filterOpenOnly = false; // Open now only toggle
 
-  final Map<String, Map<String, dynamic>> _categoryMap = {
-    'all': {
-      'label': 'All',
-      'icon': Icons.store_rounded,
-      'hasSubcategories': false,
-      'categories': <String>[],
-      'subcategories': <Map>[],
-    },
-    'fresh': {
-      'label': 'Fresh Produce',
-      'icon': Icons.eco_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'fresh',
-        'seafood',
-        'fish',
-        'meat',
-        'beef',
-        'pork',
-        'karne',
-        'poultry',
-        'chicken',
-        'manok',
-        'vegetables',
-        'gulay',
-        'fruits',
-        'prutas',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Fresh',
-          'tag': null,
-          'categories': [
-            'fresh',
-            'seafood',
-            'fish',
-            'meat',
-            'beef',
-            'pork',
-            'karne',
-            'poultry',
-            'chicken',
-            'manok',
-            'vegetables',
-            'gulay',
-            'fruits',
-            'prutas',
-          ],
-        },
-        {
-          'label': 'Seafood',
-          'tag': null,
-          'categories': ['seafood', 'fish'],
-        },
-        {
-          'label': 'Meat',
-          'tag': null,
-          'categories': ['meat', 'beef', 'pork', 'karne'],
-        },
-        {
-          'label': 'Poultry',
-          'tag': null,
-          'categories': ['poultry', 'chicken', 'manok'],
-        },
-        {
-          'label': 'Vegetables',
-          'tag': null,
-          'categories': ['vegetables', 'gulay'],
-        },
-        {
-          'label': 'Fruits',
-          'tag': null,
-          'categories': ['fruits', 'prutas'],
-        },
-      ],
-    },
-    'processed': {
-      'label': 'Frozen & Processed',
-      'icon': Icons.kitchen_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'frozen',
-        'frozen_goods',
-        'processed',
-        'processed_foods',
-        'spices',
-        'pampalasa',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Processed',
-          'tag': null,
-          'categories': [
-            'frozen',
-            'frozen_goods',
-            'processed',
-            'processed_foods',
-            'spices',
-            'pampalasa',
-          ],
-        },
-        {
-          'label': 'Frozen Goods',
-          'tag': null,
-          'categories': ['frozen', 'frozen_goods'],
-        },
-        {
-          'label': 'Processed Foods',
-          'tag': null,
-          'categories': ['processed', 'processed_foods'],
-        },
-        {
-          'label': 'Spices',
-          'tag': null,
-          'categories': ['spices', 'pampalasa'],
-        },
-      ],
-    },
-    'dry_goods': {
-      'label': 'Dry Goods',
-      'icon': Icons.inventory_2_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'dry_goods',
-        'drygoods',
-        'rice',
-        'rice_dealer',
-        'bigas',
-        'dried_fish',
-        'bulad',
-        'daing',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Dry Goods',
-          'tag': null,
-          'categories': [
-            'dry_goods',
-            'drygoods',
-            'rice',
-            'rice_dealer',
-            'bigas',
-            'dried_fish',
-            'bulad',
-            'daing',
-          ],
-        },
-        {
-          'label': 'Rice Dealer',
-          'tag': 'rice_dealer',
-          'categories': [
-            'dry_goods',
-            'drygoods',
-            'rice',
-            'rice_dealer',
-            'bigas',
-            'dried_fish',
-            'bulad',
-            'daing',
-          ],
-        },
-        {
-          'label': 'Dried Fish',
-          'tag': 'dried_fish',
-          'categories': [
-            'dry_goods',
-            'drygoods',
-            'rice',
-            'rice_dealer',
-            'bigas',
-            'dried_fish',
-            'bulad',
-            'daing',
-          ],
-        },
-      ],
-    },
-    'cooked': {
-      'label': 'Cooked Food',
-      'icon': Icons.restaurant_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'eatery',
-        'carinderia',
-        'cooked',
-        'cooked_food',
-        'bakery',
-        'kakanin',
-        'snack_stand',
-        'lutong_ulam',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Cooked',
-          'tag': null,
-          'categories': [
-            'eatery',
-            'carinderia',
-            'cooked',
-            'cooked_food',
-            'bakery',
-            'kakanin',
-            'snack_stand',
-            'lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Carinderia',
-          'tag': 'carinderia',
-          'categories': [
-            'eatery',
-            'carinderia',
-            'cooked',
-            'cooked_food',
-            'bakery',
-            'kakanin',
-            'snack_stand',
-            'lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Bakery',
-          'tag': 'bakery',
-          'categories': [
-            'eatery',
-            'carinderia',
-            'cooked',
-            'cooked_food',
-            'bakery',
-            'kakanin',
-            'snack_stand',
-            'lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Kakanin',
-          'tag': 'kakanin',
-          'categories': [
-            'eatery',
-            'carinderia',
-            'cooked',
-            'cooked_food',
-            'bakery',
-            'kakanin',
-            'snack_stand',
-            'lutong_ulam',
-          ],
-        },
-        {
-          'label': 'Snack Stand',
-          'tag': 'snack_stand',
-          'categories': [
-            'eatery',
-            'carinderia',
-            'cooked',
-            'cooked_food',
-            'bakery',
-            'kakanin',
-            'snack_stand',
-            'lutong_ulam',
-          ],
-        },
-      ],
-    },
-    'sari_sari': {
-      'label': 'Sari-Sari Store',
-      'icon': Icons.storefront_rounded,
-      'hasSubcategories': false,
-      'categories': [
-        'sari_sari',
-        'sarisari',
-        'sari-sari',
-        'sari_sari_store',
-      ],
-      'subcategories': <Map>[],
-    },
-    'retail': {
-      'label': 'Retail / Clothing',
-      'icon': Icons.checkroom_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'retail',
-        'clothing',
-        'ukay_ukay',
-        'ukay-ukay',
-        'ukay',
-        'tailor',
-        'tailor_shop',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Retail',
-          'tag': null,
-          'categories': [
-            'retail',
-            'clothing',
-            'ukay_ukay',
-            'ukay-ukay',
-            'ukay',
-            'tailor',
-            'tailor_shop',
-          ],
-        },
-        {
-          'label': 'Ukay-Ukay',
-          'tag': 'ukay_ukay',
-          'categories': [
-            'retail',
-            'clothing',
-            'ukay_ukay',
-            'ukay-ukay',
-            'ukay',
-            'tailor',
-            'tailor_shop',
-          ],
-        },
-        {
-          'label': 'Tailor Shop',
-          'tag': 'tailor_shop',
-          'categories': [
-            'retail',
-            'clothing',
-            'ukay_ukay',
-            'ukay-ukay',
-            'ukay',
-            'tailor',
-            'tailor_shop',
-          ],
-        },
-      ],
-    },
-    'general': {
-      'label': 'General Merchandise',
-      'icon': Icons.shopping_bag_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'general',
-        'hardware',
-        'tools',
-        'hardware_tools',
-        'school_supplies',
-        'school',
-        'home_supplies',
-        'home',
-        'agrivet',
-        'agrivet_supplies',
-      ],
-      'subcategories': [
-        {
-          'label': 'All General',
-          'tag': null,
-          'categories': [
-            'general',
-            'hardware',
-            'tools',
-            'hardware_tools',
-            'school_supplies',
-            'school',
-            'home_supplies',
-            'home',
-            'agrivet',
-            'agrivet_supplies',
-          ],
-        },
-        {
-          'label': 'Hardware & Tools',
-          'tag': 'hardware',
-          'categories': [
-            'general',
-            'hardware',
-            'tools',
-            'hardware_tools',
-            'school_supplies',
-            'school',
-            'home_supplies',
-            'home',
-            'agrivet',
-            'agrivet_supplies',
-          ],
-        },
-        {
-          'label': 'School Supplies',
-          'tag': 'school_supplies',
-          'categories': [
-            'general',
-            'hardware',
-            'tools',
-            'hardware_tools',
-            'school_supplies',
-            'school',
-            'home_supplies',
-            'home',
-            'agrivet',
-            'agrivet_supplies',
-          ],
-        },
-        {
-          'label': 'Home Supplies',
-          'tag': 'home_supplies',
-          'categories': [
-            'general',
-            'hardware',
-            'tools',
-            'hardware_tools',
-            'school_supplies',
-            'school',
-            'home_supplies',
-            'home',
-            'agrivet',
-            'agrivet_supplies',
-          ],
-        },
-        {
-          'label': 'Agrivet Supplies',
-          'tag': 'agrivet',
-          'categories': [
-            'general',
-            'hardware',
-            'tools',
-            'hardware_tools',
-            'school_supplies',
-            'school',
-            'home_supplies',
-            'home',
-            'agrivet',
-            'agrivet_supplies',
-          ],
-        },
-      ],
-    },
-    'services': {
-      'label': 'Services',
-      'icon': Icons.build_rounded,
-      'hasSubcategories': true,
-      'categories': [
-        'services',
-        'electronics',
-        'repair',
-        'electronics_repair',
-        'barber',
-        'salon',
-        'barber_salon',
-      ],
-      'subcategories': [
-        {
-          'label': 'All Services',
-          'tag': null,
-          'categories': [
-            'services',
-            'electronics',
-            'repair',
-            'electronics_repair',
-            'barber',
-            'salon',
-            'barber_salon',
-          ],
-        },
-        {
-          'label': 'Electronics & Repair',
-          'tag': 'electronics_repair',
-          'categories': [
-            'services',
-            'electronics',
-            'repair',
-            'electronics_repair',
-            'barber',
-            'salon',
-            'barber_salon',
-          ],
-        },
-        {
-          'label': 'Barber / Salon',
-          'tag': 'barber_salon',
-          'categories': [
-            'services',
-            'electronics',
-            'repair',
-            'electronics_repair',
-            'barber',
-            'salon',
-            'barber_salon',
-          ],
-        },
-      ],
-    },
-  };
-
-  final List<String> filterChipKeys = [
-    'all',
-    'favorites',
-    'fresh',
-    'processed',
-    'dry_goods',
-    'cooked',
-    'sari_sari',
-    'retail',
-    'general',
-    'services',
+  final List<String> _categories = [
+    'All',
+    'Favorites',
+    'Fresh Produce',
+    'Meat & Poultry',
+    'Seafood',
+    'Dry Goods',
+    'Agrivet / Feeds',
   ];
-
-  final Map<String, List<String>> dayMapping = {
-    'Mon': ['monday', 'mon'],
-    'Tue': ['tuesday', 'tue'],
-    'Wed': ['wednesday', 'wed'],
-    'Thu': ['thursday', 'thu'],
-    'Fri': ['friday', 'fri'],
-    'Sat': ['saturday', 'sat'],
-    'Sun': ['sunday', 'sun'],
-  };
-
-  // Reset UI state when user leaves this tab
-  void resetUI() {
-    if (!mounted) return;
-
-    // Scroll to top with animation
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-
-    // Close subcategory row
-    setState(() {
-      _selectedSubLabel = null;
-      _selectedTag = null;
-      _subcategoryRowVisible = false;
-    });
-
-    // Clear search
-    _searchController.clear();
-    setState(() => _searchQuery = '');
-
-    // Close any open bottom sheets (filter sheet)
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-
-    // DO NOT reset: _selectedType (filter chip), favorites
-  }
-
-  void showFavoritesView() {
-    if (!mounted) return;
-
-    _searchFocusNode.unfocus();
-    _searchController.clear();
-
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-
-    setState(() {
-      _selectedType = 'favorites';
-      _selectedSubLabel = null;
-      _selectedTag = null;
-      _subcategoryRowVisible = false;
-      _searchQuery = '';
-      _searchResults = [];
-      _showDropdown = false;
-    });
-
-    ref.read(favoriteProvider.notifier).loadFavorites();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Reset all filter and search state to initial values
-    _selectedType = 'all';
-    _selectedSubLabel = null;
-    _selectedTag = null;
-    _subcategoryRowVisible = false;
-    _searchQuery = '';
-    _searchController.clear();
-
-    // Reset sort/filter state
-    sortAlpha = null;
-    filterOpenTime = null;
-    filterCloseTime = null;
-    selectedDay = null;
-    showOpenOnDay = true;
-    _filterOpenOnly = false;
-
-    _loadRecentlyViewed();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(favoriteProvider.notifier).loadFavorites();
-    });
-
-    _searchFocusNode.addListener(() {
-      if (!mounted) return;
-      setState(() {
-        _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
-      });
-      _updateOverlay();
-    });
-
-    // Refresh open/closed status every 60 seconds
-    _statusTimer = Timer.periodic(
-      const Duration(seconds: 60),
-      (_) {
-        if (mounted) setState(() {});
-      },
-    );
-  }
-
-  void _updateOverlay() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_showDropdown) {
-        if (_overlayEntry == null) {
-          _overlayEntry = _createOverlayEntry();
-          Overlay.of(context).insert(_overlayEntry!);
-        } else {
-          _overlayEntry?.markNeedsBuild();
-        }
-      } else {
-        _removeOverlay();
-      }
-    });
-  }
-
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
-  OverlayEntry _createOverlayEntry() {
-    RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-    var size = renderBox?.size ?? Size.zero;
-
-    return OverlayEntry(
-      builder: (context) => Positioned(
-        width: size.width > 0 ? (size.width - 32).clamp(280.0, 968.0) : 340,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 50),
-          child: Material(
-            elevation: 12,
-            shadowColor: Colors.black38,
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.transparent,
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 260),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.border,
-                  width: 1.5,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x2E000000),
-                    blurRadius: 16,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: _searchResults.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'No stalls found for "$_searchQuery"',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: AppColors.inkMuted,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        itemCount: _searchResults.length,
-                        itemBuilder: (_, i) {
-                          final stall = _searchResults[i];
-                          final isOpen = StallUtils.isStallOpenNow(stall);
-                          final matchedProduct = _getMatchedProduct(stall);
-
-                          return InkWell(
-                            onTap: () {
-                              _removeOverlay();
-                              _onStallSelectedFromSearch(stall);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryLight,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: stall.photoUrls.isNotEmpty
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: CachedNetworkImage(
-                                              imageUrl: stall.photoUrls.first,
-                                              fit: BoxFit.cover,
-                                              errorWidget: (_, __, ___) => const Icon(
-                                                Icons.store_rounded,
-                                                color: AppColors.primary,
-                                                size: 20,
-                                              ),
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.store_rounded,
-                                            color: AppColors.primary,
-                                            size: 20,
-                                          ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildHighlightedText(stall.name, _searchQuery),
-                                        const SizedBox(height: 2),
-                                        Row(
-                                          children: [
-                                            Flexible(
-                                              child: Text(
-                                                StallUtils.getCategoryLabel(stall.category),
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: 11,
-                                                  color: AppColors.inkMuted,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Container(
-                                              width: 3,
-                                              height: 3,
-                                              decoration: const BoxDecoration(
-                                                color: AppColors.inkSubtle,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              isOpen ? 'Open' : 'Closed',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 11,
-                                                color: isOpen ? AppColors.primary : AppColors.error,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        if (matchedProduct != null)
-                                          Text(
-                                            'Sells: $matchedProduct',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 10,
-                                              color: AppColors.primary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (stall.latitude != 0.0 || stall.longitude != 0.0)
-                                    const Icon(
-                                      Icons.location_on_rounded,
-                                      size: 16,
-                                      color: AppColors.inkSubtle,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   void dispose() {
-    _removeOverlay();
-    _statusTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
-    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onSearchChangedLive(String query) {
-    final trimmedQuery = query.trim();
-
-    setState(() {
-      _searchQuery = trimmedQuery;
-    });
-
-    if (trimmedQuery.isEmpty) {
-      setState(() {
-        _searchResults = [];
-        _showDropdown = false;
-      });
-      _updateOverlay();
-      return;
-    }
-
-    final q = trimmedQuery.toLowerCase();
-    final matches = _allStalls
-        .where((s) {
-          if (s.name.toLowerCase().contains(q)) return true;
-          if (s.category.toLowerCase().contains(q)) return true;
-          if (s.categories.any((c) => c.toLowerCase().contains(q))) return true;
-          if (s.tags.any((t) =>
-              t.toLowerCase().contains(q) ||
-              StallUtils.getTagLabel(t).toLowerCase().contains(q))) {
-            return true;
-          }
-          if (s.products.any((p) => p.toLowerCase().contains(q))) return true;
-          if (s.section != null && s.section!.toLowerCase().contains(q)) {
-            return true;
-          }
-          return false;
-        })
-        .take(8)
-        .toList();
-
-    setState(() {
-      _searchResults = matches;
-      _showDropdown = _searchFocusNode.hasFocus && _searchQuery.isNotEmpty;
-    });
-    _updateOverlay();
-  }
-
-  void _onStallSelectedFromSearch(StallModel stall) {
-    _searchFocusNode.unfocus();
-    setState(() {
-      _showDropdown = false;
-      _searchController.text = stall.name;
-      _searchQuery = stall.name;
-    });
-    _updateOverlay();
-
-    _openStallDetail(stall);
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-      _searchResults = [];
-      _showDropdown = false;
-    });
-    _updateOverlay();
-    _searchFocusNode.unfocus();
-  }
-
-  Widget _buildHighlightedText(String text, String query) {
-    if (query.isEmpty) {
-      return Text(
-        text,
-        style: GoogleFonts.poppins(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF212121),
-        ),
-      );
-    }
-
-    final lowerText = text.toLowerCase();
-    final lowerQuery = query.toLowerCase();
-    final matchIndex = lowerText.indexOf(lowerQuery);
-
-    if (matchIndex == -1) {
-      return Text(
-        text,
-        style: GoogleFonts.poppins(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF212121),
-        ),
-      );
-    }
-
-    return RichText(
-      text: TextSpan(
-        children: [
-          if (matchIndex > 0)
-            TextSpan(
-              text: text.substring(0, matchIndex),
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF212121),
-              ),
-            ),
-          TextSpan(
-            text: text.substring(matchIndex, matchIndex + query.length),
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1B5E20),
-              backgroundColor: const Color(0xFFE8F5E9),
-            ),
-          ),
-          if (matchIndex + query.length < text.length)
-            TextSpan(
-              text: text.substring(matchIndex + query.length),
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF212121),
-              ),
-            ),
-        ],
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  String? _getMatchedProduct(StallModel stall) {
-    final q = _searchQuery.toLowerCase();
-    if (q.isEmpty) return null;
-    try {
-      return stall.products.firstWhere((p) => p.toLowerCase().contains(q));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> _loadRecentlyViewed() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final recentIds = prefs.getStringList('recently_viewed_stalls') ?? [];
-      if (mounted) {
-        setState(() {
-          _recentlyViewedIds = recentIds.take(5).toList();
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Error: Failed to load recently viewed stalls: $e');
-    }
-  }
-
-  Future<void> _saveRecentlyViewed(String stallId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      List<String> recentIds =
-          prefs.getStringList('recently_viewed_stalls') ?? [];
-
-      recentIds.remove(stallId);
-      recentIds.insert(0, stallId);
-
-      if (recentIds.length > 5) {
-        recentIds = recentIds.sublist(0, 5);
-      }
-
-      await prefs.setStringList('recently_viewed_stalls', recentIds);
-
-      if (mounted) {
-        setState(() {
-          _recentlyViewedIds = recentIds;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Error: Failed to save recently viewed stalls: $e');
-    }
-  }
-
-  Future<void> _clearRecentlyViewed() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('recently_viewed_stalls');
-      if (mounted) {
-        setState(() {
-          _recentlyViewedIds = [];
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Error: Failed to clear recently viewed stalls: $e');
-    }
-  }
-
-  TimeOfDay parseTime(String timeStr) {
-    timeStr = timeStr.trim().toUpperCase();
-    bool isPM = timeStr.contains('PM');
-    bool isAM = timeStr.contains('AM');
-    timeStr = timeStr.replaceAll('AM', '').replaceAll('PM', '').trim();
-    final parts = timeStr.split(':');
-    int hour = int.parse(parts[0]);
-    int minute = int.parse(parts[1]);
-    if (isPM && hour != 12) hour += 12;
-    if (isAM && hour == 12) hour = 0;
-    return TimeOfDay(hour: hour, minute: minute);
-  }
-
-  bool stallOpenOnDay(StallModel stall, String day) {
-    final dayVariants = dayMapping[day] ?? [day];
-    return stall.daysOpen.any((d) =>
-        dayVariants.any((v) => d.toLowerCase().contains(v.toLowerCase())));
-  }
-
-  List<String> _keywordsForFilterKeys(List<String> keys) {
-    const keywordMap = {
-      'seafood': [
-        'fish',
-        'isda',
-        'tilapia',
-        'bangus',
-        'galunggong',
-        'tuna',
-        'shrimp',
-        'hipon',
-        'crab',
-        'squid',
-        'pusit',
-        'mussels',
-        'tahong'
-      ],
-      'fish': ['fish', 'isda', 'tilapia', 'bangus', 'galunggong', 'tuna'],
-      'meat': [
-        'meat',
-        'karne',
-        'pork',
-        'baboy',
-        'beef',
-        'baka',
-        'carabao',
-        'chicken',
-        'manok'
-      ],
-      'beef': ['beef', 'baka', 'carabao'],
-      'pork': ['pork', 'baboy', 'liempo', 'ribs'],
-      'poultry': ['chicken', 'manok', 'duck', 'itlog', 'eggs', 'poultry'],
-      'chicken': ['chicken', 'manok'],
-      'vegetables': [
-        'vegetable',
-        'gulay',
-        'tomato',
-        'onion',
-        'garlic',
-        'eggplant',
-        'kangkong',
-        'sitaw',
-        'okra',
-        'pechay',
-        'cabbage',
-        'carrot'
-      ],
-      'gulay': [
-        'vegetable',
-        'gulay',
-        'tomato',
-        'onion',
-        'garlic',
-        'eggplant',
-        'kangkong',
-        'sitaw',
-        'okra',
-        'pechay',
-        'cabbage',
-        'carrot'
-      ],
-      'fruits': [
-        'fruit',
-        'prutas',
-        'mango',
-        'mangga',
-        'banana',
-        'saging',
-        'papaya',
-        'watermelon',
-        'pakwan',
-        'rambutan',
-        'lansones'
-      ],
-      'prutas': [
-        'fruit',
-        'prutas',
-        'mango',
-        'mangga',
-        'banana',
-        'saging',
-        'papaya',
-        'watermelon',
-        'pakwan',
-        'rambutan',
-        'lansones'
-      ],
-      'frozen': [
-        'frozen',
-        'processed',
-        'tocino',
-        'longganisa',
-        'hotdog',
-        'ham'
-      ],
-      'frozen_goods': [
-        'frozen',
-        'processed',
-        'tocino',
-        'longganisa',
-        'hotdog',
-        'ham'
-      ],
-      'processed': ['processed', 'canned', 'de lata', 'instant'],
-      'processed_foods': ['processed', 'canned', 'de lata', 'instant'],
-      'spices': [
-        'spice',
-        'pampalasa',
-        'seasoning',
-        'pepper',
-        'asin',
-        'toyo',
-        'suka'
-      ],
-      'pampalasa': [
-        'spice',
-        'pampalasa',
-        'seasoning',
-        'pepper',
-        'asin',
-        'toyo',
-        'suka'
-      ],
-      'dry_goods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
-      'drygoods': ['rice', 'bigas', 'dry', 'dried', 'bulad', 'daing', 'beans'],
-      'rice': [
-        'rice',
-        'bigas',
-        'sinandomeng',
-        'dinorado',
-        'jasmine',
-        'malagkit'
-      ],
-      'rice_dealer': [
-        'rice',
-        'bigas',
-        'sinandomeng',
-        'dinorado',
-        'jasmine',
-        'malagkit'
-      ],
-      'bigas': [
-        'rice',
-        'bigas',
-        'sinandomeng',
-        'dinorado',
-        'jasmine',
-        'malagkit'
-      ],
-      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'bulad': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'daing': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'eatery': [
-        'ulam',
-        'adobo',
-        'sinigang',
-        'pinakbet',
-        'carinderia',
-        'lutong',
-        'cooked',
-        'meal'
-      ],
-      'carinderia': [
-        'ulam',
-        'adobo',
-        'sinigang',
-        'pinakbet',
-        'carinderia',
-        'lutong',
-        'cooked',
-        'meal'
-      ],
-      'cooked': [
-        'ulam',
-        'adobo',
-        'sinigang',
-        'pinakbet',
-        'carinderia',
-        'lutong',
-        'cooked',
-        'meal'
-      ],
-      'cooked_food': [
-        'ulam',
-        'adobo',
-        'sinigang',
-        'pinakbet',
-        'carinderia',
-        'lutong',
-        'cooked',
-        'meal'
-      ],
-      'lutong_ulam': ['ulam', 'adobo', 'sinigang', 'pinakbet', 'lutong'],
-      'bakery': ['bread', 'tinapay', 'pan', 'cake', 'pastry', 'bakery'],
-      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
-      'snack_stand': ['snack', 'merienda', 'street food'],
-      'sari_sari': [
-        'canned',
-        'snacks',
-        'softdrinks',
-        'toiletries',
-        'condiments',
-        'sari'
-      ],
-      'sarisari': [
-        'canned',
-        'snacks',
-        'softdrinks',
-        'toiletries',
-        'condiments',
-        'sari'
-      ],
-      'sari-sari': [
-        'canned',
-        'snacks',
-        'softdrinks',
-        'toiletries',
-        'condiments',
-        'sari'
-      ],
-      'sari_sari_store': [
-        'canned',
-        'snacks',
-        'softdrinks',
-        'toiletries',
-        'condiments',
-        'sari'
-      ],
-      'retail': [
-        'clothes',
-        'clothing',
-        'ukay',
-        'shirt',
-        'pants',
-        'dress',
-        'tailor',
-        'tela'
-      ],
-      'clothing': [
-        'clothes',
-        'clothing',
-        'ukay',
-        'shirt',
-        'pants',
-        'dress',
-        'tailor',
-        'tela'
-      ],
-      'ukay_ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
-      'ukay-ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
-      'ukay': ['ukay', 'secondhand', 'clothes', 'shirt', 'pants', 'dress'],
-      'tailor': ['tailor', 'repair', 'alter'],
-      'tailor_shop': ['tailor', 'repair', 'alter'],
-      'general': [
-        'hardware',
-        'tools',
-        'school',
-        'home',
-        'agrivet',
-        'merchandise'
-      ],
-      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
-      'tools': ['hardware', 'tools', 'martilyo', 'pako'],
-      'hardware_tools': ['hardware', 'tools', 'martilyo', 'pako'],
-      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
-      'school': ['notebook', 'paper', 'ballpen', 'school'],
-      'home_supplies': ['home', 'cleaner', 'household'],
-      'home': ['home', 'cleaner', 'household'],
-      'agrivet': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
-      'agrivet_supplies': ['feed', 'veterinary', 'agrivet', 'fertilizer'],
-      'services': ['repair', 'barber', 'salon', 'service'],
-      'electronics': ['electronics', 'cellphone', 'repair'],
-      'repair': ['repair', 'fix'],
-      'electronics_repair': ['electronics', 'cellphone', 'repair'],
-      'barber': ['barber', 'gupit', 'haircut', 'salon'],
-      'salon': ['barber', 'gupit', 'haircut', 'salon'],
-      'barber_salon': ['barber', 'gupit', 'haircut', 'salon'],
-    };
-
-    final all = <String>{};
-    for (final key in keys) {
-      all.addAll(keywordMap[key.toLowerCase()] ?? const <String>[]);
-    }
-    return all.toList();
-  }
-
-  String _normalizeFilterKey(String value) {
-    return value.toLowerCase().trim().replaceAll('-', '_').replaceAll(' ', '_');
-  }
-
-  bool _containsKeyword(String text, String keyword) {
-    final cleanKeyword = keyword.toLowerCase().trim();
-    if (cleanKeyword.isEmpty) return false;
-
-    // Multi-word keywords should stay phrase-based, while single words use boundaries.
-    if (cleanKeyword.contains(' ')) {
-      return text.contains(cleanKeyword);
-    }
-
-    final pattern = RegExp(
-      '(^|[^a-z0-9])' + RegExp.escape(cleanKeyword) + r'([^a-z0-9]|$)',
-    );
-    return pattern.hasMatch(text);
-  }
-
-  void _onSubcategorySelected(Map<String, dynamic> subcategory) {
-    try {
-      setState(() {
-        _selectedSubLabel = subcategory['label'] as String?;
-        _selectedTag = subcategory['tag'] as String?;
-      });
-    } catch (e) {
-      debugPrint('❌ Subcategory select error: $e');
-      setState(() {
-        _selectedSubLabel = null;
-        _selectedTag = null;
-      });
-    }
-  }
-
-  bool _matchesSellingData(StallModel stall, List<String> filterKeys) {
-    final productText = stall.products.join(' ').toLowerCase();
-    final tagSet = stall.tags.map((t) => _normalizeFilterKey(t)).toSet();
-    final keySet = filterKeys.map((k) => _normalizeFilterKey(k)).toSet();
-    const strictSubcategoryKeywords = {
-      'rice_dealer': [
-        'rice',
-        'bigas',
-        'sinandomeng',
-        'dinorado',
-        'jasmine',
-        'malagkit'
-      ],
-      'dried_fish': ['dried fish', 'bulad', 'daing', 'tuyo'],
-      'carinderia': [
-        'ulam',
-        'adobo',
-        'sinigang',
-        'pinakbet',
-        'carinderia',
-        'lutong'
-      ],
-      'bakery': ['bread', 'tinapay', 'cake', 'pastry', 'bakery', 'pan de'],
-      'kakanin': ['kakanin', 'bibingka', 'suman', 'puto'],
-      'snack_stand': ['snack', 'merienda', 'street food'],
-      'ukay_ukay': ['ukay', 'secondhand', 'clothes'],
-      'tailor_shop': ['tailor', 'alter', 'repair'],
-      'electronics_repair': ['electronics', 'cellphone', 'repair'],
-      'barber_salon': ['barber', 'haircut', 'gupit', 'salon'],
-      'hardware': ['hardware', 'tools', 'martilyo', 'pako'],
-      'school_supplies': ['notebook', 'paper', 'ballpen', 'school'],
-      'home_supplies': ['household', 'cleaner', 'home'],
-      'agrivet': ['agrivet', 'feed', 'veterinary', 'fertilizer'],
-    };
-
-    if (tagSet.intersection(keySet).isNotEmpty) {
-      return true;
-    }
-
-    final strictKeys =
-        keySet.where((k) => strictSubcategoryKeywords.containsKey(k)).toList();
-    if (strictKeys.isNotEmpty) {
-      final strictMatched = strictKeys.any((key) {
-        final words = strictSubcategoryKeywords[key] ?? const <String>[];
-        return words.any((word) => _containsKeyword(productText, word));
-      });
-      if (strictMatched) {
-        return true;
-      }
-      if (keySet.length == 1) {
-        return false;
-      }
-    }
-
-    final keywords = _keywordsForFilterKeys(filterKeys);
-    return keywords.any((kw) => _containsKeyword(productText, kw));
-  }
-
-  List<StallModel> applyFilters(
-      List<StallModel> stalls, List<String> favoriteIds) {
-    try {
-      if (stalls.isEmpty) return [];
-
-      final favoriteSet = favoriteIds.toSet();
-      var result = List<StallModel>.from(stalls);
-
-      if (_searchQuery.isNotEmpty) {
-        final queryLower = _searchQuery.toLowerCase().trim();
-        result = result.where((s) {
-          try {
-            final nameMatch = s.name.toLowerCase().contains(queryLower);
-            final productMatch = s.products.any(
-              (p) => p.toLowerCase().contains(queryLower),
-            );
-            return nameMatch || productMatch;
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      }
-
-      if (_selectedType == 'favorites') {
-        result = result.where((s) {
-          try {
-            return favoriteSet.contains(s.stallId);
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      } else if (_selectedType != 'all') {
-        final typeData = _categoryMap[_selectedType];
-        if (typeData != null) {
-          final rawCats = typeData['categories'];
-          final baseCats = rawCats is List
-              ? rawCats
-                  .map((c) => (c ?? '').toString().toLowerCase().trim())
-                  .where((c) => c.isNotEmpty)
-                  .toList()
-              : <String>[];
-
-          var activeCats = List<String>.from(baseCats);
-          if (_selectedSubLabel != null) {
-            final subcategories = (typeData['subcategories'] is List)
-                ? (typeData['subcategories'] as List).whereType<Map>().toList()
-                : <Map>[];
-            final selectedSubcat = subcategories.where(
-              (sub) => sub['label'] == _selectedSubLabel,
-            );
-            if (selectedSubcat.isNotEmpty &&
-                selectedSubcat.first['categories'] is List) {
-              activeCats = (selectedSubcat.first['categories'] as List)
-                  .map((c) => (c ?? '').toString().toLowerCase().trim())
-                  .where((c) => c.isNotEmpty)
-                  .toList();
-            }
-          }
-
-          if (activeCats.isNotEmpty) {
-            result = result.where((s) {
-              try {
-                final singleCat = s.category.toLowerCase().trim();
-                final stallCats = s.categories
-                    .map((c) => c.toLowerCase().trim())
-                    .where((c) => c.isNotEmpty)
-                    .toList();
-
-                if (activeCats.contains(singleCat) ||
-                    stallCats.any((c) => activeCats.contains(c))) {
-                  return true;
-                }
-
-                return _matchesSellingData(s, activeCats);
-              } catch (_) {
-                return false;
-              }
-            }).toList();
-          }
-        }
-      }
-
-      if (_selectedTag != null && _selectedTag!.isNotEmpty) {
-        final selectedTag = _selectedTag!.toLowerCase().trim();
-        result = result.where((s) {
-          try {
-            final stallTags = s.tags
-                .map((t) => t.toLowerCase().trim())
-                .where((t) => t.isNotEmpty)
-                .toList();
-            final tagMatch = stallTags.contains(selectedTag);
-            return tagMatch || _matchesSellingData(s, <String>[selectedTag]);
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      }
-
-      if (filterOpenTime != null && filterCloseTime != null) {
-        result = result.where((s) {
-          try {
-            final stallOpen = parseTime(s.openTime);
-            final stallClose = parseTime(s.closeTime);
-            final toMinutes = (TimeOfDay t) => t.hour * 60 + t.minute;
-
-            final stallOpenMinutes = toMinutes(stallOpen);
-            final stallCloseMinutes = toMinutes(stallClose);
-            final selectedOpenMinutes = toMinutes(filterOpenTime!);
-            final selectedCloseMinutes = toMinutes(filterCloseTime!);
-
-            return stallOpenMinutes <= selectedOpenMinutes &&
-                stallCloseMinutes >= selectedCloseMinutes;
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      }
-
-      if (selectedDay != null) {
-        result = result.where((s) {
-          try {
-            final isOpen = stallOpenOnDay(s, selectedDay!);
-            return showOpenOnDay ? isOpen : !isOpen;
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      }
-
-      if (_filterOpenOnly) {
-        result = result.where((s) {
-          try {
-            return StallUtils.isStallOpenNow(s);
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      }
-
-      if (sortAlpha == 'az') {
-        result.sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      } else if (sortAlpha == 'za') {
-        result.sort(
-            (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
-      }
-
-      return result;
-    } catch (e) {
-      debugPrint('❌ Filter error: $e');
-      return List<StallModel>.from(stalls);
-    }
   }
 
   int getActiveFilterCount() {
     int count = 0;
     if (sortAlpha != null) count++;
-    if (filterOpenTime != null && filterCloseTime != null) count++;
+    if (filterOpenTime != null || filterCloseTime != null) count++;
     if (selectedDay != null) count++;
     if (_filterOpenOnly) count++;
     return count;
+  }
+
+  void resetUI() {
+    if (!mounted) return;
+    setState(() {
+      _searchController.clear();
+      _selectedCategory = 'All';
+      resetAllFilters();
+    });
   }
 
   void resetAllFilters() {
@@ -1619,271 +81,192 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     });
   }
 
-  void removeFilter(String filterType) {
+  void showFavoritesView() {
+    if (!mounted) return;
     setState(() {
-      switch (filterType) {
-        case 'alpha':
-          sortAlpha = null;
-          break;
-        case 'time':
-          filterOpenTime = null;
-          filterCloseTime = null;
-          break;
-        case 'day':
-          selectedDay = null;
-          break;
-      }
+      _searchController.clear();
+      _selectedCategory = 'Favorites';
+      resetAllFilters();
     });
   }
 
-  List<StallModel> _getRecentlyViewedStalls(List<StallModel> allStalls) {
-    return _recentlyViewedIds
-        .map((id) {
-          try {
-            return allStalls.firstWhere((stall) => stall.stallId == id);
-          } catch (e) {
-            return null;
-          }
-        })
-        .whereType<StallModel>()
-        .take(5)
-        .toList();
+  void _openStallDetails(StallModel stall) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StallDetailSheet(
+        stall: stall,
+        onClose: () => Navigator.pop(ctx),
+      ),
+    );
   }
 
-  void _openStallDetail(StallModel stall) {
-    _saveRecentlyViewed(stall.stallId);
-    _removeOverlay();
+  // Category matching helper
+  bool _matchesCategory(StallModel stall, String category) {
+    if (category == 'All') return true;
 
-    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
+    final stallCat = stall.category.toLowerCase();
+    final categories = stall.categories.map((c) => c.toLowerCase()).toList();
 
-    if (isDesktop) {
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'Dismiss Stall Detail',
-        barrierColor: Colors.black38,
-        transitionDuration: const Duration(milliseconds: 280),
-        pageBuilder: (context, anim1, anim2) {
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 440,
-                height: double.infinity,
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 16,
-                      offset: Offset(-4, 0),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
-                  child: StallDetailSheet(
-                    stall: stall,
-                    onClose: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ),
-              ),
-            ),
-          );
+    switch (category) {
+      case 'Fresh Produce':
+        const targets = [
+          'fresh',
+          'produce',
+          'vegetables',
+          'gulay',
+          'fruits',
+          'prutas',
+        ];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Meat & Poultry':
+        const targets = [
+          'meat',
+          'pork',
+          'beef',
+          'karne',
+          'poultry',
+          'chicken',
+          'manok',
+        ];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Seafood':
+        const targets = ['seafood', 'fish', 'isda', 'marine'];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Dry Goods':
+        const targets = [
+          'dry',
+          'dry goods',
+          'rice',
+          'grains',
+          'bigas',
+          'spices',
+          'condiments',
+        ];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      case 'Agrivet / Feeds':
+        const targets = ['agrivet', 'feeds', 'poultry supply', 'veterinary'];
+        return targets.any((t) =>
+            stallCat.contains(t) || categories.any((c) => c.contains(t)));
+      default:
+        return stallCat.contains(category.toLowerCase()) ||
+            categories.any((c) => c.contains(category.toLowerCase()));
+    }
+  }
+
+  // Get visual metadata for a stall category
+  ({IconData icon, Color color}) _getCategoryVisuals(String category) {
+    final cat = category.toLowerCase();
+
+    if (cat.contains('meat') ||
+        cat.contains('pork') ||
+        cat.contains('beef') ||
+        cat.contains('karne')) {
+      return (icon: Icons.set_meal_rounded, color: const Color(0xFFEF4444));
+    }
+    if (cat.contains('poultry') ||
+        cat.contains('chicken') ||
+        cat.contains('manok') ||
+        cat.contains('egg')) {
+      return (icon: Icons.egg_outlined, color: const Color(0xFFF97316));
+    }
+    if (cat.contains('seafood') ||
+        cat.contains('fish') ||
+        cat.contains('isda')) {
+      return (icon: Icons.water_rounded, color: const Color(0xFF3B82F6));
+    }
+    if (cat.contains('rice') ||
+        cat.contains('bigas') ||
+        cat.contains('grain') ||
+        cat.contains('dry')) {
+      return (icon: Icons.grain_rounded, color: const Color(0xFFF59E0B));
+    }
+    if (cat.contains('agrivet') ||
+        cat.contains('feed') ||
+        cat.contains('pet')) {
+      return (icon: Icons.pets_rounded, color: const Color(0xFF8B5CF6));
+    }
+    if (cat.contains('fruit') ||
+        cat.contains('vegetable') ||
+        cat.contains('gulay') ||
+        cat.contains('fresh')) {
+      return (icon: Icons.eco_rounded, color: const Color(0xFF10B981));
+    }
+
+    return (icon: Icons.storefront_rounded, color: const Color(0xFF1B5E20));
+  }
+
+  TimeOfDay? _parseTimeOfDay(String timeStr) {
+    try {
+      final clean = timeStr.trim().toUpperCase();
+      final isPM = clean.contains('PM');
+      final isAM = clean.contains('AM');
+      final numPart = clean.replaceAll(RegExp(r'[^\d:]'), '');
+      final parts = numPart.split(':');
+      if (parts.isEmpty) return null;
+
+      var hour = int.parse(parts[0]);
+      final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
+
+      if (isPM && hour < 12) hour += 12;
+      if (isAM && hour == 12) hour = 0;
+
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _showSortFilterModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _FilterBottomSheet(
+        currentSortAlpha: sortAlpha,
+        currentFilterOpenTime: filterOpenTime,
+        currentFilterCloseTime: filterCloseTime,
+        currentSelectedDay: selectedDay,
+        currentShowOpenOnDay: showOpenOnDay,
+        currentFilterOpenOnly: _filterOpenOnly,
+        onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen, newOpenOnly) {
+          setState(() {
+            sortAlpha = newSortAlpha;
+            filterOpenTime = newOpenTime;
+            filterCloseTime = newCloseTime;
+            selectedDay = newDay;
+            showOpenOnDay = newShowOpen;
+            _filterOpenOnly = newOpenOnly;
+          });
         },
-        transitionBuilder: (context, anim1, anim2, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: anim1,
-              curve: Curves.easeOutCubic,
-            )),
-            child: child,
-          );
-        },
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => StallDetailSheet(
-          stall: stall,
-          onClose: () {
-            Navigator.of(context).pop();
-          },
-        ),
-      );
-    }
-  }
-
-  void _showFilterBottomSheet() {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
-
-    if (isDesktop) {
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'Dismiss Filter',
-        barrierColor: Colors.black38,
-        transitionDuration: const Duration(milliseconds: 280),
-        pageBuilder: (context, anim1, anim2) {
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 380,
-                height: double.infinity,
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 16,
-                      offset: Offset(-4, 0),
-                    ),
-                  ],
-                ),
-                child: _FilterBottomSheet(
-                  currentSortAlpha: sortAlpha,
-                  currentFilterOpenTime: filterOpenTime,
-                  currentFilterCloseTime: filterCloseTime,
-                  currentSelectedDay: selectedDay,
-                  currentShowOpenOnDay: showOpenOnDay,
-                  currentFilterOpenOnly: _filterOpenOnly,
-                  onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay,
-                      newShowOpen, newOpenOnly) {
-                    setState(() {
-                      sortAlpha = newSortAlpha;
-                      filterOpenTime = newOpenTime;
-                      filterCloseTime = newCloseTime;
-                      selectedDay = newDay;
-                      showOpenOnDay = newShowOpen;
-                      _filterOpenOnly = newOpenOnly;
-                    });
-                  },
-                  onReset: resetAllFilters,
-                  parseTime: parseTime,
-                ),
-              ),
-            ),
-          );
-        },
-        transitionBuilder: (context, anim1, anim2, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: anim1,
-              curve: Curves.easeOutCubic,
-            )),
-            child: child,
-          );
-        },
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        useSafeArea: false,
-        builder: (context) => _FilterBottomSheet(
-          currentSortAlpha: sortAlpha,
-          currentFilterOpenTime: filterOpenTime,
-          currentFilterCloseTime: filterCloseTime,
-          currentSelectedDay: selectedDay,
-          currentShowOpenOnDay: showOpenOnDay,
-          currentFilterOpenOnly: _filterOpenOnly,
-          onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen,
-              newOpenOnly) {
-            setState(() {
-              sortAlpha = newSortAlpha;
-              filterOpenTime = newOpenTime;
-              filterCloseTime = newCloseTime;
-              selectedDay = newDay;
-              showOpenOnDay = newShowOpen;
-              _filterOpenOnly = newOpenOnly;
-            });
-          },
-          onReset: resetAllFilters,
-          parseTime: parseTime,
-        ),
-      );
-    }
-  }
-
-  String _getGroupDisplayName(String groupKey) {
-    // For filter chip group labels
-    final typeData = _categoryMap[groupKey];
-    if (typeData != null && typeData['label'] != null) {
-      return typeData['label'] as String;
-    }
-    return groupKey; // Fallback
-  }
-
-  String _getDisplayNameForCount() {
-    // Returns the display name for stall count text
-    if (_searchQuery.isNotEmpty) {
-      return 'Search Results';
-    }
-
-    if (_selectedSubLabel != null) {
-      // For dry_goods, cooked, retail, general, and services with tag filtering, show "Tag - Type" format
-      if (_selectedTag != null) {
-        if (_selectedType == 'dry_goods') {
-          return '$_selectedSubLabel - Dry Goods';
-        } else if (_selectedType == 'cooked') {
-          return '$_selectedSubLabel - Cooked Food';
-        } else if (_selectedType == 'retail') {
-          return '$_selectedSubLabel - Retail';
-        } else if (_selectedType == 'general') {
-          return '$_selectedSubLabel - General Merchandise';
-        } else if (_selectedType == 'services') {
-          return '$_selectedSubLabel - Services';
-        }
-      }
-      return _selectedSubLabel!;
-    }
-
-    return _getGroupDisplayName(_selectedType);
-  }
-
-  String formatTimeOfDay(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '$hour:$minute $period';
+        onReset: resetAllFilters,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final stallsAsync = ref.watch(allStallsProvider);
-    final favoriteState = ref.watch(favoriteProvider);
-    final activeFilterCount = getActiveFilterCount();
+    final favState = ref.watch(favoriteProvider);
+    final favNotifier = ref.read(favoriteProvider.notifier);
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: const Color(0xFFF8FAF8),
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: const Color(0xFF1B5E20),
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-        shape: const Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: 1.0,
-          ),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
         ),
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -1896,7 +279,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: Colors.white,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -1905,925 +288,382 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.inkMuted,
+                  color: const Color(0xFFE8F5E9),
                 ),
               ),
             ],
           ),
         ),
       ),
-      body: Builder(
-        builder: (context) {
-          try {
-            return stallsAsync.when(
-              data: (allStalls) {
-                _allStalls = allStalls;
-                final filteredStalls =
-                    applyFilters(allStalls, favoriteState.favoriteIds);
-                final recentlyViewed = _getRecentlyViewedStalls(allStalls);
-
-                return SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    children: [
-                        // Search bar & floating suggestions dropdown target
-                        Container(
-                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          child: CompositedTransformTarget(
-                            link: _layerLink,
-                            child: Container(
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                  width: 1.0,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const SizedBox(width: 12),
-                                  Icon(
-                                    Icons.search_rounded,
-                                    color: _searchQuery.isNotEmpty
-                                        ? AppColors.primary
-                                        : AppColors.inkSubtle,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _searchController,
-                                      focusNode: _searchFocusNode,
-                                      cursorColor: AppColors.primary,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 13,
-                                        color: AppColors.ink,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                      decoration: InputDecoration(
-                                        hintText:
-                                            'Search stalls, products...',
-                                        hintStyle: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          color: AppColors.inkSubtle,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                        border: InputBorder.none,
-                                        enabledBorder: InputBorder.none,
-                                        focusedBorder: InputBorder.none,
-                                        errorBorder: InputBorder.none,
-                                        disabledBorder: InputBorder.none,
-                                        focusedErrorBorder: InputBorder.none,
-                                        filled: false,
-                                        contentPadding: EdgeInsets.zero,
-                                        isDense: true,
-                                      ),
-                                      onChanged: _onSearchChangedLive,
-                                      textInputAction: TextInputAction.search,
-                                      onSubmitted: (_) {
-                                        if (_searchResults.isNotEmpty) {
-                                          _onStallSelectedFromSearch(
-                                              _searchResults.first);
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                  if (_searchQuery.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: _clearSearch,
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(10),
-                                        child: Icon(
-                                          Icons.close_rounded,
-                                          color: AppColors.inkSubtle,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    const SizedBox(width: 12),
-                                ],
-                              ),
-                            ),
-                          ),
+      body: Column(
+        children: [
+          // 2. Normal Search Bar in Body
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              onChanged: (val) => setState(() {}),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF1F2937),
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search stalls, products...',
+                hintStyle: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey.shade400,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: Color(0xFF1B5E20),
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          size: 18,
+                          color: Color(0xFF6B7280),
                         ),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF1B5E20),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
 
-                        // 2. Floating Suggestions Dropdown Overlay
-                        if (_showDropdown)
-                          Positioned(
-                            top: 50,
-                            left: 0,
-                            right: 0,
-                            child: Material(
-                              elevation: 0,
-                              borderRadius: BorderRadius.circular(12),
-                              color: Colors.transparent,
-                              child: Container(
-                                constraints:
-                                    const BoxConstraints(maxHeight: 260),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: _searchResults.isEmpty
-                                            ? Padding(
-                                                padding:
-                                                    const EdgeInsets.all(16),
-                                                child: Text(
-                                                  'No stalls found for "$_searchQuery"',
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 13,
-                                                    color: AppColors.inkMuted,
-                                                  ),
-                                                ),
-                                              )
-                                            : ListView.builder(
-                                                shrinkWrap: true,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 4),
-                                                itemCount:
-                                                    _searchResults.length,
-                                                itemBuilder: (_, i) {
-                                                  final stall =
-                                                      _searchResults[i];
-                                                  final isOpen = StallUtils
-                                                      .isStallOpenNow(stall);
-                                                  final matchedProduct =
-                                                      _getMatchedProduct(stall);
+          // 3. Category Filter Chips
+          SizedBox(
+            height: 38,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: _categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final isSelected = category == _selectedCategory;
 
-                                                  return InkWell(
-                                                    onTap: () =>
-                                                        _onStallSelectedFromSearch(
-                                                            stall),
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
-                                                        horizontal: 16,
-                                                        vertical: 10,
-                                                      ),
-                                                      child: Row(
-                                                        children: [
-                                                          Container(
-                                                            width: 40,
-                                                            height: 40,
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: AppColors
-                                                                  .primaryLight,
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          8),
-                                                            ),
-                                                            child: stall
-                                                                    .photoUrls
-                                                                    .isNotEmpty
-                                                                ? ClipRRect(
-                                                                    borderRadius:
-                                                                        BorderRadius
-                                                                            .circular(
-                                                                                8),
-                                                                    child:
-                                                                        CachedNetworkImage(
-                                                                      imageUrl:
-                                                                          stall
-                                                                              .photoUrls
-                                                                              .first,
-                                                                      fit:
-                                                                          BoxFit
-                                                                              .cover,
-                                                                      errorWidget:
-                                                                          (_, __,
-                                                                                  ___) =>
-                                                                              const Icon(
-                                                                        Icons
-                                                                            .store_rounded,
-                                                                        color:
-                                                                            AppColors
-                                                                                .primary,
-                                                                        size:
-                                                                            20,
-                                                                      ),
-                                                                    ),
-                                                                  )
-                                                                : const Icon(
-                                                                    Icons
-                                                                        .store_rounded,
-                                                                    color:
-                                                                        AppColors
-                                                                            .primary,
-                                                                    size: 20,
-                                                                  ),
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 12),
-                                                          Expanded(
-                                                            child: Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                _buildHighlightedText(
-                                                                    stall
-                                                                        .name,
-                                                                    _searchQuery),
-                                                                const SizedBox(
-                                                                    height: 2),
-                                                                Row(
-                                                                  children: [
-                                                                    Flexible(
-                                                                      child:
-                                                                          Text(
-                                                                        StallUtils
-                                                                            .getCategoryLabel(stall.category),
-                                                                        style:
-                                                                            GoogleFonts.poppins(
-                                                                          fontSize:
-                                                                              11,
-                                                                          color: AppColors
-                                                                              .inkMuted,
-                                                                        ),
-                                                                        overflow:
-                                                                            TextOverflow.ellipsis,
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                        width:
-                                                                            6),
-                                                                    Container(
-                                                                      width: 3,
-                                                                      height: 3,
-                                                                      decoration:
-                                                                          const BoxDecoration(
-                                                                        color: AppColors
-                                                                            .inkSubtle,
-                                                                        shape:
-                                                                            BoxShape.circle,
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                        width:
-                                                                            6),
-                                                                    Text(
-                                                                      isOpen
-                                                                          ? 'Open'
-                                                                          : 'Closed',
-                                                                      style:
-                                                                          GoogleFonts.poppins(
-                                                                        fontSize:
-                                                                            11,
-                                                                        color: isOpen
-                                                                            ? AppColors
-                                                                                .primary
-                                                                            : AppColors
-                                                                                .error,
-                                                                        fontWeight:
-                                                                            FontWeight.w500,
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                if (matchedProduct !=
-                                                                    null)
-                                                                  Text(
-                                                                    'Sells: $matchedProduct',
-                                                                    style:
-                                                                        GoogleFonts.poppins(
-                                                                      fontSize:
-                                                                          10,
-                                                                      color: AppColors
-                                                                          .primary,
-                                                                      fontWeight:
-                                                                          FontWeight.w500,
-                                                                    ),
-                                                                    maxLines: 1,
-                                                                    overflow:
-                                                                        TextOverflow.ellipsis,
-                                                                  ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                          if (stall.latitude !=
-                                                                  0.0 ||
-                                                              stall.longitude !=
-                                                                  0.0)
-                                                            const Icon(
-                                                              Icons
-                                                                  .location_on_rounded,
-                                                              size: 16,
-                                                              color: AppColors
-                                                                  .inkSubtle,
-                                                            ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                        Expanded(
-                          child: CustomScrollView(
-                            controller: _scrollController,
-                            slivers: [
-                              // Category chips
-                              SliverToBoxAdapter(
-                                child: _CategoryScrollTrack(
-                                  controller: _categoryScrollController,
-                                  child: ListView.builder(
-                                    controller: _categoryScrollController,
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16),
-                                    itemCount: filterChipKeys.length,
-                                    itemBuilder: (context, index) {
-                                      final chipKey = filterChipKeys[index];
-                                      final typeData = _categoryMap[chipKey];
-                                      final isFavoritesChip =
-                                          chipKey == 'favorites';
-                                      final chipLabel = isFavoritesChip
-                                          ? 'Favorites'
-                                          : (typeData?['label'] ?? chipKey)
-                                              as String;
-                                      final chipIcon = isFavoritesChip
-                                          ? Icons.favorite_rounded
-                                          : (typeData?['icon'] ??
-                                              Icons.store_rounded) as IconData;
-                                      final isSelected =
-                                          _selectedType == chipKey;
-                                      final hasSubcategories =
-                                          !isFavoritesChip &&
-                                              ((typeData?['hasSubcategories'] ??
-                                                  false) as bool);
-                                      final isSubcategoryOpen = isSelected &&
-                                          hasSubcategories &&
-                                          _subcategoryRowVisible;
-
-                                      final selectedBgColor = isFavoritesChip
-                                          ? AppColors.error
-                                          : AppColors.primary;
-                                      final unselectedTextColor =
-                                          isFavoritesChip
-                                              ? AppColors.error
-                                              : AppColors.ink;
-                                      final unselectedIconColor =
-                                          isFavoritesChip
-                                              ? AppColors.error
-                                              : AppColors.inkMuted;
-                                      final borderColor = isSelected
-                                          ? (isFavoritesChip
-                                              ? AppColors.error
-                                              : AppColors.primary)
-                                          : (isFavoritesChip
-                                              ? AppColors.errorBorder
-                                              : AppColors.border);
-
-                                      return Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 8),
-                                        child: InkWell(
-                                          onTap: () {
-                                            setState(() {
-                                              _selectedType = chipKey;
-                                              _selectedSubLabel = null;
-                                              _selectedTag = null;
-                                              _subcategoryRowVisible =
-                                                  hasSubcategories;
-                                            });
-                                          },
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isSelected
-                                                  ? selectedBgColor
-                                                  : AppColors.surface,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: borderColor,
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  chipIcon,
-                                                  size: 14,
-                                                  color: isSelected
-                                                      ? Colors.white
-                                                      : unselectedIconColor,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  chipLabel,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: isSelected
-                                                      ? Colors.white
-                                                      : unselectedTextColor,
-                                                  ),
-                                                ),
-                                                if (hasSubcategories) ...[
-                                                  const SizedBox(width: 4),
-                                                  AnimatedRotation(
-                                                    turns: isSubcategoryOpen
-                                                        ? 0.5
-                                                        : 0,
-                                                    duration: const Duration(
-                                                        milliseconds: 250),
-                                                    child: Icon(
-                                                      Icons.keyboard_arrow_down,
-                                                      size: 14,
-                                                      color: isSelected
-                                                          ? Colors.white
-                                                          : unselectedIconColor,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedCategory = category),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected ? const Color(0xFF1B5E20) : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF1B5E20)
+                            : const Color(0xFFE5E7EB),
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF1B5E20)
+                                    .withValues(alpha: 0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
                               ),
-
-                              // Subcategory chips row (Level 2)
-                              SliverToBoxAdapter(
-                                child: AnimatedSize(
-                                  duration: const Duration(milliseconds: 250),
-                                  curve: Curves.easeInOut,
-                                  child: () {
-                                    final typeData =
-                                        _categoryMap[_selectedType];
-                                    final hasSubcategories =
-                                        (typeData?['hasSubcategories'] ?? false)
-                                            as bool;
-                                    final subcategories =
-                                        (typeData?['subcategories']
-                                                as List<Map>?) ??
-                                            [];
-
-                                    return hasSubcategories &&
-                                            _selectedType != 'all' &&
-                                            _subcategoryRowVisible
-                                        ? Container(
-                                            decoration: const BoxDecoration(
-                                              color: AppColors.canvas,
-                                              border: Border(
-                                                bottom: BorderSide(
-                                                  color: AppColors.border,
-                                                  width: 1,
-                                                ),
-                                              ),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 8,
-                                            ),
-                                            child: SizedBox(
-                                              height: 36,
-                                              child: ListView.builder(
-                                                scrollDirection:
-                                                    Axis.horizontal,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                ),
-                                                itemCount: subcategories.length,
-                                                itemBuilder: (context, index) {
-                                                  final subcat =
-                                                      subcategories[index];
-                                                  final subcatLabel =
-                                                      subcat['label'] as String;
-                                                  final isSelected =
-                                                      _selectedSubLabel ==
-                                                              subcatLabel ||
-                                                          (_selectedSubLabel ==
-                                                                  null &&
-                                                              index == 0);
-
-                                                  return Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            right: 8),
-                                                    child: InkWell(
-                                                      onTap: () {
-                                                        if (index == 0) {
-                                                          setState(() {
-                                                            _selectedSubLabel =
-                                                                null;
-                                                            _selectedTag = null;
-                                                          });
-                                                        } else {
-                                                          _onSubcategorySelected(
-                                                            Map<String,
-                                                                    dynamic>.from(
-                                                                subcat),
-                                                          );
-                                                        }
-                                                      },
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              18),
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                          horizontal: 12,
-                                                          vertical: 6,
-                                                        ),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: isSelected
-                                                              ? AppColors.primary
-                                                              : AppColors.surface,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(18),
-                                                          border: Border.all(
-                                                            color: isSelected
-                                                                ? AppColors.primary
-                                                                : AppColors.border,
-                                                            width: 1,
-                                                          ),
-                                                        ),
-                                                        child: Text(
-                                                          subcatLabel,
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                            fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            color: isSelected
-                                                                ? Colors.white
-                                                                : AppColors.ink,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          )
-                                        : const SizedBox.shrink();
-                                  }(),
-                                ),
-                              ),
-
-                              // Active filter chips
-                              if (activeFilterCount > 0)
-                                SliverToBoxAdapter(
-                                  child: Container(
-                                    height: 40,
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    child: ListView(
-                                      scrollDirection: Axis.horizontal,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      children: [
-                                        if (sortAlpha != null)
-                                          _buildActiveFilterChip(
-                                            sortAlpha == 'az'
-                                                ? 'A → Z'
-                                                : 'Z → A',
-                                            () => removeFilter('alpha'),
-                                          ),
-                                        if (filterOpenTime != null &&
-                                            filterCloseTime != null)
-                                          _buildActiveFilterChip(
-                                            '${formatTimeOfDay(filterOpenTime!)} - ${formatTimeOfDay(filterCloseTime!)}',
-                                            () => removeFilter('time'),
-                                          ),
-                                        if (selectedDay != null)
-                                          _buildActiveFilterChip(
-                                            '${showOpenOnDay ? "Open" : "Closed"} on $selectedDay',
-                                            () => removeFilter('day'),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                               // Recently Viewed
-                              if (recentlyViewed.isNotEmpty &&
-                                  _searchQuery.isEmpty) ...[
-                                SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        16, 16, 16, 12),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.history_rounded,
-                                              size: 16,
-                                              color: AppColors.inkSubtle,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'Recently Viewed',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.ink,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        TextButton(
-                                          onPressed: _clearRecentlyViewed,
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: const Size(0, 0),
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
-                                          ),
-                                          child: Text(
-                                            'Clear',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              color: AppColors.inkSubtle,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                SliverToBoxAdapter(
-                                  child: SizedBox(
-                                    height: 150,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      itemCount: recentlyViewed.length,
-                                      itemBuilder: (context, index) {
-                                        return _buildRecentStallCard(
-                                            recentlyViewed[index]);
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                const SliverToBoxAdapter(
-                                    child: SizedBox(height: 16)),
-                              ],
-
-                              // Section header
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${_getDisplayNameForCount()} Stalls (${filteredStalls.length})',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.ink,
-                                        ),
-                                      ),
-                                      InkWell(
-                                        onTap: _showFilterBottomSheet,
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                activeFilterCount > 0
-                                                    ? Icons.filter_list_rounded
-                                                    : Icons
-                                                        .filter_list_outlined,
-                                                size: 18,
-                                                color: activeFilterCount > 0
-                                                    ? AppColors.primary
-                                                    : AppColors.inkMuted,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                activeFilterCount > 0
-                                                    ? 'Filter ($activeFilterCount)'
-                                                    : 'Filter',
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: activeFilterCount > 0
-                                                      ? AppColors.primary
-                                                      : AppColors.inkMuted,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              // Stall list or empty state
-                              if (filteredStalls.isEmpty)
-                                SliverFillRemaining(
-                                  child: _buildEmptyState(),
-                                )
-                              else if (MediaQuery.sizeOf(context).width >= 600)
-                                SliverPadding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                                  sliver: SliverGrid(
-                                    gridDelegate:
-                                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 380,
-                                      mainAxisExtent: 142,
-                                      mainAxisSpacing: 14,
-                                      crossAxisSpacing: 14,
-                                    ),
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) {
-                                        try {
-                                          final stall = filteredStalls[index];
-                                          return _buildStallCard(stall);
-                                        } catch (_) {
-                                          return const SizedBox.shrink();
-                                        }
-                                      },
-                                      childCount: filteredStalls.length,
-                                    ),
-                                  ),
-                                )
-                              else
-                                SliverPadding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                                  sliver: SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) {
-                                        try {
-                                          final stall = filteredStalls[index];
-                                          return Padding(
-                                            padding: const EdgeInsets.only(bottom: 12),
-                                            child: _buildStallCard(stall),
-                                          );
-                                        } catch (_) {
-                                          return const SizedBox.shrink();
-                                        }
-                                      },
-                                      childCount: filteredStalls.length,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                            ]
+                          : [],
+                    ),
+                    child: Row(
+                      children: [
+                        if (category == 'Favorites') ...[
+                          Icon(
+                            Icons.favorite_rounded,
+                            size: 14,
+                            color: isSelected ? Colors.white : Colors.redAccent,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          category,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF374151),
                           ),
                         ),
                       ],
                     ),
-                  );
-                },
-                loading: () => const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                ),
-              ),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        size: 64,
-                        color: AppColors.error,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error Loading Stalls',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        error.toString(),
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: AppColors.inkMuted,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
                   ),
-                ),
-              ),
-            );
-          } catch (e) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    size: 48,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Something went wrong',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _selectedType = 'all';
-                        _selectedSubLabel = null;
-                        _selectedTag = null;
-                        _subcategoryRowVisible = false;
-                      });
-                    },
-                    child: Text(
-                      'Reset filters',
-                      style: GoogleFonts.poppins(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildActiveFilterChip(String label, VoidCallback onRemove) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        border: Border.all(color: AppColors.primary),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: AppColors.primary,
+                );
+              },
             ),
           ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: onRemove,
-            child: const Icon(
-              Icons.close_rounded,
-              size: 12,
-              color: AppColors.primary,
+
+          const SizedBox(height: 12),
+
+          // 4. Stalls List Section Header & Filter Button
+          stallsAsync.when(
+            data: (allStalls) {
+              // Filter logic
+              var filtered = allStalls.where((stall) {
+                // Search query matching
+                final query = _searchController.text.trim().toLowerCase();
+                if (query.isNotEmpty) {
+                  final matchesName = stall.name.toLowerCase().contains(query);
+                  final matchesCat =
+                      stall.category.toLowerCase().contains(query);
+                  final matchesProducts = stall.products
+                      .any((p) => p.toLowerCase().contains(query));
+                  final matchesAddress =
+                      stall.address.toLowerCase().contains(query);
+
+                  if (!matchesName &&
+                      !matchesCat &&
+                      !matchesProducts &&
+                      !matchesAddress) {
+                    return false;
+                  }
+                }
+
+                // Category matching
+                if (_selectedCategory == 'Favorites') {
+                  if (!favState.isFavorite(stall.stallId)) return false;
+                } else if (!_matchesCategory(stall, _selectedCategory)) {
+                  return false;
+                }
+
+                // Open only quick filter
+                if (_filterOpenOnly) {
+                  if (!StallUtils.isStallOpenNow(stall)) return false;
+                }
+
+                // Time range filter
+                if (filterOpenTime != null && filterCloseTime != null) {
+                  if (stall.openTime.isEmpty || stall.closeTime.isEmpty) return false;
+                  final stallOpen = _parseTimeOfDay(stall.openTime);
+                  final stallClose = _parseTimeOfDay(stall.closeTime);
+                  if (stallOpen == null || stallClose == null) return false;
+
+                  final stallOpenMins = stallOpen.hour * 60 + stallOpen.minute;
+                  final stallCloseMins = stallClose.hour * 60 + stallClose.minute;
+                  final filterOpenMins =
+                      filterOpenTime!.hour * 60 + filterOpenTime!.minute;
+                  final filterCloseMins =
+                      filterCloseTime!.hour * 60 + filterCloseTime!.minute;
+
+                  if (stallOpenMins > filterOpenMins || stallCloseMins < filterCloseMins) {
+                    return false;
+                  }
+                }
+
+                // Day + Status filter
+                if (selectedDay != null) {
+                  final isOpenOnDay = stall.daysOpen.any((day) {
+                    final d = day.trim().toLowerCase();
+                    final target = selectedDay!.toLowerCase();
+                    return d == target ||
+                        d.startsWith(target.substring(0, 3)) ||
+                        d == 'daily' ||
+                        d == 'everyday';
+                  });
+
+                  if (showOpenOnDay) {
+                    if (!isOpenOnDay) return false;
+                  } else {
+                    if (isOpenOnDay) return false;
+                  }
+                }
+
+                return true;
+              }).toList();
+
+              // Sort Alphabetically
+              if (sortAlpha == 'az') {
+                filtered.sort((a, b) =>
+                    a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+              } else if (sortAlpha == 'za') {
+                filtered.sort((a, b) =>
+                    b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+              }
+
+              final activeFilters = getActiveFilterCount();
+
+              return Expanded(
+                child: Column(
+                  children: [
+                    // Section Title & Filter Trigger
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'All Stalls (${filtered.length})',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1F2937),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: _showSortFilterModal,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.tune_rounded,
+                                    size: 16,
+                                    color: activeFilters > 0
+                                        ? const Color(0xFF1B5E20)
+                                        : const Color(0xFF4B5563),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    activeFilters > 0
+                                        ? 'Filter ($activeFilters)'
+                                        : 'Filter',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: activeFilters > 0
+                                          ? const Color(0xFF1B5E20)
+                                          : const Color(0xFF4B5563),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Stalls List
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32.0),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 64,
+                                      height: 64,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFF3F4F6),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.storefront_outlined,
+                                        size: 32,
+                                        color: Color(0xFF9CA3AF),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No Stalls Found',
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF374151),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Try adjusting your search query or clearing active filters.',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: const Color(0xFF6B7280),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 8,
+                              ),
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final stall = filtered[index];
+                                final isFav =
+                                    favState.isFavorite(stall.stallId);
+                                final isOpen =
+                                    StallUtils.isStallOpenNow(stall);
+                                final visuals =
+                                    _getCategoryVisuals(stall.category);
+
+                                return _buildStallCard(
+                                  stall: stall,
+                                  isFavorite: isFav,
+                                  isOpen: isOpen,
+                                  categoryIcon: visuals.icon,
+                                  categoryColor: visuals.color,
+                                  onToggleFavorite: () =>
+                                      favNotifier.toggleFavorite(stall.stallId),
+                                  onTap: () => _openStallDetails(stall),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              );
+            },
+            loading: () => const Expanded(
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF1B5E20),
+                ),
+              ),
+            ),
+            error: (err, _) => Expanded(
+              child: Center(
+                child: Text(
+                  'Failed to load stalls. Please check your connection.',
+                  style: GoogleFonts.poppins(color: AppColors.error),
+                ),
+              ),
             ),
           ),
         ],
@@ -2831,260 +671,144 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     );
   }
 
-  Widget _buildRecentStallCard(StallModel stall) {
-    return GestureDetector(
-      onTap: () => _openStallDetail(stall),
-      child: Container(
-        width: 110,
-        margin: const EdgeInsets.only(right: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.border,
-            width: 1.0,
-          ),
-        ),
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 64,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceDim,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: stall.photoUrls.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: stall.photoUrls.first,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => const Center(
-                          child: Icon(
-                            Icons.storefront_outlined,
-                            size: 28,
-                            color: AppColors.inkSubtle,
-                          ),
-                        ),
-                      ),
-                    )
-                  : const Center(
-                      child: Icon(
-                        Icons.storefront_outlined,
-                        size: 28,
-                        color: AppColors.inkSubtle,
-                      ),
-                    ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              stall.name,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.ink,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 6,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                StallUtils.getCategoryLabel(stall.category),
-                style: GoogleFonts.poppins(
-                  fontSize: 9,
-                  color: AppColors.primary,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStallCard(StallModel stall) {
-    try {
-      final name = stall.name.trim().isNotEmpty ? stall.name : 'Unknown Stall';
-      final categoryValue = stall.category.trim();
-      final category = categoryValue.isNotEmpty
-          ? StallUtils.getCategoryLabel(categoryValue)
-          : 'Uncategorized';
-      final photoUrls = stall.photoUrls;
-      final address = stall.address.trim().isNotEmpty
-          ? stall.address
-          : 'Location unavailable';
-      final hours = '${stall.openTime} - ${stall.closeTime}';
-      final collapsedMetadata = '$address · $hours';
-
-      return GestureDetector(
-        onTap: () => _openStallDetail(stall),
+  Widget _buildStallCard({
+    required StallModel stall,
+    required bool isFavorite,
+    required bool isOpen,
+    required IconData categoryIcon,
+    required Color categoryColor,
+    required VoidCallback onToggleFavorite,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.border,
-              width: 1.0,
-            ),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  color: AppColors.surfaceDim,
-                  child: photoUrls.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: photoUrls.first,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => const Icon(
-                            Icons.storefront_outlined,
-                            size: 32,
-                            color: AppColors.inkSubtle,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.storefront_outlined,
-                          size: 32,
-                          color: AppColors.inkSubtle,
-                        ),
+              // Category-Themed Avatar
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: categoryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  categoryIcon,
+                  color: categoryColor,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
+
+              // Stall Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.ink,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Consumer(
-                          builder: (context, ref, child) {
-                            final favState = ref.watch(favoriteProvider);
-                            final isFav = favState.isFavorite(stall.stallId);
-
-                            return SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: Center(
-                                child: InkWell(
-                                  onTap: () async {
-                                    await ref
-                                        .read(favoriteProvider.notifier)
-                                        .toggleFavorite(stall.stallId);
-                                  },
-                                  borderRadius: BorderRadius.circular(24),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 250),
-                                      transitionBuilder: (child, animation) {
-                                        return ScaleTransition(
-                                          scale: Tween<double>(
-                                            begin: 0.7,
-                                            end: 1.0,
-                                          ).animate(
-                                            CurvedAnimation(
-                                              parent: animation,
-                                              curve: Curves.elasticOut,
-                                            ),
-                                          ),
-                                          child: child,
-                                        );
-                                      },
-                                      child: Icon(
-                                        isFav
-                                            ? Icons.favorite_rounded
-                                            : Icons.favorite_border_rounded,
-                                        key: ValueKey(isFav),
-                                        color: isFav
-                                            ? AppColors.error
-                                            : AppColors.inkSubtle,
-                                        size: 22,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                    Text(
+                      stall.name,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1F2937),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
+                        // Category Tag
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(4),
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            category,
+                            stall.category.isNotEmpty
+                                ? stall.category
+                                : 'General',
                             style: GoogleFonts.poppins(
-                              fontSize: 10,
+                              fontSize: 11,
+                              color: const Color(0xFF4B5563),
                               fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        StallUtils.buildStatusBadge(stall),
+                        const SizedBox(width: 6),
+
+                        // Status Pill (Open Now vs Closed)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isOpen
+                                ? const Color(0xFFDCFCE7)
+                                : const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isOpen
+                                      ? const Color(0xFF16A34A)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isOpen ? 'Open Now' : 'Closed',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isOpen
+                                      ? const Color(0xFF15803D)
+                                      : const Color(0xFFB91C1C),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      collapsedMetadata,
+                      stall.address.isNotEmpty
+                          ? stall.address
+                          : (stall.section != null
+                              ? 'Section ${stall.section}, Ligao Public Market'
+                              : 'Ligao City Public Market'),
                       style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: AppColors.inkMuted,
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -3092,74 +816,48 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                   ],
                 ),
               ),
+
+              // Trailing Actions (Favorite & Waypoint Navigation)
+              Column(
+                children: [
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      isFavorite
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color:
+                          isFavorite ? Colors.redAccent : Colors.grey.shade400,
+                      size: 20,
+                    ),
+                    onPressed: onToggleFavorite,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.near_me_rounded,
+                      color: Color(0xFF1B5E20),
+                      size: 16,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-        ),
-      );
-    } catch (e) {
-      debugPrint('❌ Card build error: $e');
-      return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildEmptyState() {
-    final isFavoritesEmpty = _selectedType == 'favorites';
-    final isSearchEmpty = _searchQuery.isNotEmpty;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceDim,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isFavoritesEmpty
-                    ? Icons.favorite_border_rounded
-                    : Icons.search_off_rounded,
-                size: 56,
-                color: AppColors.inkSubtle,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isFavoritesEmpty
-                  ? 'No favorites yet'
-                  : isSearchEmpty
-                      ? 'No stalls found'
-                      : 'No stalls available',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isFavoritesEmpty
-                  ? 'Tap the heart icon on any stall to save it here'
-                  : isSearchEmpty
-                      ? 'Try searching with different keywords'
-                      : 'No stalls available in this category',
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                color: AppColors.inkMuted,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       ),
     );
   }
 }
 
-// Filter Bottom Sheet Widget
+/// The 4-Section Sort & Filter Bottom Sheet
 class _FilterBottomSheet extends StatefulWidget {
   final String? currentSortAlpha;
   final TimeOfDay? currentFilterOpenTime;
@@ -3167,9 +865,15 @@ class _FilterBottomSheet extends StatefulWidget {
   final String? currentSelectedDay;
   final bool currentShowOpenOnDay;
   final bool currentFilterOpenOnly;
-  final Function(String?, TimeOfDay?, TimeOfDay?, String?, bool, bool) onApply;
+  final Function(
+    String? sortAlpha,
+    TimeOfDay? openTime,
+    TimeOfDay? closeTime,
+    String? day,
+    bool showOpenOnDay,
+    bool openOnly,
+  ) onApply;
   final VoidCallback onReset;
-  final TimeOfDay Function(String) parseTime;
 
   const _FilterBottomSheet({
     required this.currentSortAlpha,
@@ -3180,7 +884,6 @@ class _FilterBottomSheet extends StatefulWidget {
     required this.currentFilterOpenOnly,
     required this.onApply,
     required this.onReset,
-    required this.parseTime,
   });
 
   @override
@@ -3188,14 +891,22 @@ class _FilterBottomSheet extends StatefulWidget {
 }
 
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
-  String? _tempSortAlpha;
-  TimeOfDay? _tempFilterOpenTime;
-  TimeOfDay? _tempFilterCloseTime;
-  String? _tempSelectedDay;
-  bool _tempShowOpenOnDay = true;
-  bool _tempFilterOpenOnly = false;
+  late String? _tempSortAlpha;
+  late TimeOfDay? _tempFilterOpenTime;
+  late TimeOfDay? _tempFilterCloseTime;
+  late String? _tempSelectedDay;
+  late bool _tempShowOpenOnDay;
+  late bool _tempFilterOpenOnly;
 
-  final List<String> days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  final List<String> _days = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
 
   @override
   void initState() {
@@ -3208,88 +919,73 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     _tempFilterOpenOnly = widget.currentFilterOpenOnly;
   }
 
-  Future<void> _pickTime(bool isOpenTime) async {
-    final initialTime = isOpenTime
-        ? (_tempFilterOpenTime ?? const TimeOfDay(hour: 6, minute: 0))
-        : (_tempFilterCloseTime ?? const TimeOfDay(hour: 18, minute: 0));
-
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-      initialEntryMode: TimePickerEntryMode.input,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            alwaysUse24HourFormat: false,
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null && mounted) {
-      setState(() {
-        if (isOpenTime) {
-          _tempFilterOpenTime = picked;
-        } else {
-          _tempFilterCloseTime = picked;
-        }
-      });
-    }
+  int getActiveFilterCount() {
+    int count = 0;
+    if (_tempSortAlpha != null) count++;
+    if (_tempFilterOpenTime != null || _tempFilterCloseTime != null) count++;
+    if (_tempSelectedDay != null) count++;
+    if (_tempFilterOpenOnly) count++;
+    return count;
   }
 
-  String formatTimeOfDay(TimeOfDay time) {
+  String _formatTimeOfDay(TimeOfDay time) {
     final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final minute = time.minute.toString().padLeft(2, '0');
     final period = time.period == DayPeriod.am ? 'AM' : 'PM';
     return '$hour:$minute $period';
   }
 
-  int getActiveFilterCount() {
-    int count = 0;
-    if (_tempSortAlpha != null) count++;
-    if (_tempFilterOpenTime != null && _tempFilterCloseTime != null) count++;
-    if (_tempSelectedDay != null) count++;
-    if (_tempFilterOpenOnly) count++;
-    return count;
+  Future<void> _pickTime(bool isOpenTime) async {
+    final initial = isOpenTime
+        ? (_tempFilterOpenTime ?? const TimeOfDay(hour: 6, minute: 0))
+        : (_tempFilterCloseTime ?? const TimeOfDay(hour: 18, minute: 0));
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isOpenTime) {
+          _tempFilterOpenTime = picked;
+          _tempFilterCloseTime ??= const TimeOfDay(hour: 18, minute: 0);
+        } else {
+          _tempFilterCloseTime = picked;
+          _tempFilterOpenTime ??= const TimeOfDay(hour: 6, minute: 0);
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
-
-    return SafeArea(
-      top: false,
-      child: Container(
-        height: isDesktop
-            ? double.infinity
-            : MediaQuery.of(context).size.height * 0.80,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: isDesktop
-              ? const BorderRadius.horizontal(left: Radius.circular(20))
-              : const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-        ),
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
         child: Column(
           children: [
-            // Drag handle (mobile only)
-            if (!isDesktop)
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 4),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+            // Drag Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 4),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
               ),
+            ),
 
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+              padding: const EdgeInsets.fromLTRB(20, 14, 16, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -3298,18 +994,20 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       Text(
                         'Sort & Filter',
                         style: GoogleFonts.outfit(
-                          fontSize: 18,
+                          fontSize: 19,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
+                          color: const Color(0xFF1F2937),
                         ),
                       ),
                       if (getActiveFilterCount() > 0) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            color: const Color(0xFF1B5E20),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -3324,44 +1022,33 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       ],
                     ],
                   ),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _tempSortAlpha = null;
-                            _tempFilterOpenTime = null;
-                            _tempFilterCloseTime = null;
-                            _tempSelectedDay = null;
-                            _tempShowOpenOnDay = true;
-                            _tempFilterOpenOnly = false;
-                          });
-                        },
-                        child: Text(
-                          'Reset All',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: AppColors.error,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _tempSortAlpha = null;
+                        _tempFilterOpenTime = null;
+                        _tempFilterCloseTime = null;
+                        _tempSelectedDay = null;
+                        _tempShowOpenOnDay = true;
+                        _tempFilterOpenOnly = false;
+                      });
+                    },
+                    child: Text(
+                      'Reset All',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: const Color(0xFFEF4444),
+                        fontWeight: FontWeight.w600,
                       ),
-                      if (isDesktop)
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded,
-                              color: AppColors.inkMuted),
-                          onPressed: () => Navigator.pop(context),
-                          tooltip: 'Close Filter',
-                        ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
 
-            const Divider(height: 1, color: AppColors.border),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
 
-            // SCROLLABLE CONTENT
+            // Scrollable Content
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
@@ -3374,12 +1061,18 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       children: [
                         Expanded(
                           child: _buildAlphaOption(
-                              'A to Z', 'az', Icons.sort_by_alpha_rounded),
+                            'A to Z',
+                            'az',
+                            Icons.sort_by_alpha_rounded,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildAlphaOption(
-                              'Z to A', 'za', Icons.sort_by_alpha_rounded),
+                            'Z to A',
+                            'za',
+                            Icons.sort_by_alpha_rounded,
+                          ),
                         ),
                       ],
                     ),
@@ -3391,18 +1084,18 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
+                        color: const Color(0xFF1F2937),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       'Show stalls open during this time range',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: AppColors.inkMuted,
+                        color: const Color(0xFF6B7280),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Expanded(
@@ -3429,9 +1122,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       const SizedBox(height: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
+                          color: const Color(0xFFE8F5E9),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -3440,15 +1135,15 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                             const Icon(
                               Icons.access_time_rounded,
                               size: 14,
-                              color: AppColors.primary,
+                              color: Color(0xFF1B5E20),
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Showing stalls open: ${formatTimeOfDay(_tempFilterOpenTime!)} - ${formatTimeOfDay(_tempFilterCloseTime!)}',
+                              'Open: ${_formatTimeOfDay(_tempFilterOpenTime!)} – ${_formatTimeOfDay(_tempFilterCloseTime!)}',
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.primary,
+                                color: const Color(0xFF1B5E20),
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -3462,7 +1157,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                               child: const Icon(
                                 Icons.close_rounded,
                                 size: 14,
-                                color: AppColors.inkSubtle,
+                                color: Color(0xFF6B7280),
                               ),
                             ),
                           ],
@@ -3470,7 +1165,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       ),
                     ],
 
-                    // Quick Filter: Open Now Toggle
+                    // SECTION 3: Quick Filter
                     _buildSectionHeader('03  Quick Filter'),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -3479,18 +1174,19 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
+                          color: const Color(0xFF1F2937),
                         ),
                       ),
                       subtitle: Text(
                         'Show only currently open stalls',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: AppColors.inkMuted,
+                          color: const Color(0xFF6B7280),
                         ),
                       ),
                       value: _tempFilterOpenOnly,
-                      activeTrackColor: AppColors.primary,
+                      activeTrackColor: const Color(0xFFA5D6A7),
+                      activeThumbColor: const Color(0xFF1B5E20),
                       onChanged: (val) =>
                           setState(() => _tempFilterOpenOnly = val),
                     ),
@@ -3502,30 +1198,31 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
+                        color: const Color(0xFF1F2937),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       'Find stalls open or closed on a specific day',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: AppColors.inkMuted,
+                        color: const Color(0xFF6B7280),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Text(
                       'Select Day',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: AppColors.inkMuted,
+                        color: const Color(0xFF6B7280),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: days.map((day) => _buildDayChip(day)).toList(),
+                      children: _days.map((day) => _buildDayChip(day)).toList(),
                     ),
                     if (_tempSelectedDay != null) ...[
                       const SizedBox(height: 16),
@@ -3533,10 +1230,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         'Show stalls that are:',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: AppColors.inkMuted,
+                          color: const Color(0xFF6B7280),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
@@ -3544,7 +1242,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                               'Open on this day',
                               true,
                               Icons.check_circle_outline_rounded,
-                              AppColors.primary,
+                              const Color(0xFF1B5E20),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -3553,31 +1251,27 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                               'Closed on this day',
                               false,
                               Icons.cancel_outlined,
-                              AppColors.error,
+                              const Color(0xFFEF4444),
                             ),
                           ),
                         ],
                       ),
                     ],
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
             ),
 
-            // FIXED BOTTOM BUTTON - Always visible
+            // FIXED BOTTOM BUTTON
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
+                color: Colors.white,
                 border: Border(
                   top: BorderSide(
-                    color: AppColors.border,
+                    color: Color(0xFFE5E7EB),
                     width: 1,
                   ),
                 ),
@@ -3598,11 +1292,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: const Color(0xFF1B5E20),
                     elevation: 0,
                     shadowColor: Colors.transparent,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 14),
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -3616,7 +1312,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
@@ -3629,14 +1324,14 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 12),
+      padding: const EdgeInsets.only(top: 18, bottom: 12),
       child: Row(
         children: [
           Container(
             width: 3,
             height: 16,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: const Color(0xFF1B5E20),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -3646,7 +1341,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.inkSubtle,
+              color: const Color(0xFF6B7280),
               letterSpacing: 0.5,
             ),
           ),
@@ -3665,12 +1360,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         });
       },
       child: Container(
-        height: 70,
+        height: 64,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryLight : AppColors.surface,
+          color: isSelected ? const Color(0xFFE8F5E9) : Colors.white,
           border: Border.all(
-            color:
-                isSelected ? AppColors.primary : AppColors.border,
+            color: isSelected
+                ? const Color(0xFF1B5E20)
+                : const Color(0xFFE5E7EB),
             width: isSelected ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
@@ -3685,18 +1381,18 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     icon,
                     size: 22,
                     color: isSelected
-                        ? AppColors.primary
-                        : AppColors.inkMuted,
+                        ? const Color(0xFF1B5E20)
+                        : const Color(0xFF6B7280),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     label,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: isSelected
-                          ? AppColors.primary
-                          : AppColors.inkMuted,
+                          ? const Color(0xFF1B5E20)
+                          : const Color(0xFF4B5563),
                     ),
                   ),
                 ],
@@ -3708,8 +1404,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 right: 6,
                 child: Icon(
                   Icons.check_circle_rounded,
-                  size: 18,
-                  color: AppColors.primary,
+                  size: 16,
+                  color: Color(0xFF1B5E20),
                 ),
               ),
           ],
@@ -3719,7 +1415,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 
   Widget _buildTimePicker(
-      String label, TimeOfDay? time, IconData icon, VoidCallback onTap) {
+    String label,
+    TimeOfDay? time,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3727,22 +1427,22 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           label,
           style: GoogleFonts.poppins(
             fontSize: 12,
-            color: AppColors.inkMuted,
+            color: const Color(0xFF6B7280),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         GestureDetector(
           onTap: onTap,
           child: Container(
-            height: 52,
+            height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: time != null
-                    ? AppColors.primary
-                    : AppColors.border,
+                    ? const Color(0xFF1B5E20)
+                    : const Color(0xFFE5E7EB),
                 width: 1.5,
               ),
             ),
@@ -3752,15 +1452,15 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 Icon(
                   icon,
                   size: 16,
-                  color: AppColors.primary,
+                  color: const Color(0xFF1B5E20),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  time != null ? formatTimeOfDay(time) : '--:-- --',
+                  time != null ? _formatTimeOfDay(time) : '--:-- --',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
+                    color: const Color(0xFF1F2937),
                   ),
                 ),
               ],
@@ -3781,21 +1481,22 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         });
       },
       child: Container(
-        width: 56,
-        height: 40,
+        width: 54,
+        height: 38,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surface,
-          border:
-              isSelected ? null : Border.all(color: AppColors.border),
+          color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
+          border: isSelected
+              ? null
+              : Border.all(color: const Color(0xFFE5E7EB)),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Center(
           child: Text(
-            day,
+            day.substring(0, 3),
             style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: isSelected ? Colors.white : AppColors.inkMuted,
+              color: isSelected ? Colors.white : const Color(0xFF4B5563),
             ),
           ),
         ),
@@ -3804,7 +1505,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 
   Widget _buildStatusOption(
-      String label, bool value, IconData icon, Color color) {
+    String label,
+    bool value,
+    IconData icon,
+    Color color,
+  ) {
     final isSelected = _tempShowOpenOnDay == value;
 
     return GestureDetector(
@@ -3814,13 +1519,15 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: isSelected
-              ? (value ? AppColors.primaryLight : AppColors.errorLight)
-              : AppColors.surface,
+              ? (value
+                  ? const Color(0xFFE8F5E9)
+                  : const Color(0xFFFEE2E2))
+              : Colors.white,
           border: Border.all(
-            color: isSelected ? color : AppColors.border,
+            color: isSelected ? color : const Color(0xFFE5E7EB),
             width: isSelected ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(10),
@@ -3829,132 +1536,22 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           children: [
             Icon(
               icon,
-              size: 18,
-              color: isSelected ? color : AppColors.inkMuted,
+              size: 16,
+              color: isSelected ? color : const Color(0xFF6B7280),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Expanded(
               child: Text(
                 label,
                 style: GoogleFonts.poppins(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w500,
-                  color: isSelected ? color : AppColors.inkMuted,
+                  color: isSelected ? color : const Color(0xFF4B5563),
                 ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CategoryScrollTrack extends StatefulWidget {
-  final Widget child;
-  final ScrollController controller;
-
-  const _CategoryScrollTrack({
-    required this.child,
-    required this.controller,
-  });
-
-  @override
-  State<_CategoryScrollTrack> createState() => _CategoryScrollTrackState();
-}
-
-class _CategoryScrollTrackState extends State<_CategoryScrollTrack> {
-  bool _canScrollLeft = false;
-  bool _canScrollRight = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_updateScrollState);
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _updateScrollState());
-  }
-
-  void _updateScrollState() {
-    if (!widget.controller.hasClients) return;
-    final max = widget.controller.position.maxScrollExtent;
-    final offset = widget.controller.offset;
-    if (mounted) {
-      setState(() {
-        _canScrollLeft = offset > 5;
-        _canScrollRight = offset < max - 5;
-      });
-    }
-  }
-
-  void _scroll(double delta) {
-    if (!widget.controller.hasClients) return;
-    widget.controller.animateTo(
-      (widget.controller.offset + delta)
-          .clamp(0.0, widget.controller.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 600;
-
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.only(top: 12, bottom: 8),
-      child: Row(
-        children: [
-          if (isDesktop && _canScrollLeft)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: InkWell(
-                onTap: () => _scroll(-240),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(Icons.chevron_left_rounded,
-                      size: 20, color: AppColors.primary),
-                ),
-              ),
-            ),
-          Expanded(
-            child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(
-                dragDevices: {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                  PointerDeviceKind.trackpad,
-                },
-              ),
-              child: widget.child,
-            ),
-          ),
-          if (isDesktop && _canScrollRight)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InkWell(
-                onTap: () => _scroll(240),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(Icons.chevron_right_rounded,
-                      size: 20, color: AppColors.primary),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

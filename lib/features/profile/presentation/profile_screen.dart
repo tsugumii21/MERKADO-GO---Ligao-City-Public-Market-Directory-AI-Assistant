@@ -140,17 +140,15 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: const Color(0xFF1B5E20),
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-        shape: const Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: 1.0,
-          ),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
         ),
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -163,7 +161,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: Colors.white,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -172,7 +170,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.inkMuted,
+                  color: const Color(0xFFE8F5E9),
                 ),
               ),
             ],
@@ -200,50 +198,48 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: SingleChildScrollView(
                 controller: _scrollController,
                 physics: const ClampingScrollPhysics(),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isDesktop ? 24 : 16,
-                    vertical: 24,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // SECTION 1: AVATAR CARD
-                      _buildAvatarCard(context, userData),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isDesktop ? 24 : 16,
+                  vertical: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // SECTION 1: AVATAR CARD
+                    _buildAvatarCard(context, userData),
 
-                      const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                      // SECTION 2: EDIT PROFILE BUTTON
-                      _buildEditProfileButton(context),
+                    // SECTION 2: EDIT PROFILE BUTTON
+                    _buildEditProfileButton(context),
 
-                      const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                      // SECTION 3: STATS ROW
-                      _buildStatsRow(favoriteCount, userData.createdAt.year),
+                    // SECTION 3: STATS ROW
+                    _buildStatsRow(favoriteCount, userData.createdAt.year),
 
-                      const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                      // SECTION 4: ACCOUNT INFO LABEL
-                      _buildSectionLabel('ACCOUNT INFORMATION'),
+                    // SECTION 4: ACCOUNT INFO LABEL
+                    _buildSectionLabel('ACCOUNT INFORMATION'),
 
-                      const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                      // SECTION 5: ACCOUNT INFO CARD
-                      _buildAccountInfoCard(userData),
+                    // SECTION 5: ACCOUNT INFO CARD
+                    _buildAccountInfoCard(userData),
 
-                      const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                      // SECTION 6: FAVORITE STALLS ROW
-                      _buildFavoriteStallsRow(context, favoriteCount),
+                    // SECTION 6: FAVORITE STALLS ROW
+                    _buildFavoriteStallsRow(context, favoriteCount),
 
-                      const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                      // SECTION 7: LOGOUT BUTTON
-                      _buildLogoutButton(context, ref),
+                    // SECTION 7: LOGOUT BUTTON
+                    _buildLogoutButton(context, ref),
 
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ),
@@ -251,7 +247,7 @@ class ProfileScreenState extends ConsumerState<ProfileScreen> {
         },
         loading: () => const Center(
           child: CircularProgressIndicator(
-            color: AppColors.primary,
+            color: Color(0xFF1B5E20),
           ),
         ),
         error: (error, stack) => Center(

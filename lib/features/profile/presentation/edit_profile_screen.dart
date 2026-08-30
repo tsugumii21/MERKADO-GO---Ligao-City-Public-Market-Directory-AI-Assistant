@@ -217,24 +217,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: const Color(0xFF1B5E20),
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.ink,
+            color: Colors.white,
             size: 18,
           ),
           onPressed: () => context.pop(),
-        ),
-        shape: const Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: 1.0,
-          ),
         ),
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -247,7 +245,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: Colors.white,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -256,7 +254,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.inkMuted,
+                  color: const Color(0xFFE8F5E9),
                 ),
               ),
             ],

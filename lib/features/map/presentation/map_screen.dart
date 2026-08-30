@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../providers/chat_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import 'widgets/market_svg_map_view.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -16,10 +15,7 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class MapScreenState extends ConsumerState<MapScreen>
     with TickerProviderStateMixin {
-  final GlobalKey<MarketSvgMapViewState> _svgMapKey = GlobalKey<MarketSvgMapViewState>();
-
   bool _isChatOpen = false;
-  double _mapRotationAngle = 0.0;
 
   void resetUI() {
     if (!mounted) return;
@@ -38,159 +34,76 @@ class MapScreenState extends ConsumerState<MapScreen>
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Master Interactive Vector Floor Plan
+          // 1. Blank Space with Coming Soon State
           Positioned.fill(
-            child: MarketSvgMapView(
-              key: _svgMapKey,
-              onRotationChanged: (angle) {
-                if (mounted) {
-                  setState(() => _mapRotationAngle = angle);
-                }
-              },
+            child: Container(
+              color: const Color(0xFFF8FAF8),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFF1B5E20).withValues(alpha: 0.2),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.map_outlined,
+                            size: 38,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Coming Soon',
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF1B5E20),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'The Ligao City Public Market interactive map is currently under development.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF6B7280),
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
 
-              // Floating Controls (Compass, Zoom +/- , Recenter Button & Aling Suki AI Chatbot)
-              Positioned(
-                bottom: MediaQuery.sizeOf(context).width >= 600 ? 24 : 76,
-                right: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Compass Reset Button (Only appears when rotation != 0)
-                    AnimatedOpacity(
-                      opacity: _mapRotationAngle.abs() > 0.02 ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: AnimatedScale(
-                        scale: _mapRotationAngle.abs() > 0.02 ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutBack,
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 1,
-                            ),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => _svgMapKey.currentState?.resetRotation(),
-                              borderRadius: BorderRadius.circular(22),
-                              child: Center(
-                                child: Transform.rotate(
-                                  angle: -_mapRotationAngle,
-                                  child: const Icon(
-                                    Icons.navigation_rounded,
-                                    color: Color(0xFFE53935),
-                                    size: 22,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Zoom In / Out Controls Stack
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: AppColors.border,
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Zoom In (+)
-                          SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => _svgMapKey.currentState?.zoomIn(),
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(22),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.add_rounded,
-                                    color: AppColors.ink,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: AppColors.borderLight,
-                          ),
-                          // Zoom Out (-)
-                          SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => _svgMapKey.currentState?.zoomOut(),
-                                borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(22),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.remove_rounded,
-                                    color: AppColors.ink,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Recenter / Reset View Button
-                    Container(
-                      width: 44,
-                      height: 44,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.border,
-                          width: 1,
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => _svgMapKey.currentState?.resetView(),
-                          borderRadius: BorderRadius.circular(22),
-                          child: const Center(
-                            child: Icon(
-                              Icons.center_focus_strong_rounded,
-                              color: AppColors.ink,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+          // 2. Floating AI Chatbot Button
+          Positioned(
+            bottom: MediaQuery.sizeOf(context).width >= 600 ? 24 : 76,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
 
                     // Aling Suki AI Assistant Button
                     Stack(

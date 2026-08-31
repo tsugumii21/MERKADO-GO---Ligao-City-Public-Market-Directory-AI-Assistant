@@ -1,5 +1,6 @@
 // Modern Material 3 theme for Merkado Go
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Deep green seed color for Material 3
@@ -512,6 +513,185 @@ class AppTheme {
         thickness: 1,
         space: 1,
       ),
+
+      // Custom MerkadoGo TimePicker Dialog Theme
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        elevation: 8,
+        hourMinuteShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2),
+        ),
+        hourMinuteColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const Color(0xFFDCFCE7);
+          }
+          return const Color(0xFFF9FAFB);
+        }),
+        hourMinuteTextColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const Color(0xFF15803D);
+          }
+          return const Color(0xFF1F2937);
+        }),
+        hourMinuteTextStyle: GoogleFonts.outfit(
+          fontSize: 42,
+          fontWeight: FontWeight.w700,
+        ),
+        dayPeriodShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2),
+        ),
+        dayPeriodColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const Color(0xFF1B5E20);
+          }
+          return Colors.white;
+        }),
+        dayPeriodTextColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.white;
+          }
+          return const Color(0xFF4B5563);
+        }),
+        dayPeriodTextStyle: GoogleFonts.poppins(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        dialBackgroundColor: const Color(0xFFF3F4F6),
+        dialHandColor: const Color(0xFF1B5E20),
+        dialTextColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.white;
+          }
+          return const Color(0xFF374151);
+        }),
+        dialTextStyle: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        entryModeIconColor: const Color(0xFF1B5E20),
+        helpTextStyle: GoogleFonts.poppins(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF374151),
+        ),
+        cancelButtonStyle: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF6B7280),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        confirmButtonStyle: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF1B5E20),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shared branded TimePicker Dialog Builder
+  static Widget buildTimePickerTheme(BuildContext context, Widget? child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF1B5E20),
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          onSurface: Color(0xFF1F2937),
+          surfaceContainerHighest: Color(0xFFF3F4F6),
+          onSurfaceVariant: Color(0xFF4B5563),
+          primaryContainer: Color(0xFFDCFCE7),
+          onPrimaryContainer: Color(0xFF14532D),
+        ),
+        timePickerTheme: TimePickerThemeData(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 10,
+          hourMinuteShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2),
+          ),
+          hourMinuteColor: WidgetStateColor.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const Color(0xFFDCFCE7);
+            }
+            return const Color(0xFFF9FAFB);
+          }),
+          hourMinuteTextColor: WidgetStateColor.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const Color(0xFF15803D);
+            }
+            return const Color(0xFF1F2937);
+          }),
+          hourMinuteTextStyle: GoogleFonts.outfit(
+            fontSize: 42,
+            fontWeight: FontWeight.w700,
+          ),
+          dayPeriodShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2),
+          ),
+          dayPeriodColor: WidgetStateColor.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const Color(0xFF1B5E20);
+            }
+            return Colors.white;
+          }),
+          dayPeriodTextColor: WidgetStateColor.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return Colors.white;
+            }
+            return const Color(0xFF4B5563);
+          }),
+          dayPeriodTextStyle: GoogleFonts.poppins(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          dialBackgroundColor: const Color(0xFFF3F4F6),
+          dialHandColor: const Color(0xFF1B5E20),
+          dialTextColor: WidgetStateColor.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return Colors.white;
+            }
+            return const Color(0xFF374151);
+          }),
+          dialTextStyle: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          entryModeIconColor: const Color(0xFF1B5E20),
+          helpTextStyle: GoogleFonts.poppins(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF374151),
+          ),
+          cancelButtonStyle: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF6B7280),
+            textStyle: GoogleFonts.poppins(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          confirmButtonStyle: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF1B5E20),
+            textStyle: GoogleFonts.poppins(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+      child: child!,
     );
   }
 }

@@ -8,6 +8,9 @@ import '../../../providers/favorite_provider.dart';
 import '../../report/presentation/report_screen.dart';
 import '../../../core/utils/stall_utils.dart';
 import '../../../core/widgets/main_shell.dart';
+import '../../../core/constants/market_categories.dart';
+
+import '../../map/providers/navigation_provider.dart';
 
 /// Alias for naming compatibility
 typedef StallDetailsModal = StallDetailSheet;
@@ -62,6 +65,10 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
 
   void _navigateToStallOnMap() {
     HapticFeedback.mediumImpact();
+    ref.read(activeRouteProvider.notifier).navigateToStall(
+          stallId: widget.stall.stallId,
+          stallName: widget.stall.name,
+        );
     widget.onClose();
     mainShellKey.currentState?.goToTab(0);
   }
@@ -94,72 +101,22 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     }).join(', ');
   }
 
-  ({IconData icon, Color color, Color bg}) _getCategoryVisuals(String category) {
-    final cat = category.toLowerCase();
-
-    if (cat.contains('meat') ||
-        cat.contains('pork') ||
-        cat.contains('beef') ||
-        cat.contains('karne')) {
-      return (
-        icon: Icons.set_meal_rounded,
-        color: const Color(0xFFEF4444),
-        bg: const Color(0xFFFEE2E2),
-      );
-    }
-    if (cat.contains('poultry') ||
-        cat.contains('chicken') ||
-        cat.contains('manok') ||
-        cat.contains('egg')) {
-      return (
-        icon: Icons.egg_outlined,
-        color: const Color(0xFFF97316),
-        bg: const Color(0xFFFFEDD5),
-      );
-    }
-    if (cat.contains('seafood') ||
-        cat.contains('fish') ||
-        cat.contains('isda')) {
-      return (
-        icon: Icons.water_rounded,
-        color: const Color(0xFF3B82F6),
-        bg: const Color(0xFFDBEAFE),
-      );
-    }
-    if (cat.contains('rice') ||
-        cat.contains('bigas') ||
-        cat.contains('grain') ||
-        cat.contains('dry')) {
-      return (
-        icon: Icons.grain_rounded,
-        color: const Color(0xFFF59E0B),
-        bg: const Color(0xFFFEF3C7),
-      );
-    }
-    if (cat.contains('agrivet') ||
-        cat.contains('feed') ||
-        cat.contains('pet')) {
-      return (
-        icon: Icons.pets_rounded,
-        color: const Color(0xFF8B5CF6),
-        bg: const Color(0xFFEDE9FE),
-      );
-    }
-    if (cat.contains('fruit') ||
-        cat.contains('vegetable') ||
-        cat.contains('gulay') ||
-        cat.contains('fresh')) {
-      return (
-        icon: Icons.eco_rounded,
-        color: const Color(0xFF10B981),
-        bg: const Color(0xFFDCFCE7),
-      );
-    }
-
+  ({
+    IconData icon,
+    Color color,
+    Color bg,
+    Color outline,
+    String displayName,
+    List<String> subcategories,
+  }) _getCategoryVisuals(String category) {
+    final v = MarketCategories.getVisuals(category);
     return (
-      icon: Icons.storefront_rounded,
-      color: const Color(0xFF1B5E20),
-      bg: const Color(0xFFE8F5E9),
+      icon: v.icon,
+      color: v.color,
+      bg: v.bg.withValues(alpha: 0.25),
+      outline: v.outline,
+      displayName: v.displayName,
+      subcategories: v.subcategories,
     );
   }
 
@@ -595,6 +552,48 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                           );
                         }).toList(),
                       ),
+
+                    // Subcategories section
+                    if (categoryVisuals.subcategories.isNotEmpty) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        'Category Subcategories',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: categoryVisuals.subcategories.map((sub) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: categoryVisuals.color.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: categoryVisuals.color.withValues(alpha: 0.25),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              sub,
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                color: categoryVisuals.color,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 

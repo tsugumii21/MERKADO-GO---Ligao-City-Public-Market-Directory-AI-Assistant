@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../models/stall_model.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
+import '../../../core/constants/market_categories.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
 
 /// Modern Admin Stall Management Screen for Merkado Go
@@ -25,6 +27,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
   String _searchQuery = '';
   String _selectedCategory = 'All';
+  String? _selectedSubcategory;
 
   // Sort & Filter state variables (Matching User Stalls Directory)
   String? sortAlpha; // 'az' | 'za' | null
@@ -34,14 +37,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
   bool showOpenOnDay = true;
   bool _filterOpenOnly = false; // Open now only toggle
 
-  final List<String> _categories = [
-    'All',
-    'Fresh Produce',
-    'Meat & Poultry',
-    'Seafood',
-    'Dry Goods',
-    'Agrivet / Feeds',
-  ];
+  List<String> get _categories => MarketCategories.directoryFilterNames.where((c) => c != 'Favorites').toList();
 
   @override
   void dispose() {
@@ -67,6 +63,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
       selectedDay = null;
       showOpenOnDay = true;
       _filterOpenOnly = false;
+      _selectedSubcategory = null;
     });
   }
 
@@ -93,101 +90,58 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
   // Visual metadata for stall categories
   ({IconData icon, Color color}) _getCategoryVisuals(String category) {
-    final cat = category.toLowerCase();
-
-    if (cat.contains('meat') ||
-        cat.contains('pork') ||
-        cat.contains('beef') ||
-        cat.contains('karne')) {
-      return (icon: Icons.set_meal_rounded, color: const Color(0xFFEF4444));
-    }
-    if (cat.contains('poultry') ||
-        cat.contains('chicken') ||
-        cat.contains('manok') ||
-        cat.contains('egg')) {
-      return (icon: Icons.egg_outlined, color: const Color(0xFFF97316));
-    }
-    if (cat.contains('seafood') ||
-        cat.contains('fish') ||
-        cat.contains('isda')) {
-      return (icon: Icons.water_drop_rounded, color: const Color(0xFF0284C7));
-    }
-    if (cat.contains('vegetable') ||
-        cat.contains('gulay') ||
-        cat.contains('fruit') ||
-        cat.contains('prutas') ||
-        cat.contains('fresh')) {
-      return (icon: Icons.eco_rounded, color: const Color(0xFF16A34A));
-    }
-    if (cat.contains('dry') ||
-        cat.contains('rice') ||
-        cat.contains('bigas') ||
-        cat.contains('grains')) {
-      return (
-        icon: Icons.inventory_2_outlined,
-        color: const Color(0xFFD97706)
-      );
-    }
-    if (cat.contains('agrivet') || cat.contains('feed')) {
-      return (icon: Icons.pets_rounded, color: const Color(0xFF8B5CF6));
-    }
-    return (icon: Icons.storefront_rounded, color: const Color(0xFF1B5E20));
+    final v = MarketCategories.getVisuals(category);
+    return (icon: v.icon, color: v.color);
   }
 
-  bool _matchesCategory(StallModel stall, String category) {
+  bool _matchesCategory(StallModel stall, String category, [String? subcategory]) {
     if (category == 'All') return true;
 
-    final stallCat = stall.category.toLowerCase();
-    final categories = stall.categories.map((c) => c.toLowerCase()).toList();
+    final targetItem = MarketCategories.findCategory(category);
+    final stallItem = MarketCategories.findCategory(stall.category);
 
-    switch (category) {
-      case 'Fresh Produce':
-        const targets = [
-          'fresh',
-          'produce',
-          'vegetables',
-          'gulay',
-          'fruits',
-          'prutas',
-        ];
-        return targets.any((t) =>
-            stallCat.contains(t) || categories.any((c) => c.contains(t)));
-      case 'Meat & Poultry':
-        const targets = [
-          'meat',
-          'pork',
-          'beef',
-          'karne',
-          'poultry',
-          'chicken',
-          'manok',
-        ];
-        return targets.any((t) =>
-            stallCat.contains(t) || categories.any((c) => c.contains(t)));
-      case 'Seafood':
-        const targets = ['seafood', 'fish', 'isda', 'marine'];
-        return targets.any((t) =>
-            stallCat.contains(t) || categories.any((c) => c.contains(t)));
-      case 'Dry Goods':
-        const targets = [
-          'dry',
-          'dry goods',
-          'rice',
-          'grains',
-          'bigas',
-          'spices',
-          'condiments',
-        ];
-        return targets.any((t) =>
-            stallCat.contains(t) || categories.any((c) => c.contains(t)));
-      case 'Agrivet / Feeds':
-        const targets = ['agrivet', 'feeds', 'poultry supply', 'veterinary'];
-        return targets.any((t) =>
-            stallCat.contains(t) || categories.any((c) => c.contains(t)));
-      default:
-        return stallCat.contains(category.toLowerCase()) ||
-            categories.any((c) => c.contains(category.toLowerCase()));
+    bool categoryMatched = false;
+    if (targetItem != null && stallItem != null) {
+      if (targetItem.id == stallItem.id) {
+        categoryMatched = true;
+      }
     }
+
+    if (!categoryMatched) {
+      final stallCat = stall.category.toLowerCase();
+      final targetCat = category.toLowerCase();
+      if (stallCat.contains(targetCat) || targetCat.contains(stallCat)) {
+        categoryMatched = true;
+      }
+    }
+
+    if (!categoryMatched && targetItem != null) {
+      final stallCat = stall.category.toLowerCase();
+      final allWords = [
+        ...targetItem.keywords,
+        ...targetItem.subcategories,
+        targetItem.shortName.toLowerCase(),
+        targetItem.displayName.toLowerCase(),
+      ];
+      categoryMatched = allWords.any((w) =>
+          stallCat.contains(w.toLowerCase()) ||
+          stall.products.any((p) => p.toLowerCase().contains(w.toLowerCase())));
+    }
+
+    if (!categoryMatched) return false;
+
+    // Filter by subcategory if selected
+    if (subcategory != null && subcategory.isNotEmpty) {
+      final subNorm = subcategory.toLowerCase();
+      final inProducts = stall.products.any((p) =>
+          p.toLowerCase().contains(subNorm) || subNorm.contains(p.toLowerCase()));
+      final inTags = stall.tags.any((t) =>
+          t.toLowerCase().contains(subNorm) || subNorm.contains(t.toLowerCase()));
+      final inName = stall.name.toLowerCase().contains(subNorm);
+      return inProducts || inTags || inName;
+    }
+
+    return true;
   }
 
   List<StallModel> _filterAndSortStalls(List<StallModel> stalls) {
@@ -209,8 +163,8 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
         }
       }
 
-      // 2. Category Filter
-      if (!_matchesCategory(stall, _selectedCategory)) {
+      // 2. Category & Subcategory Filter
+      if (!_matchesCategory(stall, _selectedCategory, _selectedSubcategory)) {
         return false;
       }
 
@@ -582,7 +536,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
               isDesktop ? 24 : 16,
               0,
               isDesktop ? 24 : 16,
-              12,
+              8,
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -599,7 +553,10 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                       child: InkWell(
                         onTap: () {
                           HapticFeedback.selectionClick();
-                          setState(() => _selectedCategory = category);
+                          setState(() {
+                            _selectedCategory = category;
+                            _selectedSubcategory = null;
+                          });
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
@@ -615,17 +572,35 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                                   : const Color(0xFFE5E7EB),
                             ),
                           ),
-                          child: Text(
-                            category,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? Colors.white
-                                  : const Color(0xFF4B5563),
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (category != 'All') ...[
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : MarketCategories.getVisuals(category).color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                category,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF4B5563),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -634,6 +609,114 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                 }).toList(),
               ),
             ),
+          ),
+
+          // 2.5. Subcategory Chips Bar (shown when selected category has subcategories)
+          Builder(
+            builder: (context) {
+              final activeItem = MarketCategories.findCategory(_selectedCategory);
+              if (activeItem == null || activeItem.subcategories.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              final subcategories = activeItem.subcategories;
+              return Container(
+                color: Colors.white,
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 24 : 16,
+                  0,
+                  isDesktop ? 24 : 16,
+                  10,
+                ),
+                height: 38,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: subcategories.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(width: 6),
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      final isAllSelected = _selectedSubcategory == null;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedSubcategory = null),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isAllSelected
+                                ? activeItem.colorSet.fill
+                                : activeItem.colorSet.accent.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isAllSelected
+                                  ? activeItem.colorSet.fill
+                                  : activeItem.colorSet.outline.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'All ${activeItem.shortName}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: isAllSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: isAllSelected
+                                    ? Colors.white
+                                    : activeItem.colorSet.outline,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final sub = subcategories[index - 1];
+                    final isSubSelected = _selectedSubcategory == sub;
+
+                    return GestureDetector(
+                      onTap: () => setState(() {
+                        _selectedSubcategory = isSubSelected ? null : sub;
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSubSelected
+                              ? activeItem.colorSet.fill
+                              : const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSubSelected
+                                ? activeItem.colorSet.fill
+                                : const Color(0xFFE5E7EB),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            sub,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: isSubSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: isSubSelected
+                                  ? Colors.white
+                                  : const Color(0xFF4B5563),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
 
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
@@ -828,21 +911,25 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                           Row(
                             children: [
                               // Category Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  StallUtils.getCategoryLabel(stall.category),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF4B5563),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    StallUtils.getCategoryLabel(stall.category),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF4B5563),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
@@ -1099,16 +1186,7 @@ class _SortFilterModalState extends State<_SortFilterModal> {
     final picked = await showTimePicker(
       context: context,
       initialTime: initial,
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF1B5E20),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      builder: AppTheme.buildTimePickerTheme,
     );
 
     if (picked != null) {

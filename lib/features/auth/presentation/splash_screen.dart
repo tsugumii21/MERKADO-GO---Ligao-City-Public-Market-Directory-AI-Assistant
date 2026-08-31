@@ -117,7 +117,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         return;
       }
 
-      final userData = await authRepo.getUserData(user.uid);
+      final userData = await authRepo
+          .getUserData(user.uid)
+          .timeout(const Duration(seconds: 4), onTimeout: () => null);
 
       if (mounted) {
         if (userData?.role == 'admin') {

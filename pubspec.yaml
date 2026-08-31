@@ -84,6 +84,7 @@ flutter:
     - assets/images/email_verification_illustration.png
     - assets/animations/
     - assets/icons/
+    - assets/map/
 
   # Fonts (optional - add custom fonts here later if needed)
   # fonts:

@@ -16,6 +16,7 @@ class StallModel {
   final bool isActive;
   final String status;
   final String? section;
+  final String? stallNumber;
   final DateTime updatedAt;
   final List<String> tags;
 
@@ -35,6 +36,7 @@ class StallModel {
     required this.isActive,
     this.status = 'open',
     this.section,
+    this.stallNumber,
     required this.updatedAt,
     this.tags = const [],
   }) : categories = categories ?? [category];
@@ -87,7 +89,12 @@ class StallModel {
             ((data['isOpen'] == true || data['isActive'] == true)
                 ? 'open'
                 : 'closed'),
-        section: (data['section'] as String?)?.trim(),
+        section: (data['section'] as String? ??
+                data['building_or_section'] as String?)
+            ?.trim(),
+        stallNumber: (data['stallNumber'] as String? ??
+                data['stall_number'] as String?)
+            ?.trim(),
         updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         tags: data['tags'] is List
             ? (data['tags'] as List)
@@ -113,6 +120,7 @@ class StallModel {
         isActive: false,
         status: 'closed',
         section: '',
+        stallNumber: '',
         updatedAt: DateTime.now(),
         tags: const <String>[],
       );
@@ -137,6 +145,8 @@ class StallModel {
       'isOpen': status == 'open',
       'status': status,
       'section': section ?? '',
+      'stallNumber': stallNumber ?? '',
+      'stall_number': stallNumber ?? '',
       'updatedAt': Timestamp.fromDate(updatedAt),
       'tags': tags,
     };
@@ -159,6 +169,7 @@ class StallModel {
     bool? isActive,
     String? status,
     String? section,
+    String? stallNumber,
     DateTime? updatedAt,
     List<String>? tags,
   }) {
@@ -178,6 +189,7 @@ class StallModel {
       isActive: isActive ?? this.isActive,
       status: status ?? this.status,
       section: section ?? this.section,
+      stallNumber: stallNumber ?? this.stallNumber,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,
     );

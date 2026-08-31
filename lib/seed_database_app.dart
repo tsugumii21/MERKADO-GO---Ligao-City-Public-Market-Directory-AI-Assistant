@@ -106,7 +106,7 @@ class _SeedDatabaseScreenState extends State<SeedDatabaseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'MerkadoGo â€” Database Migration',
+          'MerkadoGo - Database Migration',
           style: AppTextStyles.pageTitleWhite,
         ),
         backgroundColor: AppColors.primary,

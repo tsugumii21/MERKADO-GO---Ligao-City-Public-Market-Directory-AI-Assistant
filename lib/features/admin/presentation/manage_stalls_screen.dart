@@ -1105,7 +1105,9 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      '${stall.openTime} â€“ ${stall.closeTime}',
+                      stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
+                          ? '${stall.openTime} - ${stall.closeTime}'
+                          : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not set'),
                       style: GoogleFonts.poppins(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,

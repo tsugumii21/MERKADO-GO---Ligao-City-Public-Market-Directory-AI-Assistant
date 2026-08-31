@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -443,7 +443,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Padding(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 padding: const EdgeInsets.all(20),
                 child: Form(
                   key: formKey,
@@ -618,7 +622,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Padding(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 padding: const EdgeInsets.all(20),
                 child: Form(
                   key: formKey,
@@ -798,7 +806,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Padding(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -932,7 +944,8 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       ),
       builder: (ctx) {
         return SafeArea(
-          child: Padding(
+          child: Container(
+            color: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1007,80 +1020,162 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Padding(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header: Icon + Title + Category Subtitle + Close Button
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.tune_rounded,
+                            color: Color(0xFF1B5E20),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Manage Subcategories',
-                                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF0F172A),
+                                ),
                               ),
                               Text(
                                 'Category: $_finalPrimaryCategoryName',
-                                style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF64748B),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF64748B)),
-                          onPressed: () => Navigator.of(ctx).pop(),
+                        Material(
+                          color: const Color(0xFFF1F5F9),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => Navigator.of(ctx).pop(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.close_rounded, size: 18, color: Color(0xFF64748B)),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+
+                    // Scrollable List of Subcategory Cards
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 320),
                       child: currentSubs.isEmpty
                           ? Center(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 24),
-                                child: Text(
-                                  'No subcategories found.\nTap Add below to create one.',
-                                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B)),
-                                  textAlign: TextAlign.center,
+                                padding: const EdgeInsets.symmetric(vertical: 28),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.label_off_outlined, size: 36, color: Colors.grey.shade400),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'No subcategories found.\nTap Add below to create one.',
+                                      style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF64748B)),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
                               ),
                             )
-                          : ListView.separated(
+                          : ListView.builder(
                               shrinkWrap: true,
                               itemCount: currentSubs.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
                               itemBuilder: (context, idx) {
                                 final sub = currentSubs[idx];
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                                  title: Text(
-                                    sub,
-                                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
                                   ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                  child: Row(
                                     children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_rounded, size: 18, color: Color(0xFF1B5E20)),
-                                        onPressed: () async {
-                                          await _showEditSubcategoryDialog(sub);
-                                          setManageState(() {});
-                                        },
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE8F5E9),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.label_outline_rounded,
+                                          size: 15,
+                                          color: Color(0xFF1B5E20),
+                                        ),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
-                                        onPressed: () async {
-                                          await _showDeleteSubcategoryDialog(sub);
-                                          setManageState(() {});
-                                        },
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          sub,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1E293B),
+                                          ),
+                                        ),
+                                      ),
+                                      Material(
+                                        color: const Color(0xFFE8F5E9),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(8),
+                                          onTap: () async {
+                                            await _showEditSubcategoryDialog(sub);
+                                            setManageState(() {});
+                                          },
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(6),
+                                            child: Icon(Icons.edit_rounded, size: 16, color: Color(0xFF1B5E20)),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Material(
+                                        color: const Color(0xFFFEE2E2),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(8),
+                                          onTap: () async {
+                                            await _showDeleteSubcategoryDialog(sub);
+                                            setManageState(() {});
+                                          },
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(6),
+                                            child: Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1089,24 +1184,26 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                             ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Full-width Add Button
                     SizedBox(
                       width: double.infinity,
+                      height: 48,
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           await _showAddSubcategoryDialog();
                           setManageState(() {});
                         },
-                        icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
+                        icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
                         label: Text(
                           'Add New Subcategory',
-                          style: GoogleFonts.poppins(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600),
+                          style: GoogleFonts.poppins(fontSize: 13.5, color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1B5E20),
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
@@ -2586,4 +2683,5 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     );
   }
 }
+
 

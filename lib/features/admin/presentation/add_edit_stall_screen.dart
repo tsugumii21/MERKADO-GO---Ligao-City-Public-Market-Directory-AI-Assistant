@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -95,9 +95,9 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       'label': 'Closed',
       'description': 'Not open today or past operating hours',
       'icon': Icons.storefront_outlined,
-      'color': Color(0xFF64748B),
-      'bgColor': Color(0xFFF8FAFC),
-      'borderColor': Color(0xFFCBD5E1),
+      'color': Color(0xFFDC2626),
+      'bgColor': Color(0xFFFEF2F2),
+      'borderColor': Color(0xFFFECACA),
     },
     {
       'value': 'temporarily_closed',

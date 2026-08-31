@@ -1125,14 +1125,14 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   // =========================================================================
 
   Future<void> _saveStall() async {
+    // 1. Form Field Validation
     if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_finalPrimaryCategoryName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select a primary category', style: GoogleFonts.poppins(color: Colors.white)),
+          content: Text(
+            'Please fill in all required fields (Stall Name & Address)',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1142,11 +1142,35 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       return;
     }
 
+    // 2. Primary Category Selection Validation
+    if (_finalPrimaryCategoryName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select a primary category for this stall',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    // 3. Operating Days Validation
     if (_selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select at least one operating day', style: GoogleFonts.poppins()),
+          content: Text(
+            'Please select at least one operating day',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
           backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
         ),
       );
       return;
@@ -1157,6 +1181,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     try {
       String? photoUrl = _existingPhotoUrl;
 
+      // Upload newly selected image to Cloudinary if picked
       if (_selectedImageBytes != null) {
         photoUrl = await CloudinaryService.uploadStallImageBytes(_selectedImageBytes!);
       }
@@ -1166,41 +1191,77 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         ..._selectedTags.where((t) => !_selectedSubcategories.contains(t)),
       ];
 
+      final addressText = _stallNumberController.text.trim();
+      final stallNameText = _nameController.text.trim();
+      final openTimeText = _openTimeController.text.trim().isNotEmpty
+          ? _openTimeController.text.trim()
+          : '5:00 AM';
+      final closeTimeText = _closeTimeController.text.trim().isNotEmpty
+          ? _closeTimeController.text.trim()
+          : '6:00 PM';
+      final latValue = double.tryParse(_latitudeController.text.trim()) ?? 13.2419233;
+      final lngValue = double.tryParse(_longitudeController.text.trim()) ?? 123.538546;
+
       final stallData = <String, dynamic>{
-        'name': _nameController.text.trim(),
+        'name': stallNameText,
         'category': _finalPrimaryCategoryName,
         'categories': [_finalPrimaryCategoryName, ..._selectedSubcategories],
         'subcategories': _selectedSubcategories.toList(),
         'products': _products,
-        'address': _stallNumberController.text.trim(),
-        'photoUrls': photoUrl != null ? [photoUrl] : (_existingPhotoUrl != null ? [_existingPhotoUrl!] : []),
-        'openTime': _openTimeController.text.trim(),
-        'closeTime': _closeTimeController.text.trim(),
+        'address': addressText,
+        'stallNumber': addressText,
+        'stall_number': addressText,
+        'photoUrls': photoUrl != null
+            ? [photoUrl]
+            : (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty
+                ? [_existingPhotoUrl!]
+                : <String>[]),
+        'openTime': openTimeText,
+        'closeTime': closeTimeText,
         'daysOpen': _getDaysOpenArray(),
-        'latitude': double.tryParse(_latitudeController.text) ?? 13.2419233,
-        'longitude': double.tryParse(_longitudeController.text) ?? 123.538546,
+        'latitude': latValue,
+        'longitude': lngValue,
         'status': _stallStatus,
         'isOpen': _stallStatus == 'open',
         'isActive': _stallStatus == 'open',
         'section': _selectedSection ?? '',
+        'building_or_section': _selectedSection ?? '',
         'updatedAt': FieldValue.serverTimestamp(),
         'tags': combinedTags,
       };
 
-      if (widget.stallId != null) {
-        await FirebaseFirestore.instance.collection('stalls').doc(widget.stallId).update(stallData);
+      if (widget.stallId != null && widget.stallId!.isNotEmpty) {
+        // Edit Existing Stall
+        await FirebaseFirestore.instance
+            .collection('stalls')
+            .doc(widget.stallId)
+            .update(stallData);
       } else {
-        await FirebaseFirestore.instance.collection('stalls').add(stallData);
+        // Add New Stall
+        final newDoc =
+            await FirebaseFirestore.instance.collection('stalls').add(stallData);
+        await newDoc.update({'stallId': newDoc.id, 'id': newDoc.id});
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              widget.stallId != null ? 'Stall updated successfully' : 'Stall created successfully',
-              style: GoogleFonts.poppins(),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Text(
+                  widget.stallId != null
+                      ? 'Stall "$stallNameText" updated successfully!'
+                      : 'Stall "$stallNameText" created successfully!',
+                  style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
             backgroundColor: const Color(0xFF1B5E20),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
           ),
         );
         context.pop();
@@ -1209,8 +1270,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving stall: $e', style: GoogleFonts.poppins()),
+            content: Text('Error saving stall: $e', style: GoogleFonts.poppins(color: Colors.white)),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }

@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -438,112 +438,163 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         bool isAdding = false;
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B5E20).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF1B5E20), size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Add Subcategory',
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'This will be saved to the database under $_finalPrimaryCategoryName and available for all stalls.',
-                      style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF64748B)),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: textController,
-                      autofocus: true,
-                      style: GoogleFonts.poppins(fontSize: 13.5),
-                      decoration: _buildFieldDecoration(
-                        hintText: 'e.g. Special Cuts, Organic Eggs',
-                        prefixIcon: Icons.label_outline_rounded,
-                      ),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Please enter subcategory name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF64748B))),
-                ),
-                ElevatedButton(
-                  onPressed: isAdding
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) return;
-                          final newName = textController.text.trim();
-                          setDialogState(() => isAdding = true);
-                          try {
-                            final updatedList = await CategoryService.addSubcategory(
-                              _selectedCategoryKey!,
-                              newName,
-                            );
-                            if (mounted) {
-                              setState(() {
-                                _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
-                                _selectedSubcategories.add(newName);
-                              });
-                              Navigator.of(ctx).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Subcategory "$newName" added & saved to database!',
-                                    style: GoogleFonts.poppins(),
+            return Dialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF1B5E20), size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Add Subcategory',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
                                   ),
-                                  backgroundColor: const Color(0xFF1B5E20),
                                 ),
-                              );
-                            }
-                          } catch (e) {
-                            setDialogState(() => isAdding = false);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e', style: GoogleFonts.poppins()),
-                                  backgroundColor: AppColors.error,
+                                Text(
+                                  'Category: $_finalPrimaryCategoryName',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF64748B),
+                                  ),
                                 ),
-                              );
-                            }
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'This will be saved to the database under $_finalPrimaryCategoryName and available for all stalls.',
+                        style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B), height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: textController,
+                        autofocus: true,
+                        style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
+                        decoration: _buildFieldDecoration(
+                          hintText: 'e.g. Special Cuts, Organic Eggs',
+                          prefixIcon: Icons.label_outline_rounded,
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Please enter subcategory name';
                           }
+                          return null;
                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: isAdding ? null : () => Navigator.of(ctx).pop(),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: isAdding
+                                ? null
+                                : () async {
+                                    if (!formKey.currentState!.validate()) return;
+                                    final newName = textController.text.trim();
+                                    setDialogState(() => isAdding = true);
+                                    try {
+                                      final updatedList = await CategoryService.addSubcategory(
+                                        _selectedCategoryKey!,
+                                        newName,
+                                      );
+                                      if (mounted) {
+                                        setState(() {
+                                          _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
+                                          _selectedSubcategories.add(newName);
+                                        });
+                                        Navigator.of(ctx).pop();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Subcategory "$newName" added & saved to database!',
+                                              style: GoogleFonts.poppins(),
+                                            ),
+                                            backgroundColor: const Color(0xFF1B5E20),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      setDialogState(() => isAdding = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Error: $e', style: GoogleFonts.poppins()),
+                                            backgroundColor: AppColors.error,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1B5E20),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                            ),
+                            child: isAdding
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : Text(
+                                    'Save to Database',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  child: isAdding
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text('Save to Database', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
-              ],
+              ),
             );
           },
         );
@@ -562,119 +613,170 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         bool isEditing = false;
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B5E20).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.edit_rounded, color: Color(0xFF1B5E20), size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Edit Subcategory',
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Rename "$currentName" in the database across $_finalPrimaryCategoryName.',
-                      style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF64748B)),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: textController,
-                      autofocus: true,
-                      style: GoogleFonts.poppins(fontSize: 13.5),
-                      decoration: _buildFieldDecoration(
-                        hintText: 'Enter new subcategory name',
-                        prefixIcon: Icons.label_outline_rounded,
-                      ),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Subcategory name cannot be empty';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF64748B))),
-                ),
-                ElevatedButton(
-                  onPressed: isEditing
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) return;
-                          final newName = textController.text.trim();
-                          if (newName == currentName) {
-                            Navigator.of(ctx).pop();
-                            return;
-                          }
-                          setDialogState(() => isEditing = true);
-                          try {
-                            final updatedList = await CategoryService.editSubcategory(
-                              categoryKey: _selectedCategoryKey!,
-                              oldName: currentName,
-                              newName: newName,
-                            );
-                            if (mounted) {
-                              setState(() {
-                                _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
-                                if (_selectedSubcategories.remove(currentName)) {
-                                  _selectedSubcategories.add(newName);
-                                }
-                              });
-                              Navigator.of(ctx).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Subcategory renamed to "$newName" in database!',
-                                    style: GoogleFonts.poppins(),
+            return Dialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.edit_rounded, color: Color(0xFF1B5E20), size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Edit Subcategory',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
                                   ),
-                                  backgroundColor: const Color(0xFF1B5E20),
                                 ),
-                              );
-                            }
-                          } catch (e) {
-                            setDialogState(() => isEditing = false);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e', style: GoogleFonts.poppins()),
-                                  backgroundColor: AppColors.error,
+                                Text(
+                                  'Category: $_finalPrimaryCategoryName',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF64748B),
+                                  ),
                                 ),
-                              );
-                            }
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Rename "$currentName" across the database for $_finalPrimaryCategoryName.',
+                        style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B), height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: textController,
+                        autofocus: true,
+                        style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
+                        decoration: _buildFieldDecoration(
+                          hintText: 'Enter new subcategory name',
+                          prefixIcon: Icons.label_outline_rounded,
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Subcategory name cannot be empty';
                           }
+                          return null;
                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: isEditing ? null : () => Navigator.of(ctx).pop(),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: isEditing
+                                ? null
+                                : () async {
+                                    if (!formKey.currentState!.validate()) return;
+                                    final newName = textController.text.trim();
+                                    if (newName == currentName) {
+                                      Navigator.of(ctx).pop();
+                                      return;
+                                    }
+                                    setDialogState(() => isEditing = true);
+                                    try {
+                                      final updatedList = await CategoryService.editSubcategory(
+                                        categoryKey: _selectedCategoryKey!,
+                                        oldName: currentName,
+                                        newName: newName,
+                                      );
+                                      if (mounted) {
+                                        setState(() {
+                                          _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
+                                          if (_selectedSubcategories.remove(currentName)) {
+                                            _selectedSubcategories.add(newName);
+                                          }
+                                        });
+                                        Navigator.of(ctx).pop();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Subcategory renamed to "$newName" in database!',
+                                              style: GoogleFonts.poppins(),
+                                            ),
+                                            backgroundColor: const Color(0xFF1B5E20),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      setDialogState(() => isEditing = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Error: $e', style: GoogleFonts.poppins()),
+                                            backgroundColor: AppColors.error,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1B5E20),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                            ),
+                            child: isEditing
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : Text(
+                                    'Update Database',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  child: isEditing
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text('Update Database', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
-              ],
+              ),
             );
           },
         );
@@ -691,85 +793,129 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         bool isDeleting = false;
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+            return Dialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Delete Subcategory',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Delete Subcategory',
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-              content: Text(
-                'Are you sure you want to remove "$nameToDelete" from the database under $_finalPrimaryCategoryName?',
-                style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF334155)),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text('Cancel', style: GoogleFonts.poppins(color: const Color(0xFF64748B))),
-                ),
-                ElevatedButton(
-                  onPressed: isDeleting
-                      ? null
-                      : () async {
-                          setDialogState(() => isDeleting = true);
-                          try {
-                            final updatedList = await CategoryService.deleteSubcategory(
-                              _selectedCategoryKey!,
-                              nameToDelete,
-                            );
-                            if (mounted) {
-                              setState(() {
-                                _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
-                                _selectedSubcategories.remove(nameToDelete);
-                              });
-                              Navigator.of(ctx).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Subcategory "$nameToDelete" removed from database!',
-                                    style: GoogleFonts.poppins(),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Are you sure you want to remove "$nameToDelete" from the database under $_finalPrimaryCategoryName?',
+                      style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF334155), height: 1.4),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isDeleting ? null : () => Navigator.of(ctx).pop(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: isDeleting
+                              ? null
+                              : () async {
+                                  setDialogState(() => isDeleting = true);
+                                  try {
+                                    final updatedList = await CategoryService.deleteSubcategory(
+                                      _selectedCategoryKey!,
+                                      nameToDelete,
+                                    );
+                                    if (mounted) {
+                                      setState(() {
+                                        _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
+                                        _selectedSubcategories.remove(nameToDelete);
+                                      });
+                                      Navigator.of(ctx).pop();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Subcategory "$nameToDelete" removed from database!',
+                                            style: GoogleFonts.poppins(),
+                                          ),
+                                          backgroundColor: const Color(0xFF1B5E20),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setDialogState(() => isDeleting = false);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error: $e', style: GoogleFonts.poppins()),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFDC2626),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                          ),
+                          child: isDeleting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : Text(
+                                  'Delete from Database',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
                                   ),
-                                  backgroundColor: const Color(0xFF1B5E20),
                                 ),
-                              );
-                            }
-                          } catch (e) {
-                            setDialogState(() => isDeleting = false);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e', style: GoogleFonts.poppins()),
-                                  backgroundColor: AppColors.error,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: isDeleting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text('Delete from Database', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         );
@@ -780,6 +926,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   void _showSubcategoryActionSheet(String subcategoryName) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -793,32 +940,45 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.tune_rounded, size: 20, color: Color(0xFF1B5E20)),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF1B5E20)),
+                    ),
                     const SizedBox(width: 10),
-                    Text(
-                      'Subcategory: $subcategoryName',
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0F172A),
+                    Expanded(
+                      child: Text(
+                        'Subcategory: $subcategoryName',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 6),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.edit_rounded, color: Color(0xFF1B5E20)),
-                  title: Text('Edit / Rename', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
-                  subtitle: Text('Modify name in the database', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B))),
+                  title: Text('Edit / Rename', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  subtitle: Text('Modify name in database', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF64748B))),
                   onTap: () {
                     Navigator.of(ctx).pop();
                     _showEditSubcategoryDialog(subcategoryName);
                   },
                 ),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
-                  title: Text('Delete Subcategory', style: GoogleFonts.poppins(color: const Color(0xFFDC2626), fontWeight: FontWeight.w500)),
-                  subtitle: Text('Remove from database catalog', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B))),
+                  title: Text('Delete Subcategory', style: GoogleFonts.poppins(color: const Color(0xFFDC2626), fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  subtitle: Text('Remove from database catalog', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF64748B))),
                   onTap: () {
                     Navigator.of(ctx).pop();
                     _showDeleteSubcategoryDialog(subcategoryName);
@@ -842,91 +1002,117 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
           builder: (context, setManageState) {
             final currentSubs = _getCurrentSubcategories(_selectedCategoryKey!);
 
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            return Dialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Manage Subcategories',
-                          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Manage Subcategories',
+                                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                              ),
+                              Text(
+                                'Category: $_finalPrimaryCategoryName',
+                                style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                              ),
+                            ],
+                          ),
                         ),
-                        Text(
-                          'Category: $_finalPrimaryCategoryName',
-                          style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF64748B)),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF64748B)),
+                          onPressed: () => Navigator.of(ctx).pop(),
                         ),
                       ],
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: currentSubs.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No subcategories found. Tap Add below to create one.',
-                          style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B)),
-                          textAlign: TextAlign.center,
-                        ),
-                      )
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: currentSubs.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                        itemBuilder: (context, idx) {
-                          final sub = currentSubs[idx];
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            title: Text(
-                              sub,
-                              style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit_rounded, size: 18, color: Color(0xFF1B5E20)),
-                                  onPressed: () async {
-                                    await _showEditSubcategoryDialog(sub);
-                                    setManageState(() {});
-                                  },
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 320),
+                      child: currentSubs.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                child: Text(
+                                  'No subcategories found.\nTap Add below to create one.',
+                                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B)),
+                                  textAlign: TextAlign.center,
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
-                                  onPressed: () async {
-                                    await _showDeleteSubcategoryDialog(sub);
-                                    setManageState(() {});
-                                  },
-                                ),
-                              ],
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: currentSubs.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                              itemBuilder: (context, idx) {
+                                final sub = currentSubs[idx];
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                                  title: Text(
+                                    sub,
+                                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_rounded, size: 18, color: Color(0xFF1B5E20)),
+                                        onPressed: () async {
+                                          await _showEditSubcategoryDialog(sub);
+                                          setManageState(() {});
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
+                                        onPressed: () async {
+                                          await _showDeleteSubcategoryDialog(sub);
+                                          setManageState(() {});
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
-                          );
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await _showAddSubcategoryDialog();
+                          setManageState(() {});
                         },
+                        icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
+                        label: Text(
+                          'Add New Subcategory',
+                          style: GoogleFonts.poppins(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B5E20),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                       ),
-              ),
-              actions: [
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    await _showAddSubcategoryDialog();
-                    setManageState(() {});
-                  },
-                  icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                  label: Text('Add New Subcategory', style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white, fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         );
@@ -2336,3 +2522,4 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     );
   }
 }
+

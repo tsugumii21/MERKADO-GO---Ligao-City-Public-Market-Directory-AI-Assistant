@@ -1438,7 +1438,6 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         ),
       ),
       bottomNavigationBar: Container(
-        color: Colors.white,
         padding: EdgeInsets.only(
           left: isDesktop ? 24 : 16,
           right: isDesktop ? 24 : 16,

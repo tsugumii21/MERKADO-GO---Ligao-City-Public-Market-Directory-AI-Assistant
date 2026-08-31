@@ -1438,62 +1438,69 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         ),
       ),
       bottomNavigationBar: Container(
-        padding: EdgeInsets.fromLTRB(
-          isDesktop ? 24 : 16,
-          12,
-          isDesktop ? 24 : 16,
-          MediaQuery.of(context).padding.bottom + 12,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(
-            top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, -3),
+        color: Colors.white,
+        child: SafeArea(
+          top: false,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              isDesktop ? 24 : 16,
+              12,
+              isDesktop ? 24 : 16,
+              12,
             ),
-          ],
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: _isSaving ? null : _saveStall,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20),
-              disabledBackgroundColor: const Color(0xFF1B5E20).withValues(alpha: 0.6),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8,
+                  offset: Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveStall,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1B5E20),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFF1B5E20).withValues(alpha: 0.6),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.stallId != null ? 'Save Stall Changes' : 'Create Stall',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
-            child: _isSaving
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        widget.stallId != null ? 'Save Stall Changes' : 'Create Stall',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
           ),
         ),
       ),
@@ -1512,7 +1519,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                       isDesktop ? 24 : 16,
                       16,
                       isDesktop ? 24 : 16,
-                      32,
+                      48,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

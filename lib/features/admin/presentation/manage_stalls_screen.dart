@@ -839,24 +839,29 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
     );
   }
 
-  // Modernized Stall Card with Admin Quick Actions
+  // Modernized Stall Card with Admin Quick Actions & Enhanced Spacing
   Widget _buildModernAdminStallCard(StallModel stall) {
     final isOpen = StallUtils.isStallOpenNow(stall);
     final visuals = _getCategoryVisuals(stall.category);
+    final hasPhoto = stall.photoUrls.isNotEmpty &&
+        stall.photoUrls.first.isNotEmpty &&
+        !stall.photoUrls.first.contains('placeholder') &&
+        !stall.photoUrls.first.contains('demo');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: const Color(0xFFE5E7EB),
+          color: const Color(0xFFE2E8F0),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -871,27 +876,44 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Header: Category Avatar + Title + Status Pill + Admin Actions
+                // 1. Top Row: Avatar/Image + Stall Title & Badges + Action Buttons
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Visual Category Avatar
+                    // Visual Category Avatar or Image Thumbnail
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
-                        color: visuals.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        color: visuals.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: visuals.color.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
                       ),
-                      child: Icon(
-                        visuals.icon,
-                        color: visuals.color,
-                        size: 22,
-                      ),
+                      child: hasPhoto
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(13),
+                              child: Image.network(
+                                stall.photoUrls.first,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  visuals.icon,
+                                  color: visuals.color,
+                                  size: 24,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              visuals.icon,
+                              color: visuals.color,
+                              size: 24,
+                            ),
                     ),
                     const SizedBox(width: 12),
 
-                    // Stall Name & Category Pill
+                    // Title & Category / Status Badges
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -901,45 +923,44 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                             style: GoogleFonts.poppins(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1F2937),
+                              color: const Color(0xFF0F172A),
+                              height: 1.25,
                               letterSpacing: -0.2,
                             ),
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 3),
-                          Row(
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               // Category Badge
-                              Flexible(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF3F4F6),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    StallUtils.getCategoryLabel(stall.category),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF4B5563),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: visuals.color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  StallUtils.getCategoryLabel(stall.category),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: visuals.color,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
 
                               // Status Pill
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
                                   color: isOpen
@@ -947,15 +968,31 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                                       : const Color(0xFFFEE2E2),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text(
-                                  isOpen ? 'Open Now' : 'Closed',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: isOpen
-                                        ? const Color(0xFF16A34A)
-                                        : const Color(0xFFDC2626),
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: isOpen
+                                            ? const Color(0xFF16A34A)
+                                            : const Color(0xFFDC2626),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isOpen ? 'Open Now' : 'Closed',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: isOpen
+                                            ? const Color(0xFF16A34A)
+                                            : const Color(0xFFDC2626),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -963,6 +1000,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
 
                     // Admin Action Buttons (Edit & Delete)
                     Row(
@@ -978,11 +1016,11 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                                 '${RouteNames.adminStalls}/${stall.stallId}/edit',
                               );
                             },
-                            child: Container(
-                              padding: const EdgeInsets.all(7),
-                              child: const Icon(
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
                                 Icons.edit_rounded,
-                                size: 17,
+                                size: 18,
                                 color: Color(0xFF1B5E20),
                               ),
                             ),
@@ -999,11 +1037,11 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                               stall.stallId,
                               stall.name,
                             ),
-                            child: Container(
-                              padding: const EdgeInsets.all(7),
-                              child: const Icon(
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
                                 Icons.delete_outline_rounded,
-                                size: 17,
+                                size: 18,
                                 color: Color(0xFFDC2626),
                               ),
                             ),
@@ -1014,38 +1052,81 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                // 2. Physical Section / Address Row (if available)
+                if ((stall.section?.isNotEmpty ?? false) || stall.address.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            (stall.section?.isNotEmpty ?? false)
+                                ? (stall.address.isNotEmpty && stall.address != stall.section
+                                    ? '${stall.section} • ${stall.address}'
+                                    : (stall.section ?? ''))
+                                : stall.address,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF475569),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
-                // Operating Hours & Days Summary
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 10),
+
+                // 3. Operating Hours & Days Row
                 Row(
                   children: [
                     const Icon(
-                      Icons.access_time_rounded,
-                      size: 13,
-                      color: Color(0xFF6B7280),
+                      Icons.schedule_rounded,
+                      size: 14,
+                      color: Color(0xFF64748B),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
                     Text(
-                      '${stall.openTime} – ${stall.closeTime}',
+                      '${stall.openTime} â€“ ${stall.closeTime}',
                       style: GoogleFonts.poppins(
                         fontSize: 11.5,
-                        color: const Color(0xFF6B7280),
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF334155),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     const Icon(
-                      Icons.calendar_today_rounded,
-                      size: 12,
-                      color: Color(0xFF6B7280),
+                      Icons.event_available_rounded,
+                      size: 14,
+                      color: Color(0xFF64748B),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
                     Expanded(
                       child: Text(
                         StallUtils.formatOperatingDays(
                             stall.daysOpen.join(', ')),
                         style: GoogleFonts.poppins(
                           fontSize: 11.5,
-                          color: const Color(0xFF6B7280),
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF64748B),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1054,34 +1135,33 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                   ],
                 ),
 
-                // Tags / Products Summary Chips
+                // 4. Tags / Products Chips
                 if (stall.tags.isNotEmpty || stall.products.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
-                    runSpacing: 4,
+                    runSpacing: 5,
                     children: [
-                      ...stall.tags.take(3).map((tag) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF9FAFB),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: const Color(0xFFE5E7EB),
+                      ...stall.tags.take(3).map(
+                            (tag) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                StallUtils.getTagLabel(tag),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF475569),
+                                ),
                               ),
                             ),
-                            child: Text(
-                              StallUtils.getTagLabel(tag),
-                              style: GoogleFonts.poppins(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF4B5563),
-                              ),
-                            ),
-                          )),
+                          ),
                       if (stall.tags.length > 3)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -1089,18 +1169,15 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF9FAFB),
+                            color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: const Color(0xFFE5E7EB),
-                            ),
                           ),
                           child: Text(
                             '+${stall.tags.length - 3} more',
                             style: GoogleFonts.poppins(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w500,
-                              color: const Color(0xFF6B7280),
+                              color: const Color(0xFF64748B),
                             ),
                           ),
                         ),
@@ -1124,6 +1201,7 @@ class _SortFilterModal extends StatefulWidget {
   final String? selectedDay;
   final bool showOpenOnDay;
   final bool filterOpenOnly;
+
   final Function(
     String? sortAlpha,
     TimeOfDay? filterOpenTime,
@@ -1546,3 +1624,4 @@ class _SortFilterModalState extends State<_SortFilterModal> {
     );
   }
 }
+

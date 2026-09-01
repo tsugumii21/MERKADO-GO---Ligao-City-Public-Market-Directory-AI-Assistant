@@ -33,12 +33,24 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // Stalls collection - allow authenticated users to read
+    // Stalls collection - public read for Mobile App, Guest browsing, and Web Kiosk
     match /stalls/{stallId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    // Category metadata collection - public read for subcategories and tags
+    match /category_metadata/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Reports collection - authenticated users can create, admins can read and manage
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
     }
     
     // All other collections - require authentication

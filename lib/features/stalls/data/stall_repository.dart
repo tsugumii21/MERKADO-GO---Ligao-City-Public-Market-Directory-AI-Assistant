@@ -24,7 +24,6 @@ class FirestoreStallRepository implements StallRepository {
   Stream<List<StallModel>> getAllStalls() {
     return _firestore
         .collection(_collection)
-        .where('isActive', isEqualTo: true)
         .orderBy('name')
         .snapshots()
         .handleError((error) {
@@ -40,6 +39,7 @@ class FirestoreStallRepository implements StallRepository {
                 }
               })
               .whereType<StallModel>()
+              .where((stall) => stall.isActive != false)
               .toList();
         });
   }
@@ -67,7 +67,6 @@ class FirestoreStallRepository implements StallRepository {
     
     return _firestore
         .collection(_collection)
-        .where('isActive', isEqualTo: true)
         .orderBy('name')
         .snapshots()
         .handleError((error) {
@@ -83,6 +82,7 @@ class FirestoreStallRepository implements StallRepository {
             }
           })
           .whereType<StallModel>()
+          .where((stall) => stall.isActive != false)
           .where((stall) => stall.name.toLowerCase().contains(queryLower))
           .toList();
     });
@@ -98,7 +98,7 @@ class FirestoreStallRepository implements StallRepository {
     
     return _firestore
         .collection(_collection)
-        .where('isActive', isEqualTo: true)
+        .orderBy('name')
         .snapshots()
         .handleError((error) {
           debugPrint('❌ Error: Search by product failed: $error');
@@ -113,6 +113,7 @@ class FirestoreStallRepository implements StallRepository {
             }
           })
           .whereType<StallModel>()
+          .where((stall) => stall.isActive != false)
           .where((stall) => stall.products.any(
               (product) => product.toLowerCase().contains(ingredientLower)))
           .toList();
@@ -124,8 +125,6 @@ class FirestoreStallRepository implements StallRepository {
     return _firestore
         .collection(_collection)
         .where('category', isEqualTo: category)
-        .where('isActive', isEqualTo: true)
-        .orderBy('name')
         .snapshots()
         .handleError((error) {
           debugPrint('❌ Error: Category query failed: $error');
@@ -140,6 +139,7 @@ class FirestoreStallRepository implements StallRepository {
                 }
               })
               .whereType<StallModel>()
+              .where((stall) => stall.isActive != false)
               .toList();
         });
   }

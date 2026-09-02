@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -109,6 +110,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   String? _rawSvgContent;
   String? _coloredSvgContent;
   bool _isLoadingSvg = true;
+  Map<String, GraphNode> _allGraphNodes = {};
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -129,11 +131,30 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     );
 
     _loadAndPrepareSvg();
+    _loadGraphNodes();
 
     // Initial center on market complex after layout
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _centerOnMarket();
     });
+  }
+
+  Future<void> _loadGraphNodes() async {
+    try {
+      final str = await DefaultAssetBundle.of(context)
+          .loadString('assets/map/map_nodes.json');
+      final map = jsonDecode(str) as Map<String, dynamic>;
+      final parsed = <String, GraphNode>{};
+      for (final entry in map.entries) {
+        parsed[entry.key] = GraphNode.fromJson(
+            entry.key, entry.value as Map<String, dynamic>);
+      }
+      if (mounted) {
+        setState(() {
+          _allGraphNodes = parsed;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -162,8 +183,10 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   Future<void> _loadAndPrepareSvg() async {
     try {
-      final svgStr = await DefaultAssetBundle.of(context)
+      var svgStr = await DefaultAssetBundle.of(context)
           .loadString('assets/map/LigaoCity_PublicMarket_Map.svg');
+      // Set pure white background for the SVG map
+      svgStr = svgStr.replaceFirst('fill="#1E1E1E"', 'fill="#FFFFFF"');
       if (mounted) {
         setState(() {
           _rawSvgContent = svgStr;
@@ -277,183 +300,146 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
       );
     }
 
-    return Stack(
-      children: [
-        // Main Interactive Vector Map Canvas
-        GestureDetector(
-          onTap: widget.onMapTapped,
-          child: InteractiveViewer(
-            transformationController: _transformController,
-            minScale: 0.4,
-            maxScale: 6.0,
-            boundaryMargin: const EdgeInsets.all(1200),
-            constrained: false,
-            child: SizedBox(
-              width: _svgWidth,
-              height: _svgHeight,
-              child: Stack(
-                children: [
-                  // Layer 1: Base SVG Map with dynamic 17-category coloring
-                  if (_coloredSvgContent != null)
-                    SvgPicture.string(
-                      _coloredSvgContent!,
-                      width: _svgWidth,
-                      height: _svgHeight,
-                      fit: BoxFit.fill,
-                    )
-                  else if (_rawSvgContent != null)
-                    SvgPicture.string(
-                      _rawSvgContent!,
-                      width: _svgWidth,
-                      height: _svgHeight,
-                      fit: BoxFit.fill,
-                    ),
+    return Container(
+      color: Colors.white,
+      child: Stack(
+        children: [
+          // Main Interactive Vector Map Canvas
+          GestureDetector(
+            onTap: widget.onMapTapped,
+            child: InteractiveViewer(
+              transformationController: _transformController,
+              minScale: 0.4,
+              maxScale: 6.0,
+              boundaryMargin: const EdgeInsets.all(1200),
+              constrained: false,
+              child: SizedBox(
+                width: _svgWidth,
+                height: _svgHeight,
+                child: Stack(
+                  children: [
+                    // Layer 1: Base SVG Map with dynamic 17-category coloring
+                    if (_coloredSvgContent != null)
+                      SvgPicture.string(
+                        _coloredSvgContent!,
+                        width: _svgWidth,
+                        height: _svgHeight,
+                        fit: BoxFit.fill,
+                      )
+                    else if (_rawSvgContent != null)
+                      SvgPicture.string(
+                        _rawSvgContent!,
+                        width: _svgWidth,
+                        height: _svgHeight,
+                        fit: BoxFit.fill,
+                      ),
 
-                  // Layer 2: A* Pathfinding Route Polyline Overlay
-                  if (widget.activeRoute != null &&
-                      widget.activeRoute!.nodes.isNotEmpty)
-                    AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, _) {
-                        return CustomPaint(
-                          size: const Size(_svgWidth, _svgHeight),
-                          painter: RouteOverlayPainter(
-                            route: widget.activeRoute!,
-                            nodeOffsetX: _nodeOffsetX,
-                            nodeOffsetY: _nodeOffsetY,
-                            pulseScale: _pulseAnimation.value,
-                          ),
-                        );
-                      },
-                    ),
+                    // Layer 2: A* Pathfinding Route Polyline Overlay
+                    if (widget.activeRoute != null &&
+                        widget.activeRoute!.nodes.isNotEmpty)
+                      AnimatedBuilder(
+                        animation: _pulseAnimation,
+                        builder: (context, _) {
+                          return CustomPaint(
+                            size: const Size(_svgWidth, _svgHeight),
+                            painter: RouteOverlayPainter(
+                              route: widget.activeRoute!,
+                              nodeOffsetX: _nodeOffsetX,
+                              nodeOffsetY: _nodeOffsetY,
+                              pulseScale: _pulseAnimation.value,
+                            ),
+                          );
+                        },
+                      ),
 
-                  // Layer 3: Entrance Gate Marker Badges
-                  ...widget.entryPoints.map((entrance) {
-                    final node = _findNodeInRouteOrService(entrance.nodeId);
-                    if (node == null) return const SizedBox.shrink();
-                    final pos = Offset(
-                      node.x + _nodeOffsetX,
-                      node.y + _nodeOffsetY,
-                    );
+                    // Layer 3: Entrance Gate Marker Badges
+                    ...widget.entryPoints.map((entrance) {
+                      final node = _findNodeInRouteOrService(entrance.nodeId);
+                      if (node == null) return const SizedBox.shrink();
+                      final pos = Offset(
+                        node.x + _nodeOffsetX,
+                        node.y + _nodeOffsetY,
+                      );
 
-                    return Positioned(
-                      left: pos.dx - 24,
-                      top: pos.dy - 24,
-                      child: GestureDetector(
-                        onTap: () => widget.onEntranceTapped?.call(entrance),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.door_front_door_rounded,
-                                color: Colors.white,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                'Gate ${entrance.entranceId}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                      return Positioned(
+                        left: pos.dx - 24,
+                        top: pos.dy - 24,
+                        child: GestureDetector(
+                          onTap: () => widget.onEntranceTapped?.call(entrance),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'Gate ${entrance.entranceId}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  }),
-                ],
+                      );
+                    }),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
 
-        // Floating Map Controls (Zoom In, Zoom Out, Reset Center)
-        Positioned(
-          right: AppSpacing.md,
-          bottom: AppSpacing.xl + 60,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildMapControlButton(
-                icon: Icons.add_rounded,
-                tooltip: 'Zoom In',
-                onPressed: _zoomIn,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              _buildMapControlButton(
-                icon: Icons.remove_rounded,
-                tooltip: 'Zoom Out',
-                onPressed: _zoomOut,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              _buildMapControlButton(
-                icon: Icons.center_focus_strong_rounded,
-                tooltip: 'Center Market',
-                onPressed: _centerOnMarket,
-              ),
-            ],
-          ),
-        ),
-
-        // Quick Zone Filter Chips (Horizontal Scroll Bar at bottom)
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: AppSpacing.md,
-          child: SizedBox(
-            height: 38,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              scrollDirection: Axis.horizontal,
-              itemCount: kMarketZoneAreas.length,
-              separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.xs),
-              itemBuilder: (context, index) {
-                final zone = kMarketZoneAreas[index];
-                return ActionChip(
-                  avatar: CircleAvatar(
-                    backgroundColor: zone.color,
-                    radius: 6,
-                  ),
-                  label: Text(
-                    zone.title,
-                    style: AppTextStyles.caption.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  backgroundColor: AppColors.surface,
-                  side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-                  ),
-                  onPressed: () {
-                    _animateToPoint(zone.centerOffset, zone.defaultZoom);
-                  },
-                );
-              },
+          // Floating Map Controls (Zoom In, Zoom Out, Reset Center)
+          Positioned(
+            right: 16,
+            bottom: 24,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildMapControlButton(
+                  icon: Icons.add_rounded,
+                  tooltip: 'Zoom In',
+                  onPressed: _zoomIn,
+                ),
+                const SizedBox(height: 8),
+                _buildMapControlButton(
+                  icon: Icons.remove_rounded,
+                  tooltip: 'Zoom Out',
+                  onPressed: _zoomOut,
+                ),
+                const SizedBox(height: 8),
+                _buildMapControlButton(
+                  icon: Icons.center_focus_strong_rounded,
+                  tooltip: 'Center Market',
+                  onPressed: _centerOnMarket,
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -463,7 +449,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
         if (node.id == nodeId) return node;
       }
     }
-    return null;
+    return _allGraphNodes[nodeId];
   }
 
   Widget _buildMapControlButton({

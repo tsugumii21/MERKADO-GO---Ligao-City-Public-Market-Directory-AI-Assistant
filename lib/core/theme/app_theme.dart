@@ -1,4 +1,4 @@
-// Modern Material 3 theme for Merkado Go
+﻿// Modern Material 3 theme for Merkado Go
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

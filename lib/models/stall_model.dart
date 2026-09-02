@@ -71,15 +71,33 @@ class StallModel {
                 .map((e) => (e ?? '').toString().trim())
                 .where((e) => e.isNotEmpty)
                 .toList()
-            : <String>[],
-        openTime: data['openTime'] as String? ?? '6:00 AM',
-        closeTime: data['closeTime'] as String? ?? '6:00 PM',
+            : (data['photo_urls'] is List
+                ? (data['photo_urls'] as List)
+                    .map((e) => (e ?? '').toString().trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList()
+                : <String>[]),
+        openTime: (data['openTime'] as String? ??
+                data['open_time'] as String? ??
+                data['opening_time'] as String? ??
+                '5:00 AM')
+            .trim(),
+        closeTime: (data['closeTime'] as String? ??
+                data['close_time'] as String? ??
+                data['closing_time'] as String? ??
+                '6:00 PM')
+            .trim(),
         daysOpen: data['daysOpen'] is List
             ? (data['daysOpen'] as List)
                 .map((e) => (e ?? '').toString().trim())
                 .where((e) => e.isNotEmpty)
                 .toList()
-            : <String>[],
+            : (data['days_open'] is List
+                ? (data['days_open'] as List)
+                    .map((e) => (e ?? '').toString().trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList()
+                : <String>[]),
         latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
         longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
         isActive: data['isActive'] as bool? ??
@@ -112,7 +130,7 @@ class StallModel {
         products: const <String>[],
         address: '',
         photoUrls: const <String>[],
-        openTime: '6:00 AM',
+        openTime: '5:00 AM',
         closeTime: '6:00 PM',
         daysOpen: const <String>[],
         latitude: 0.0,
@@ -130,21 +148,29 @@ class StallModel {
   // Convert StallModel to Firestore document
   Map<String, dynamic> toFirestore() {
     return {
+      'id': stallId,
+      'stallId': stallId,
+      'stall_id': stallId,
       'name': name,
       'category': category,
       'categories': categories, // Multi-category array
       'products': products,
       'address': address,
       'photoUrls': photoUrls,
+      'photo_urls': photoUrls,
       'openTime': openTime,
+      'open_time': openTime,
       'closeTime': closeTime,
+      'close_time': closeTime,
       'daysOpen': daysOpen,
+      'days_open': daysOpen,
       'latitude': latitude,
       'longitude': longitude,
       'isActive': isActive,
       'isOpen': status == 'open',
       'status': status,
       'section': section ?? '',
+      'building_or_section': section ?? '',
       'stallNumber': stallNumber ?? '',
       'stall_number': stallNumber ?? '',
       'updatedAt': Timestamp.fromDate(updatedAt),

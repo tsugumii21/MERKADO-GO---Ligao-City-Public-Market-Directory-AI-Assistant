@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 /// Single Market Section or Building definition
 class MarketSectionItem {
@@ -29,21 +29,21 @@ class MarketSections {
       id: 'MEAT SECTION',
       label: 'Meat Section',
       group: 'Commodity Sections',
-      icon: Icons.restaurant_rounded,
+      icon: Icons.savings_rounded,
       description: 'Pork, beef, poultry & fresh cuts',
     ),
     MarketSectionItem(
       id: 'FISH SECTION',
       label: 'Fish Section',
       group: 'Commodity Sections',
-      icon: Icons.water_drop_rounded,
+      icon: Icons.set_meal_rounded,
       description: 'Fresh seafood, saltwater & freshwater fish',
     ),
     MarketSectionItem(
       id: 'CARENDERIA',
       label: 'Carenderia / Eateries',
       group: 'Commodity Sections',
-      icon: Icons.local_dining_rounded,
+      icon: Icons.restaurant_rounded,
       description: 'Cooked meals, snacks, refreshments & dining',
     ),
 

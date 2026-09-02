@@ -31,10 +31,12 @@ import '../widgets/main_shell.dart'
 
 class AppRouter {
   static void setContainer(ProviderContainer _) {}
+  static GoRouter? _routerInstance;
   
   static GoRouter router() {
+    if (_routerInstance != null) return _routerInstance!;
     try {
-      return GoRouter(
+      _routerInstance = GoRouter(
         initialLocation: RouteNames.splash,
       routes: [
         // Indoor Map Screen (user)
@@ -251,6 +253,7 @@ class AppRouter {
         }
       },
     );
+    return _routerInstance!;
     } catch (e) {
       debugPrint('❌ Failed: Failed to create GoRouter: $e');
       // Return a minimal fallback router

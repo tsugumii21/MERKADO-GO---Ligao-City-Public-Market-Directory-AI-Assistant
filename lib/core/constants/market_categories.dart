@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../features/map/domain/zone_palette.dart';
 
 /// Single Category definition with rich metadata, subcategories, and visual tokens
@@ -45,7 +45,7 @@ class MarketCategories {
       primaryCategoryName: 'Meat',
       displayName: 'Meat (Pork & Beef)',
       shortName: 'Meat',
-      icon: Icons.restaurant_rounded,
+      icon: Icons.savings_rounded,
       colorSet: ZonePalette.meat,
       subcategories: [
         'Pork Cuts',
@@ -66,7 +66,7 @@ class MarketCategories {
       primaryCategoryName: 'Fish',
       displayName: 'Fish & Seafood',
       shortName: 'Fish',
-      icon: Icons.water_drop_rounded,
+      icon: Icons.set_meal_rounded,
       colorSet: ZonePalette.fish,
       subcategories: [
         'Freshwater Fish',

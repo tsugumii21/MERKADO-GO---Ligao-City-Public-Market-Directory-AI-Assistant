@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Centralized text style constants for MerkadoGo.
-/// Uses Outfit for headings and Poppins for body/UI text.
+/// Uses Outfit for headings and Plus Jakarta Sans for body/UI text.
 class AppTextStyles {
   AppTextStyles._();
 

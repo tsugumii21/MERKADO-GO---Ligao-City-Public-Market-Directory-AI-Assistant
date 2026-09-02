@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +10,7 @@ import '../../../core/utils/stall_utils.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/market_categories.dart';
+import '../../../core/widgets/market_category_icon.dart';
 import 'stall_detail_sheet.dart';
 
 /// Alias for DirectoryScreen to ensure seamless naming compatibility
@@ -26,6 +27,8 @@ class StallListScreen extends ConsumerStatefulWidget {
 class StallListScreenState extends ConsumerState<StallListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToTop = false;
 
   String _selectedCategory = 'All';
   String? _selectedSubcategory;
@@ -41,7 +44,33 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   List<String> get _categories => MarketCategories.directoryFilterNames;
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final show = _scrollController.hasClients && _scrollController.offset > 80;
+    if (show != _showBackToTop) {
+      setState(() => _showBackToTop = show);
+    }
+  }
+
+  void _scrollToTop() {
+    HapticFeedback.lightImpact();
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -153,7 +182,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   // Get visual metadata for a stall category
   ({IconData icon, Color color}) _getCategoryVisuals(String category) {
     final v = MarketCategories.getVisuals(category);
-    return (icon: v.icon, color: v.color);
+    return (icon: v.icon, color: v.outline);
   }
 
   TimeOfDay? _parseTimeOfDay(String timeStr) {
@@ -648,77 +677,126 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
                     // Stalls List
                     Expanded(
-                      child: filtered.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32.0),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 64,
-                                      height: 64,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFF3F4F6),
+                      child: Stack(
+                        children: [
+                          filtered.isEmpty
+                              ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 64,
+                                          height: 64,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFF3F4F6),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.storefront_outlined,
+                                            size: 32,
+                                            color: Color(0xFF9CA3AF),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No Stalls Found',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF374151),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Try adjusting your search query or clearing active filters.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13,
+                                            color: const Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  controller: _scrollController,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 8,
+                                  ),
+                                  itemCount: filtered.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final stall = filtered[index];
+                                    final isFav =
+                                        favState.isFavorite(stall.stallId);
+                                    final isOpen =
+                                        StallUtils.isStallOpenNow(stall);
+                                    final visuals =
+                                        _getCategoryVisuals(stall.category);
+
+                                    return _buildStallCard(
+                                      stall: stall,
+                                      isFavorite: isFav,
+                                      isOpen: isOpen,
+                                      categoryIcon: visuals.icon,
+                                      categoryColor: visuals.color,
+                                      onToggleFavorite: () =>
+                                          favNotifier.toggleFavorite(stall.stallId),
+                                      onTap: () => _openStallDetails(stall),
+                                    );
+                                  },
+                                ),
+                          // Floating Scroll-to-Top Button
+                          Positioned(
+                            right: 20,
+                            bottom: 20,
+                            child: AnimatedScale(
+                              scale: _showBackToTop ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOutBack,
+                              child: AnimatedOpacity(
+                                opacity: _showBackToTop ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _scrollToTop,
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1B5E20),
                                         shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF1B5E20)
+                                                .withValues(alpha: 0.35),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
                                       ),
-                                      child: const Icon(
-                                        Icons.storefront_outlined,
-                                        size: 32,
-                                        color: Color(0xFF9CA3AF),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'No Stalls Found',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF374151),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Try adjusting your search query or clearing active filters.',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 13,
-                                        color: const Color(0xFF6B7280),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.arrow_upward_rounded,
+                                          color: Colors.white,
+                                          size: 22,
+                                        ),
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 8,
-                              ),
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final stall = filtered[index];
-                                final isFav =
-                                    favState.isFavorite(stall.stallId);
-                                final isOpen =
-                                    StallUtils.isStallOpenNow(stall);
-                                final visuals =
-                                    _getCategoryVisuals(stall.category);
-
-                                return _buildStallCard(
-                                  stall: stall,
-                                  isFavorite: isFav,
-                                  isOpen: isOpen,
-                                  categoryIcon: visuals.icon,
-                                  categoryColor: visuals.color,
-                                  onToggleFavorite: () =>
-                                      favNotifier.toggleFavorite(stall.stallId),
-                                  onTap: () => _openStallDetails(stall),
-                                );
-                              },
                             ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -754,185 +832,407 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     required VoidCallback onToggleFavorite,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Category-Themed Avatar
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: categoryColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  categoryIcon,
-                  color: categoryColor,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
+    final statusInfo = StallUtils.getStallStatusInfo(stall);
 
-              // Stall Details
-              Expanded(
-                child: Column(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1B5E20).withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Header: Avatar + Title + Status Badges + Action Buttons
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      stall.name,
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1F2937),
+                    // Category Avatar
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: categoryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: categoryColor.withValues(alpha: 0.25),
+                          width: 1.5,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Center(
+                        child: MarketCategoryIcon(
+                          category: stall.category,
+                          fallbackIcon: categoryIcon,
+                          size: 26,
+                          color: categoryColor,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(width: 14),
+
+                    // Stall Name, Category & Status Pill
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            stall.name,
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                              height: 1.25,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              // Category Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: categoryColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: categoryColor.withValues(alpha: 0.35),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  StallUtils.getCategoryLabel(stall.category),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: categoryColor,
+                                  ),
+                                ),
+                              ),
+
+                              // Status Pill with exact operational status
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusInfo['bgColor'] as Color,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: (statusInfo['borderColor'] as Color)
+                                        .withValues(alpha: 0.6),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  statusInfo['label'] as String,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusInfo['color'] as Color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // User Action Buttons (Favorite & Navigate)
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Category Tag
-                        Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
+                        Material(
+                          color: isFavorite ? const Color(0xFFFEE2E2) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: onToggleFavorite,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                size: 18,
+                                color: isFavorite ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+                              ),
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Material(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: onTap,
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.near_me_rounded,
+                                size: 18,
+                                color: Color(0xFF1B5E20),
+                              ),
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                // 2. Physical Section / Address Row (if available)
+                if ((stall.section?.isNotEmpty ?? false) || stall.address.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            (stall.section?.isNotEmpty ?? false)
+                                ? (stall.address.isNotEmpty && stall.address != stall.section
+                                    ? '${stall.section} • ${stall.address}'
+                                    : (stall.section ?? ''))
+                                : stall.address,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF475569),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 10),
+
+                // 3. Operating Schedule Container (Hours & Days)
+                if (stall.openTime.isNotEmpty || stall.daysOpen.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 13.5,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
+                              ? '${stall.openTime} – ${stall.closeTime}'
+                              : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not set'),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF334155),
+                          ),
+                        ),
+                        if (stall.daysOpen.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF94A3B8),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.event_available_rounded,
+                            size: 13.5,
+                            color: Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
                             child: Text(
-                              stall.category.isNotEmpty
-                                  ? stall.category
-                                  : 'General',
+                              StallUtils.formatOperatingDays(
+                                  stall.daysOpen.join(', ')),
                               style: GoogleFonts.poppins(
                                 fontSize: 11,
-                                color: const Color(0xFF4B5563),
                                 fontWeight: FontWeight.w500,
+                                color: const Color(0xFF64748B),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
 
-                        // Status Pill (Open Now vs Closed)
+                // 4. Products & Inventory Chips
+                if (stall.products.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 5,
+                    children: [
+                      ...stall.products.take(5).map(
+                            (product) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.shopping_bag_outlined,
+                                    size: 11,
+                                    color: Color(0xFF1B5E20),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    product,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF334155),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      if (stall.products.length > 5)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: isOpen
-                                ? const Color(0xFFDCFCE7)
-                                : const Color(0xFFFEE2E2),
+                            color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 5,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isOpen
-                                      ? const Color(0xFF16A34A)
-                                      : const Color(0xFFDC2626),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                isOpen ? 'Open Now' : 'Closed',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: isOpen
-                                      ? const Color(0xFF15803D)
-                                      : const Color(0xFFB91C1C),
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            '+${stall.products.length - 5} more',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF64748B),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      stall.address.isNotEmpty
-                          ? stall.address
-                          : (stall.section != null
-                              ? 'Section ${stall.section}, Ligao Public Market'
-                              : 'Ligao City Public Market'),
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Trailing Actions (Favorite & Waypoint Navigation)
-              Column(
-                children: [
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      isFavorite
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color:
-                          isFavorite ? Colors.redAccent : Colors.grey.shade400,
-                      size: 20,
-                    ),
-                    onPressed: onToggleFavorite,
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.near_me_rounded,
-                      color: Color(0xFF1B5E20),
-                      size: 16,
-                    ),
+                ] else if (stall.tags.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 5,
+                    children: [
+                      ...stall.tags.take(4).map(
+                            (tag) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                StallUtils.getTagLabel(tag),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                      if (stall.tags.length > 4)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '+${stall.tags.length - 4} more',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
 }
 
 /// The 4-Section Sort & Filter Bottom Sheet

@@ -109,129 +109,87 @@ class MapScreenState extends ConsumerState<MapScreen> {
 
           // 2. Top Header Overlay (Active Route Card OR Search & Entrance Bar)
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.sm),
-              child: activeRoute != null
-                  ? RouteNavigationCard(
-                      route: activeRoute,
-                      onChangeEntrance: () =>
-                          EntranceSelectorSheet.show(context),
-                      onClose: () {
-                        ref.read(activeRouteProvider.notifier).clearRoute();
-                      },
-                    )
-                  : _buildTopSearchAndEntranceBar(selectedEntrance),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: activeRoute != null
+                    ? RouteNavigationCard(
+                        route: activeRoute,
+                        onChangeEntrance: () =>
+                            EntranceSelectorSheet.show(context),
+                        onClose: () {
+                          ref.read(activeRouteProvider.notifier).clearRoute();
+                        },
+                      )
+                    : _buildTopSearchAndEntranceBar(selectedEntrance),
+              ),
             ),
           ),
 
-          // 3. Floating Aling Suki Chat Button
+          // 3. Floating Aling Suki Avatar Button (Positioned on the left with white background)
           Positioned(
-            right: 16,
-            bottom: 60,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            left: 16,
+            bottom: 24,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                // Chat bubble callout
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  margin: const EdgeInsets.only(right: 8),
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1B5E20),
-                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white,
+                    shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 2.5,
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.auto_awesome,
-                        size: 14,
-                        color: Color(0xFFF59E0B),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Ask Aling Suki',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() => _isChatOpen = true);
+                        _showAlingSukiOverlay();
+                      },
+                      borderRadius: BorderRadius.circular(26),
+                      child: const Center(
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white,
+                          backgroundImage:
+                              AssetImage('assets/images/aling_suki.png'),
+                          radius: 23,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
 
-                // Floating Action Button
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
+                // Unread indicator dot
+                if (!_isChatOpen && ref.watch(chatProvider).length > 1)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
                       decoration: BoxDecoration(
+                        color: AppColors.error,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                const Color(0xFF1B5E20).withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                         border: Border.all(
                           color: Colors.white,
                           width: 2,
                         ),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() => _isChatOpen = true);
-                            _showAlingSukiOverlay();
-                          },
-                          borderRadius: BorderRadius.circular(28),
-                          child: const Center(
-                            child: CircleAvatar(
-                              backgroundColor: Colors.transparent,
-                              backgroundImage:
-                                  AssetImage('assets/images/aling_suki.png'),
-                              radius: 24,
-                            ),
-                          ),
-                        ),
-                      ),
                     ),
-
-                    // Unread indicator dot
-                    if (!_isChatOpen && ref.watch(chatProvider).length > 1)
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
               ],
             ),
           ),
@@ -249,15 +207,17 @@ class MapScreenState extends ConsumerState<MapScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         child: Container(
+          height: 50,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
             border: Border.all(color: AppColors.border),
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
+            vertical: 4,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: InkWell(
@@ -268,12 +228,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       const Icon(
                         Icons.search_rounded,
                         color: AppColors.inkMuted,
-                        size: 22,
+                        size: 20,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
-                          'Search 134 stalls, fish, meat...',
+                          'Search stalls, fish, meat...',
                           style: AppTextStyles.caption.copyWith(
                             color: AppColors.inkMuted,
                           ),
@@ -285,11 +245,11 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ),
-              const VerticalDivider(
+              Container(
+                height: 24,
+                width: 1,
                 color: AppColors.border,
-                width: 16,
-                indent: 4,
-                endIndent: 4,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
               ),
               InkWell(
                 onTap: () => EntranceSelectorSheet.show(context),
@@ -303,7 +263,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.door_front_door_rounded,
+                        Icons.location_on_rounded,
                         color: AppColors.primary,
                         size: 16,
                       ),

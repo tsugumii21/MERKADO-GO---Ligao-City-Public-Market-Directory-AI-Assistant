@@ -1,5 +1,4 @@
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
@@ -17,11 +16,8 @@ class GetStartedScreen extends StatefulWidget {
 
 class _GetStartedScreenState extends State<GetStartedScreen> {
   final int _currentPage = 0;
-  static const _logoImage = ResizeImage(
-    AssetImage('assets/icons/MerkadoGo_Transparent Logo.png'),
-    width: 300,
-    height: 300,
-  );
+  static const _logoImage =
+      AssetImage('assets/icons/MerkadoGo_Transparent Logo.png');
 
   @override
   void didChangeDependencies() {
@@ -35,27 +31,33 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
       backgroundColor: const Color(0xFF0D3310),
       body: Stack(
         children: [
-          // 1. Deep Green Gradient Background
+          // 1. Illustrated Street Map Background Image
           Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF1B5E20),
-                    Color(0xFF144D18),
-                    Color(0xFF0D3310),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+            child: Image.asset(
+              'assets/images/street_map_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Image.asset(
+                'assets/images/public_market.png',
+                fit: BoxFit.cover,
               ),
             ),
           ),
 
-          // 2. Procedural Map & Navigation Linework
-          const Positioned.fill(
-            child: CustomPaint(
-              painter: MapLinesPainter(),
+          // 2. Forest Green Gradient Scrim Overlay (Ensures rich depth and crystal-clear contrast)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF1B5E20).withValues(alpha: 0.72),
+                    const Color(0xFF144D18).withValues(alpha: 0.85),
+                    const Color(0xFF0D3310).withValues(alpha: 0.96),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
             ),
           ),
 
@@ -308,98 +310,3 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
   }
 }
 
-/// Subtle Procedural Map Linework & Waypoint Painter
-class MapLinesPainter extends CustomPainter {
-  const MapLinesPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..strokeWidth = 26
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final dashPaint = Paint()
-      ..color = const Color(0xFFE53935).withValues(alpha: 0.28)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    final nodePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.25)
-      ..style = PaintingStyle.fill;
-
-    // 1. Major Road Pathways
-    final mainRoad = Path()
-      ..moveTo(0, size.height * 0.16)
-      ..cubicTo(
-        size.width * 0.40,
-        size.height * 0.12,
-        size.width * 0.65,
-        size.height * 0.28,
-        size.width,
-        size.height * 0.22,
-      );
-    canvas.drawPath(mainRoad, roadPaint);
-
-    final crossRoad = Path()
-      ..moveTo(size.width * 0.12, 0)
-      ..lineTo(size.width * 0.88, size.height * 0.75);
-    canvas.drawPath(crossRoad, roadPaint);
-
-    final secondaryRoad = Path()
-      ..moveTo(size.width, size.height * 0.52)
-      ..cubicTo(
-        size.width * 0.60,
-        size.height * 0.58,
-        size.width * 0.30,
-        size.height * 0.45,
-        0,
-        size.height * 0.65,
-      );
-    canvas.drawPath(secondaryRoad, roadPaint);
-
-    // 2. Dashed Navigation Route
-    final dashedPath = Path()
-      ..moveTo(size.width * 0.18, size.height * 0.08)
-      ..lineTo(size.width * 0.50, size.height * 0.38)
-      ..lineTo(size.width * 0.82, size.height * 0.65);
-    _drawDashedPath(canvas, dashedPath, dashPaint);
-
-    // 3. Waypoint Map Nodes
-    canvas.drawCircle(
-      Offset(size.width * 0.18, size.height * 0.08),
-      6,
-      nodePaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.50, size.height * 0.38),
-      8,
-      nodePaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.82, size.height * 0.65),
-      6,
-      nodePaint,
-    );
-  }
-
-  void _drawDashedPath(Canvas canvas, Path path, Paint paint) {
-    const dashWidth = 8.0;
-    const dashSpace = 6.0;
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        final currentDashWidth = math.min(dashWidth, metric.length - distance);
-        canvas.drawPath(
-          metric.extractPath(distance, distance + currentDashWidth),
-          paint,
-        );
-        distance += dashWidth + dashSpace;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

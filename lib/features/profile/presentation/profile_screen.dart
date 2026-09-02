@@ -1,4 +1,4 @@
-// Part 10: User Profile Screen with modern, minimal UI design
+﻿// Part 10: User Profile Screen with modern, minimal UI design
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

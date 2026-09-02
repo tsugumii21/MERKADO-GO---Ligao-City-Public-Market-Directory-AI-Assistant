@@ -58,13 +58,17 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Precache brand logo in memory with bounded resolution for instant zero-lag loading
+    // Precache brand assets in memory for instant zero-lag loading across all screens
     precacheImage(
-      const ResizeImage(
-        AssetImage('assets/icons/MerkadoGo_Transparent Logo.png'),
-        width: 300,
-        height: 300,
-      ),
+      const AssetImage('assets/icons/MerkadoGo_Transparent Logo.png'),
+      context,
+    );
+    precacheImage(
+      const AssetImage('assets/images/splash_logo.png'),
+      context,
+    );
+    precacheImage(
+      const AssetImage('assets/images/street_map_bg.png'),
       context,
     );
   }

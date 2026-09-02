@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../models/stall_model.dart';
 
@@ -193,7 +193,7 @@ class StallUtils {
               'color': const Color(0xFF2E7D32),
               'bgColor': const Color(0xFFE8F5E9),
               'borderColor': const Color(0xFF4CAF50),
-              'icon': '●',
+              'icon': '',
             };
           }
           return {
@@ -201,7 +201,7 @@ class StallUtils {
             'color': const Color(0xFFC62828),
             'bgColor': const Color(0xFFFFEBEE),
             'borderColor': const Color(0xFFE53935),
-            'icon': '●',
+            'icon': '',
           };
         case 'closed':
           return {
@@ -209,7 +209,7 @@ class StallUtils {
             'color': const Color(0xFFC62828),
             'bgColor': const Color(0xFFFFEBEE),
             'borderColor': const Color(0xFFE53935),
-            'icon': '●',
+            'icon': '',
           };
         case 'temporarily_closed':
           return {
@@ -217,15 +217,16 @@ class StallUtils {
             'color': const Color(0xFFE65100),
             'bgColor': const Color(0xFFFFF3E0),
             'borderColor': const Color(0xFFFF9800),
-            'icon': '⏸',
+            'icon': '',
           };
         case 'renovation':
+        case 'under_renovation':
           return {
             'label': 'Renovation',
             'color': const Color(0xFF6A1B9A),
             'bgColor': const Color(0xFFF3E5F5),
             'borderColor': const Color(0xFFCE93D8),
-            'icon': '🔧',
+            'icon': '',
           };
         case 'coming_soon':
           return {
@@ -233,7 +234,7 @@ class StallUtils {
             'color': const Color(0xFF1565C0),
             'bgColor': const Color(0xFFE3F2FD),
             'borderColor': const Color(0xFF90CAF9),
-            'icon': '🆕',
+            'icon': '',
           };
       }
     }
@@ -245,14 +246,14 @@ class StallUtils {
             'color': const Color(0xFF2E7D32),
             'bgColor': const Color(0xFFE8F5E9),
             'borderColor': const Color(0xFF4CAF50),
-            'icon': '●',
+            'icon': '',
           }
         : {
             'label': 'Closed',
             'color': const Color(0xFFC62828),
             'bgColor': const Color(0xFFFFEBEE),
             'borderColor': const Color(0xFFE53935),
-            'icon': '●',
+            'icon': '',
           };
   }
 
@@ -263,13 +264,13 @@ class StallUtils {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: info['bgColor'] as Color,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: info['borderColor'] as Color),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: info['borderColor'] as Color, width: 0.8),
       ),
       child: Text(
-        '${info['icon']} ${info['label']}',
+        info['label'] as String,
         style: GoogleFonts.poppins(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
           color: info['color'] as Color,
         ),
@@ -381,17 +382,18 @@ class StallUtils {
   static String getStatusLabel(String status) {
     switch (status) {
       case 'open':
-        return '● Open';
+        return 'Open';
       case 'closed':
-        return '● Closed';
+        return 'Closed';
       case 'temporarily_closed':
-        return '⏸ Temp. Closed';
+        return 'Temp. Closed';
       case 'renovation':
-        return '🔧 Renovation';
+      case 'under_renovation':
+        return 'Renovation';
       case 'coming_soon':
-        return '🆕 Coming Soon';
+        return 'Coming Soon';
       default:
-        return '● Closed';
+        return 'Closed';
     }
   }
 
@@ -402,6 +404,7 @@ class StallUtils {
       case 'temporarily_closed':
         return 0xFFE65100;
       case 'renovation':
+      case 'under_renovation':
         return 0xFF6A1B9A;
       case 'coming_soon':
         return 0xFF1565C0;
@@ -430,13 +433,12 @@ class StallUtils {
             .join(' ');
   }
 
-  /// Format operating days to short format (Mon-Fri, Sat-Sun, etc.)
-  static String formatOperatingDays(String days) {
-    // Already in short format
-    if (days.contains('Mon-') || days.length <= 10) return days;
+  /// Format operating days to clean short format (Daily, Mon–Fri, Mon–Sat, etc.)
+  static String formatOperatingDays(String rawDays) {
+    final trimmed = rawDays.trim();
+    if (trimmed.isEmpty) return 'Days not set';
 
-    // Convert long day names to short
-    return days
+    final normalized = trimmed
         .replaceAll('Monday', 'Mon')
         .replaceAll('Tuesday', 'Tue')
         .replaceAll('Wednesday', 'Wed')
@@ -444,5 +446,44 @@ class StallUtils {
         .replaceAll('Friday', 'Fri')
         .replaceAll('Saturday', 'Sat')
         .replaceAll('Sunday', 'Sun');
+
+    final parts = normalized
+        .split(RegExp(r'[,|/]|\s+and\s+|\s+to\s+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    if (parts.isEmpty) return trimmed;
+
+    final lowerParts = parts.map((p) => p.toLowerCase()).toSet();
+
+    // Check if all 7 days (Daily)
+    final allWeekdays = {'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'};
+    if (allWeekdays.every(lowerParts.contains)) {
+      return 'Daily (Mon – Sun)';
+    }
+
+    // Check if 6 days (Mon–Sat)
+    final monToSat = {'mon', 'tue', 'wed', 'thu', 'fri', 'sat'};
+    if (monToSat.length == lowerParts.length &&
+        monToSat.every(lowerParts.contains)) {
+      return 'Mon – Sat';
+    }
+
+    // Check if Mon–Fri (Weekdays)
+    final monToFri = {'mon', 'tue', 'wed', 'thu', 'fri'};
+    if (monToFri.length == lowerParts.length &&
+        monToFri.every(lowerParts.contains)) {
+      return 'Mon – Fri (Weekdays)';
+    }
+
+    // Check if Sat–Sun (Weekends)
+    final weekends = {'sat', 'sun'};
+    if (weekends.length == lowerParts.length &&
+        weekends.every(lowerParts.contains)) {
+      return 'Sat – Sun (Weekends)';
+    }
+
+    return parts.join(', ');
   }
 }

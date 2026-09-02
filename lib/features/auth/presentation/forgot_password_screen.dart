@@ -1,5 +1,4 @@
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,7 +10,7 @@ import '../../../providers/auth_provider.dart';
 /// Alias for ResetPasswordScreen to maintain naming compatibility
 typedef ResetPasswordScreen = ForgotPasswordScreen;
 
-/// Modern Map-Themed Reset / Forgot Password Screen for Merkado Go
+/// Modern Reset / Forgot Password Screen for Merkado Go
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -80,63 +79,69 @@ class _ForgotPasswordScreenState
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAF8),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Base Gradient Background
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF1B5E20),
-                    Color(0xFF2E7D32),
-                    Color(0xFFF8FAF8),
-                  ],
-                  stops: [0.0, 0.35, 0.75],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-          ),
-
-          // 2. Procedural Map Linework
-          const Positioned.fill(
-            child: CustomPaint(
-              painter: MapLinesPainter(),
-            ),
-          ),
-
-          // 3. Main Content
-          SafeArea(
-            child: Column(
+          // 1. Top Hero Header Layer (Top 38% of screen)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: screenHeight * 0.38,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                // Top Navigation Bar with Back Button & Brand Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            width: 1,
-                          ),
+                Image.asset(
+                  'assets/images/forgot_password_hero.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                    'assets/images/forgot_password_illustration.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                      'assets/images/public_market.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: const Color(0xFF1B5E20),
+                        child: const Center(
+                          child: Icon(Icons.storefront_rounded, size: 80, color: Colors.white24),
                         ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: () {
+                      ),
+                    ),
+                  ),
+                ),
+                // Soft gradient scrim for top back button readability
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 110,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.black.withValues(alpha: 0.40), Colors.transparent],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ),
+                // Top-left Back button inside a frosted circular container
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Material(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        shape: const CircleBorder(),
+                        elevation: 3,
+                        shadowColor: Colors.black26,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () {
                             if (_emailSent) {
                               setState(() {
                                 _emailSent = false;
@@ -148,178 +153,15 @@ class _ForgotPasswordScreenState
                               context.go(RouteNames.login);
                             }
                           },
-                          tooltip: 'Back',
+                          child: const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: Color(0xFF1B5E20),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 34,
-                        height: 34,
-                        padding: const EdgeInsets.all(4.5),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.14),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Image.asset(
-                          'assets/icons/MerkadoGo_Transparent Logo.png',
-                          cacheWidth: 100,
-                          cacheHeight: 100,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      RichText(
-                        text: TextSpan(
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                          children: const [
-                            TextSpan(
-                              text: 'Merkado',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            TextSpan(
-                              text: 'Go',
-                              style: TextStyle(color: Color(0xFFE53935)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Expanded(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Recovery Badge (Crisp Elevated Badge)
-                          Container(
-                            width: 68,
-                            height: 68,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFFE53935), // Ligao Red Accent
-                                width: 2.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Icon(
-                                _emailSent
-                                    ? Icons.mark_email_read_rounded
-                                    : Icons.lock_reset_rounded,
-                                size: 34,
-                                color: const Color(0xFF1B5E20), // Ligao Deep Green
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Titles
-                          Text(
-                            _emailSent ? 'Check Your Email' : 'Reset Password',
-                            style: GoogleFonts.outfit(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20.0,
-                            ),
-                            child: Text(
-                              _emailSent
-                                  ? 'We sent a password reset link to your email address'
-                                  : 'Enter your email address to receive a secure password reset link',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                height: 1.45,
-                                color: Colors.white.withValues(alpha: 0.90),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Elevated Form Container
-                          Container(
-                            constraints: const BoxConstraints(maxWidth: 480),
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(28),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: _emailSent
-                                ? _buildSuccessCard(context)
-                                : _buildFormCard(context),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Return to Sign In
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Remember your password? ',
-                                style: GoogleFonts.poppins(
-                                  color: const Color(0xFF4B5563),
-                                  fontSize: 14,
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  if (context.canPop()) {
-                                    context.pop();
-                                  } else {
-                                    context.go(RouteNames.login);
-                                  }
-                                },
-                                child: Text(
-                                  'Sign In',
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFF1B5E20),
-                                    fontWeight: FontWeight.w700,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ),
                     ),
                   ),
@@ -327,96 +169,100 @@ class _ForgotPasswordScreenState
               ],
             ),
           ),
+
+          // 2. Floating Bottom Sheet Card Layer (Overlaps hero header)
+          Positioned(
+            top: screenHeight * 0.33,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 20,
+                    offset: Offset(0, -6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+                  child: _emailSent ? _buildSuccessContent(context) : _buildFormContent(context),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFormCard(BuildContext context) {
+  Widget _buildFormContent(BuildContext context) {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Subtle Drag-Handle Pill
+          Center(
+            child: Container(
+              width: 44,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 22),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Title: "Forgot Your Password? Recover Your Account"
           Text(
-            'Account Recovery',
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1B5E20),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Email Input
-          TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
+            'Forgot Your Password?',
+            textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF1A241A),
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF1E293B),
+              letterSpacing: -0.5,
             ),
-            decoration: InputDecoration(
-              labelText: 'Email Address',
-              labelStyle: GoogleFonts.poppins(
-                fontSize: 13,
-                color: const Color(0xFF6B7280),
-              ),
-              prefixIcon: const Icon(
-                Icons.alternate_email_rounded,
-                color: Color(0xFF1B5E20),
-                size: 22,
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF9FAFB),
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 14,
-                horizontal: 16,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Color(0xFFE53935),
-                  width: 2,
-                ),
-              ),
-            ),
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _handlePasswordReset(),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter your email address';
-              }
-              if (!value.contains('@')) {
-                return 'Please enter a valid email';
-              }
-              return null;
-            },
           ),
+          Text(
+            'Recover Your Account',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF1B5E20), // Ligao Green
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Enter your registered email address to receive a secure password reset link.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: const Color(0xFF64748B),
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 24),
 
-          // Error Message
+          // Error Banner
           if (_errorMessage != null) ...[
-            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
+              margin: const EdgeInsets.only(bottom: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFFEE2E2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFEF4444),
-                ),
+                border: Border.all(color: const Color(0xFFEF4444)),
               ),
               child: Row(
                 children: [
@@ -441,151 +287,220 @@ class _ForgotPasswordScreenState
             ),
           ],
 
-          const SizedBox(height: 20),
-
-          // Solid Action Button (Deep Ligao Forest Green)
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B5E20),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1B5E20).withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          // Email Input Field
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _handlePasswordReset(),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF0F172A),
             ),
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _handlePasswordReset,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                disabledBackgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            decoration: _buildInputDecoration(
+              hint: 'Enter your registered email',
+              icon: Icons.mail_outline_rounded,
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email address';
+              }
+              if (!value.contains('@')) {
+                return 'Please enter a valid email address';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+
+          // Solid Ligao Green Send Reset Link Button
+          ElevatedButton(
+            onPressed: _isLoading ? null : _handlePasswordReset,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B5E20),
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFF1B5E20).withValues(alpha: 0.6),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: 2,
+              shadowColor: const Color(0xFF1B5E20).withValues(alpha: 0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: _isLoading
+                ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text(
+                    'Send Reset Link',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 24),
+
+          // Footer: Return to Sign In
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Remember your password? ',
+                style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 13),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(RouteNames.login);
+                  }
+                },
+                child: Text(
+                  'Log In',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF1B5E20),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
                 ),
               ),
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Send Reset Link',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.send_rounded,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ],
-                    ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSuccessCard(BuildContext context) {
+  Widget _buildSuccessContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        // Email Pill
+        // Subtle Drag-Handle Pill
         Center(
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 8,
-            ),
+            width: 44,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
             decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+
+        // Success Icon Circle
+        Center(
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF81C784), width: 2),
+            ),
+            child: const Icon(
+              Icons.mark_email_read_rounded,
+              color: Color(0xFF1B5E20),
+              size: 38,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Title
+        Text(
+          'Check Your Email',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF1E293B),
+            letterSpacing: -0.5,
+          ),
+        ),
+        Text(
+          'Reset Link Sent',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF1B5E20),
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Email pill
+        Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Text(
               _emailController.text.trim(),
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF1B5E20),
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ),
         const SizedBox(height: 14),
 
         Text(
-          'Click the link in the email to reset your password.\nThe link will expire in 1 hour.',
+          'We have sent a password reset link to your email. Please click the link to create a new password. The link will expire in 1 hour.',
+          textAlign: TextAlign.center,
           style: GoogleFonts.poppins(
             fontSize: 13,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF6B7280),
+            color: const Color(0xFF64748B),
             height: 1.45,
           ),
-          textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 26),
 
-        // Back to Sign In Button
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF1B5E20),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1B5E20).withValues(alpha: 0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ElevatedButton(
-            onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go(RouteNames.login);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+        // Primary Button: Back to Log In
+        ElevatedButton(
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(RouteNames.login);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1B5E20),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(
-              'Back to Sign In',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+          ),
+          child: Text(
+            'Back to Log In',
+            style: GoogleFonts.poppins(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
-        // Try Different Email
+        // Try Different Email Text Button
         Center(
           child: TextButton(
             onPressed: () {
@@ -595,11 +510,11 @@ class _ForgotPasswordScreenState
               });
             },
             child: Text(
-              'Try Different Email',
+              'Try a different email address',
               style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
                 color: const Color(0xFF1B5E20),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
           ),
@@ -607,100 +522,33 @@ class _ForgotPasswordScreenState
       ],
     );
   }
-}
 
-/// Subtle Procedural Map Linework & Waypoint Painter
-class MapLinesPainter extends CustomPainter {
-  const MapLinesPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..strokeWidth = 24
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final dashPaint = Paint()
-      ..color = const Color(0xFFE53935).withValues(alpha: 0.28)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    final nodePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.25)
-      ..style = PaintingStyle.fill;
-
-    // Major road pathways
-    final mainRoad = Path()
-      ..moveTo(0, size.height * 0.20)
-      ..cubicTo(
-        size.width * 0.40,
-        size.height * 0.15,
-        size.width * 0.60,
-        size.height * 0.35,
-        size.width,
-        size.height * 0.28,
-      );
-    canvas.drawPath(mainRoad, roadPaint);
-
-    final crossRoad = Path()
-      ..moveTo(size.width * 0.15, 0)
-      ..lineTo(size.width * 0.85, size.height);
-    canvas.drawPath(crossRoad, roadPaint);
-
-    final secondaryRoad = Path()
-      ..moveTo(size.width, size.height * 0.65)
-      ..cubicTo(
-        size.width * 0.50,
-        size.height * 0.70,
-        size.width * 0.20,
-        size.height * 0.50,
-        0,
-        size.height * 0.80,
-      );
-    canvas.drawPath(secondaryRoad, roadPaint);
-
-    // Dashed Navigation Route
-    final dashedPath = Path()
-      ..moveTo(size.width * 0.20, size.height * 0.10)
-      ..lineTo(size.width * 0.50, size.height * 0.45)
-      ..lineTo(size.width * 0.80, size.height * 0.85);
-    _drawDashedPath(canvas, dashedPath, dashPaint);
-
-    // Waypoint Map Nodes
-    canvas.drawCircle(
-      Offset(size.width * 0.20, size.height * 0.10),
-      6,
-      nodePaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.50, size.height * 0.45),
-      8,
-      nodePaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.80, size.height * 0.85),
-      6,
-      nodePaint,
+  InputDecoration _buildInputDecoration({
+    required String hint,
+    required IconData icon,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.poppins(fontSize: 13.5, color: Colors.grey.shade400),
+      prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 20),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 1.5),
+      ),
     );
   }
-
-  void _drawDashedPath(Canvas canvas, Path path, Paint paint) {
-    const dashWidth = 8.0;
-    const dashSpace = 6.0;
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        final currentDashWidth = math.min(dashWidth, metric.length - distance);
-        canvas.drawPath(
-          metric.extractPath(distance, distance + currentDashWidth),
-          paint,
-        );
-        distance += dashWidth + dashSpace;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

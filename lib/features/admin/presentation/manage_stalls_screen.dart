@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +9,7 @@ import '../../../models/stall_model.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
 import '../../../core/constants/market_categories.dart';
+import '../../../core/widgets/market_category_icon.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
 
@@ -91,7 +92,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
   // Visual metadata for stall categories
   ({IconData icon, Color color}) _getCategoryVisuals(String category) {
     final v = MarketCategories.getVisuals(category);
-    return (icon: v.icon, color: v.color);
+    return (icon: v.icon, color: v.outline);
   }
 
   bool _matchesCategory(StallModel stall, String category, [String? subcategory]) {
@@ -841,7 +842,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
   // Modernized Stall Card with Admin Quick Actions & Enhanced Spacing
   Widget _buildModernAdminStallCard(StallModel stall) {
-    final isOpen = StallUtils.isStallOpenNow(stall);
+    final statusInfo = StallUtils.getStallStatusInfo(stall);
     final visuals = _getCategoryVisuals(stall.category);
     final hasPhoto = stall.photoUrls.isNotEmpty &&
         stall.photoUrls.first.isNotEmpty &&
@@ -898,15 +899,17 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                               child: Image.network(
                                 stall.photoUrls.first,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(
-                                  visuals.icon,
+                                errorBuilder: (_, __, ___) => MarketCategoryIcon(
+                                  category: stall.category,
+                                  fallbackIcon: visuals.icon,
                                   color: visuals.color,
                                   size: 24,
                                 ),
                               ),
                             )
-                          : Icon(
-                              visuals.icon,
+                          : MarketCategoryIcon(
+                              category: stall.category,
+                              fallbackIcon: visuals.icon,
                               color: visuals.color,
                               size: 24,
                             ),
@@ -943,8 +946,12 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: visuals.color.withValues(alpha: 0.1),
+                                  color: visuals.color.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: visuals.color.withValues(alpha: 0.35),
+                                    width: 0.8,
+                                  ),
                                 ),
                                 child: Text(
                                   StallUtils.getCategoryLabel(stall.category),
@@ -956,43 +963,28 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                                 ),
                               ),
 
-                              // Status Pill
+                              // Status Pill with exact operational status
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: isOpen
-                                      ? const Color(0xFFDCFCE7)
-                                      : const Color(0xFFFEE2E2),
+                                  color: statusInfo['bgColor'] as Color,
                                   borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: (statusInfo['borderColor'] as Color)
+                                        .withValues(alpha: 0.6),
+                                    width: 0.8,
+                                  ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        color: isOpen
-                                            ? const Color(0xFF16A34A)
-                                            : const Color(0xFFDC2626),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      isOpen ? 'Open Now' : 'Closed',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: isOpen
-                                            ? const Color(0xFF16A34A)
-                                            : const Color(0xFFDC2626),
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  statusInfo['label'] as String,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusInfo['color'] as Color,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1095,57 +1087,79 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 const SizedBox(height: 10),
 
-                // 3. Operating Hours & Days Row
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.schedule_rounded,
-                      size: 14,
-                      color: Color(0xFF64748B),
+                // 3. Operating Schedule Container (Hours & Days)
+                if (stall.openTime.isNotEmpty || stall.daysOpen.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
-                          ? '${stall.openTime} - ${stall.closeTime}'
-                          : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not set'),
-                      style: GoogleFonts.poppins(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF334155),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Icon(
-                      Icons.event_available_rounded,
-                      size: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        StallUtils.formatOperatingDays(
-                            stall.daysOpen.join(', ')),
-                        style: GoogleFonts.poppins(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF64748B),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 13.5,
+                          color: Color(0xFF64748B),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 5),
+                        Text(
+                          stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
+                              ? '${stall.openTime} – ${stall.closeTime}'
+                              : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not set'),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF334155),
+                          ),
+                        ),
+                        if (stall.daysOpen.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF94A3B8),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.event_available_rounded,
+                            size: 13.5,
+                            color: Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              StallUtils.formatOperatingDays(
+                                  stall.daysOpen.join(', ')),
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF64748B),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
 
-                // 4. Tags / Products Chips
-                if (stall.tags.isNotEmpty || stall.products.isNotEmpty) ...[
+                // 4. Products & Inventory Chips
+                if (stall.products.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
                     runSpacing: 5,
                     children: [
-                      ...stall.tags.take(3).map(
-                            (tag) => Container(
+                      ...stall.products.take(5).map(
+                            (product) => Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 3,
@@ -1153,18 +1167,33 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                StallUtils.getTagLabel(tag),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF475569),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                  width: 0.8,
                                 ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.shopping_bag_outlined,
+                                    size: 11,
+                                    color: Color(0xFF1B5E20),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    product,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF334155),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                      if (stall.tags.length > 3)
+                      if (stall.products.length > 5)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -1175,7 +1204,58 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            '+${stall.tags.length - 3} more',
+                            '+${stall.products.length - 5} more',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ] else if (stall.tags.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 5,
+                    children: [
+                      ...stall.tags.take(4).map(
+                            (tag) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                StallUtils.getTagLabel(tag),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                      if (stall.tags.length > 4)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '+${stall.tags.length - 4} more',
                             style: GoogleFonts.poppins(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w500,
@@ -1193,6 +1273,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
       ),
     );
   }
+
 }
 
 /// 4-Section Sort & Filter Modal (Matching User Stall Directory)

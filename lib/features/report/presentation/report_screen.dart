@@ -412,7 +412,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 3),
-                                  Row(
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.symmetric(
@@ -427,13 +431,14 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                         child: Text(
                                           'ID: ${widget.stallId}',
                                           style: GoogleFonts.robotoMono(
-                                            fontSize: 10.5,
+                                            fontSize: 10,
                                             fontWeight: FontWeight.w600,
                                             color: const Color(0xFF4B5563),
                                           ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
                                       Text(
                                         'Ligao Public Market',
                                         style: GoogleFonts.poppins(

@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants/market_categories.dart';
 
 /// Central Service for managing dynamic category and subcategory customization in Firestore
@@ -11,9 +11,21 @@ class CategoryService {
   // In-memory cache for fast UI lookups and responsive offline-first experience
   static final Map<String, List<String>> _cachedSubcategories = {};
 
+  /// Clear the local subcategories cache
+  static void clearCache([String? categoryKey]) {
+    if (categoryKey != null) {
+      _cachedSubcategories.remove(categoryKey);
+    } else {
+      _cachedSubcategories.clear();
+    }
+  }
+
   /// Retrieve subcategories for a category key, checking Firestore first and falling back to default MarketCategories
-  static Future<List<String>> getSubcategories(String categoryKey) async {
-    if (_cachedSubcategories.containsKey(categoryKey)) {
+  static Future<List<String>> getSubcategories(
+    String categoryKey, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cachedSubcategories.containsKey(categoryKey)) {
       return List<String>.from(_cachedSubcategories[categoryKey]!);
     }
 
@@ -26,10 +38,8 @@ class CategoryService {
               .map((e) => (e ?? '').toString().trim())
               .where((e) => e.isNotEmpty)
               .toList();
-          if (list.isNotEmpty) {
-            _cachedSubcategories[categoryKey] = list;
-            return List<String>.from(list);
-          }
+          _cachedSubcategories[categoryKey] = list;
+          return List<String>.from(list);
         }
       }
     } catch (_) {

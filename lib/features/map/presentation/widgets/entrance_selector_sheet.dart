@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -64,7 +64,7 @@ class EntranceSelectorSheet extends ConsumerWidget {
             child: Row(
               children: [
                 const Icon(
-                  Icons.door_front_door_rounded,
+                  Icons.location_on_rounded,
                   color: AppColors.primary,
                   size: 24,
                 ),

@@ -408,18 +408,42 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     return _selectedDays.map((d) => dayMap[d] ?? d).toList();
   }
 
+  TimeOfDay _parseTimeOfDay(String timeStr) {
+    try {
+      final clean = timeStr.trim().toUpperCase();
+      final isPm = clean.contains('PM');
+      final isAm = clean.contains('AM');
+      final raw = clean.replaceAll('AM', '').replaceAll('PM', '').trim();
+      final parts = raw.split(':');
+      if (parts.length >= 2) {
+        int hour = int.parse(parts[0].trim());
+        final minute = int.parse(parts[1].trim());
+        if (isPm && hour < 12) hour += 12;
+        if (isAm && hour == 12) hour = 0;
+        return TimeOfDay(hour: hour, minute: minute);
+      }
+    } catch (_) {}
+    return const TimeOfDay(hour: 6, minute: 0);
+  }
+
   Future<void> _selectTime(TextEditingController controller) async {
+    final initial = controller.text.isNotEmpty
+        ? _parseTimeOfDay(controller.text)
+        : const TimeOfDay(hour: 6, minute: 0);
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: initial,
       builder: AppTheme.buildTimePickerTheme,
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       final hour = picked.hourOfPeriod;
       final minute = picked.minute.toString().padLeft(2, '0');
       final period = picked.period == DayPeriod.am ? 'AM' : 'PM';
-      controller.text = '${hour == 0 ? 12 : hour}:$minute $period';
+      setState(() {
+        controller.text = '${hour == 0 ? 12 : hour}:$minute $period';
+      });
     }
   }
 
@@ -1256,6 +1280,26 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       return;
     }
 
+    // 2.5 Subcategory Selection Validation (Ensure user assigns a subcategory for the category)
+    final availableSubs = _selectedCategoryKey != null
+        ? _getCurrentSubcategories(_selectedCategoryKey!)
+        : <String>[];
+    if (availableSubs.isNotEmpty && _selectedSubcategories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select at least one subcategory for $_finalPrimaryCategoryName',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
     // 3. Operating Days Validation
     if (_selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1285,7 +1329,6 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
 
       final combinedTags = <String>[
         ..._selectedSubcategories,
-        ..._selectedTags.where((t) => !_selectedSubcategories.contains(t)),
       ];
 
       final addressText = _stallNumberController.text.trim();
@@ -1300,6 +1343,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       final lngValue = double.tryParse(_longitudeController.text.trim()) ?? 123.538546;
 
       final stallData = <String, dynamic>{
+        if (widget.stallId != null && widget.stallId!.isNotEmpty) ...{
+          'id': widget.stallId,
+          'stallId': widget.stallId,
+          'stall_id': widget.stallId,
+        },
         'name': stallNameText,
         'category': _finalPrimaryCategoryName,
         'categories': [_finalPrimaryCategoryName, ..._selectedSubcategories],
@@ -1313,14 +1361,22 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
             : (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty
                 ? [_existingPhotoUrl!]
                 : <String>[]),
+        'photo_urls': photoUrl != null
+            ? [photoUrl]
+            : (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty
+                ? [_existingPhotoUrl!]
+                : <String>[]),
         'openTime': openTimeText,
+        'open_time': openTimeText,
         'closeTime': closeTimeText,
+        'close_time': closeTimeText,
         'daysOpen': _getDaysOpenArray(),
+        'days_open': _getDaysOpenArray(),
         'latitude': latValue,
         'longitude': lngValue,
         'status': _stallStatus,
         'isOpen': _stallStatus == 'open',
-        'isActive': _stallStatus == 'open',
+        'isActive': true,
         'section': _selectedSection ?? '',
         'building_or_section': _selectedSection ?? '',
         'updatedAt': FieldValue.serverTimestamp(),
@@ -1328,16 +1384,20 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       };
 
       if (widget.stallId != null && widget.stallId!.isNotEmpty) {
-        // Edit Existing Stall
+        // Edit Existing Stall - Use set with merge to guarantee save
         await FirebaseFirestore.instance
             .collection('stalls')
             .doc(widget.stallId)
-            .update(stallData);
+            .set(stallData, SetOptions(merge: true));
       } else {
         // Add New Stall
         final newDoc =
             await FirebaseFirestore.instance.collection('stalls').add(stallData);
-        await newDoc.update({'stallId': newDoc.id, 'id': newDoc.id});
+        await newDoc.set({
+          'stallId': newDoc.id,
+          'id': newDoc.id,
+          'stall_id': newDoc.id,
+        }, SetOptions(merge: true));
       }
 
       if (mounted) {
@@ -1598,9 +1658,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                                         if (isSelected) {
                                           _selectedCategoryKey = null;
                                           _selectedSubcategories.clear();
+                                          _selectedTags.clear();
                                         } else {
                                           _selectedCategoryKey = cat['key'] as String;
                                           _selectedSubcategories.clear();
+                                          _selectedTags.clear();
                                           _loadSubcategoriesForCategory(_selectedCategoryKey!);
                                         }
                                       });
@@ -2553,39 +2615,48 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     required TextEditingController controller,
     required IconData icon,
   }) {
-    return GestureDetector(
-      onTap: () => _selectTime(controller),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFCBD5E1)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF1B5E20)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF64748B)),
-                  ),
-                  Text(
-                    controller.text.isNotEmpty ? controller.text : 'Set time',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0F172A),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _selectTime(controller),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFCBD5E1)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: const Color(0xFF1B5E20)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF64748B)),
                     ),
-                  ),
-                ],
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: controller,
+                      builder: (context, value, _) {
+                        return Text(
+                          value.text.isNotEmpty ? value.text : 'Set time',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

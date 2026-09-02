@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +9,7 @@ import '../../report/presentation/report_screen.dart';
 import '../../../core/utils/stall_utils.dart';
 import '../../../core/widgets/main_shell.dart';
 import '../../../core/constants/market_categories.dart';
+import '../../../core/widgets/market_category_icon.dart';
 
 import '../../map/providers/navigation_provider.dart';
 
@@ -112,8 +113,8 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     final v = MarketCategories.getVisuals(category);
     return (
       icon: v.icon,
-      color: v.color,
-      bg: v.bg.withValues(alpha: 0.25),
+      color: v.outline,
+      bg: v.outline.withValues(alpha: 0.12),
       outline: v.outline,
       displayName: v.displayName,
       subcategories: v.subcategories,
@@ -125,7 +126,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     final stall = widget.stall;
     final isFav = ref.watch(favoriteProvider).isFavorite(stall.stallId);
     final favNotifier = ref.read(favoriteProvider.notifier);
-    final isOpen = StallUtils.isStallOpenNow(stall);
+    final statusInfo = StallUtils.getStallStatusInfo(stall);
     final categoryVisuals = _getCategoryVisuals(stall.category);
     final hasPhotos = stall.photoUrls.isNotEmpty;
 
@@ -198,8 +199,11 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                           height: 140,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: categoryVisuals.bg.withValues(alpha: 0.6),
+                            color: categoryVisuals.bg,
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: categoryVisuals.color.withValues(alpha: 0.2),
+                            ),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
@@ -221,8 +225,9 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                                           ),
                                         ),
                                         errorWidget: (_, __, ___) => Center(
-                                          child: Icon(
-                                            categoryVisuals.icon,
+                                          child: MarketCategoryIcon(
+                                            category: stall.category,
+                                            fallbackIcon: categoryVisuals.icon,
                                             size: 48,
                                             color: categoryVisuals.color,
                                           ),
@@ -234,8 +239,9 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(
-                                          categoryVisuals.icon,
+                                        MarketCategoryIcon(
+                                          category: stall.category,
+                                          fallbackIcon: categoryVisuals.icon,
                                           size: 40,
                                           color: categoryVisuals.color,
                                         ),
@@ -340,20 +346,23 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                           decoration: BoxDecoration(
                             color: categoryVisuals.bg,
                             borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: categoryVisuals.color.withValues(alpha: 0.35),
+                              width: 0.8,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                categoryVisuals.icon,
+                              MarketCategoryIcon(
+                                category: stall.category,
+                                fallbackIcon: categoryVisuals.icon,
                                 size: 13,
                                 color: categoryVisuals.color,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                stall.category.isNotEmpty
-                                    ? stall.category
-                                    : 'General',
+                                StallUtils.getCategoryLabel(stall.category),
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -396,13 +405,13 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
 
                     const SizedBox(height: 16),
 
-                    // 4. Schedule & Status Card (#F9FAFB)
+                    // 4. Schedule & Status Card
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF9FAFB),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
                       ),
                       child: Column(
                         children: [
@@ -412,91 +421,77 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
-                                  vertical: 3,
+                                  vertical: 3.5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: isOpen
-                                      ? const Color(0xFFDCFCE7)
-                                      : const Color(0xFFFEE2E2),
+                                  color: statusInfo['bgColor'] as Color,
                                   borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: (statusInfo['borderColor'] as Color)
+                                        .withValues(alpha: 0.6),
+                                    width: 0.8,
+                                  ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: isOpen
-                                            ? const Color(0xFF16A34A)
-                                            : const Color(0xFFDC2626),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      isOpen ? 'Open Now' : 'Closed',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: isOpen
-                                            ? const Color(0xFF15803D)
-                                            : const Color(0xFFB91C1C),
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  statusInfo['label'] as String,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusInfo['color'] as Color,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
                               const Icon(
-                                Icons.access_time_rounded,
+                                Icons.schedule_rounded,
                                 size: 14,
-                                color: Color(0xFF6B7280),
+                                color: Color(0xFF64748B),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 5),
                               Expanded(
                                 child: Text(
-                                  stall.openTime.isNotEmpty &&
-                                          stall.closeTime.isNotEmpty
+                                  stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
                                       ? '${stall.openTime} – ${stall.closeTime}'
-                                      : 'Hours not specified',
+                                      : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not specified'),
                                   style: GoogleFonts.poppins(
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF374151),
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF334155),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: Color(0xFFE5E7EB),
-                          ),
-                          const SizedBox(height: 10),
-                          // Row 2: Schedule Days
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_outlined,
-                                size: 14,
-                                color: Color(0xFF6B7280),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'Schedule: ${_formatSchedule(stall.daysOpen)}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: const Color(0xFF4B5563),
-                                    fontWeight: FontWeight.w500,
+                          if (stall.daysOpen.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            const Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: Color(0xFFE2E8F0),
+                            ),
+                            const SizedBox(height: 10),
+                            // Row 2: Schedule Days
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.event_available_rounded,
+                                  size: 14,
+                                  color: Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Schedule: ${StallUtils.formatOperatingDays(stall.daysOpen.join(', '))}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: const Color(0xFF475569),
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -530,70 +525,97 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                         children: stall.products.map((product) {
                           return Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
+                              horizontal: 10,
+                              vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF3F4F6),
+                              color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: const Color(0xFFE5E7EB),
+                                color: const Color(0xFFE2E8F0),
                                 width: 0.8,
                               ),
                             ),
-                            child: Text(
-                              product,
-                              style: GoogleFonts.poppins(
-                                fontSize: 12.5,
-                                color: const Color(0xFF374151),
-                                fontWeight: FontWeight.w500,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.shopping_bag_outlined,
+                                  size: 12,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  product,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: const Color(0xFF334155),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         }).toList(),
                       ),
 
-                    // Subcategories section
-                    if (categoryVisuals.subcategories.isNotEmpty) ...[
-                      const SizedBox(height: 18),
-                      Text(
-                        'Category Subcategories',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1F2937),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: categoryVisuals.subcategories.map((sub) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: categoryVisuals.color.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: categoryVisuals.color.withValues(alpha: 0.25),
-                                width: 0.8,
-                              ),
-                            ),
-                            child: Text(
-                              sub,
+                    // Subcategories & Tags section
+                    Builder(
+                      builder: (context) {
+                        final stallSubcategories = <String>{
+                          ...stall.tags,
+                          ...stall.categories.where(
+                            (c) => c.trim().toLowerCase() != stall.category.trim().toLowerCase(),
+                          ),
+                        }.where((s) => s.trim().isNotEmpty).toList();
+
+                        if (stallSubcategories.isEmpty) return const SizedBox.shrink();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 18),
+                            Text(
+                              'Subcategories & Tags',
                               style: GoogleFonts.poppins(
-                                fontSize: 11.5,
-                                color: categoryVisuals.color,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1F2937),
                               ),
                             ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: stallSubcategories.map((sub) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: categoryVisuals.color.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: categoryVisuals.color.withValues(alpha: 0.25),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    StallUtils.getTagLabel(sub),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11.5,
+                                      color: categoryVisuals.color,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
 
                     const SizedBox(height: 24),
 

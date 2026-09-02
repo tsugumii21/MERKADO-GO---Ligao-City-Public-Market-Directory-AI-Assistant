@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,15 +16,16 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const ImageProvider _splashLogoProvider = ResizeImage(
-    AssetImage('assets/images/splash_logo.png'),
-    width: 320,
-  );
+  static const ImageProvider _splashLogoProvider =
+      AssetImage('assets/images/splash_logo.png');
+  static const ImageProvider _brandLogoProvider =
+      AssetImage('assets/icons/MerkadoGo_Transparent Logo.png');
+  static const ImageProvider _streetMapProvider =
+      AssetImage('assets/images/street_map_bg.png');
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  bool _assetsReady = false;
 
   @override
   void initState() {
@@ -59,36 +60,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
 
-    _precacheAndStart();
-  }
-
-  Future<void> _precacheAndStart() async {
-    if (mounted) {
-      try {
-        await precacheImage(_splashLogoProvider, context);
-        if (mounted) {
-          setState(() {
-            _assetsReady = true;
-          });
-        }
-      } catch (_) {
-        // Continue splash flow even if precache fails.
-        if (mounted) {
-          setState(() {
-            _assetsReady = true;
-          });
-        }
-      }
-    }
-
-    if (!mounted) return;
-    unawaited(_fadeController.forward());
+    _fadeController.forward();
     _startSplashTimer();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Warm up the image cache immediately so GetStartedScreen and SplashScreen render with zero delay
+    precacheImage(_splashLogoProvider, context);
+    precacheImage(_brandLogoProvider, context);
+    precacheImage(_streetMapProvider, context);
+  }
+
   void _startSplashTimer() {
-    // Keep existing splash delay and auth redirect flow.
-    Future.delayed(const Duration(milliseconds: 3500), () async {
+    Future.delayed(const Duration(milliseconds: 1500), () async {
       if (mounted) {
         await _checkAuthAndNavigate();
       }
@@ -254,13 +240,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                                 ],
                               ),
                               padding: const EdgeInsets.all(16),
-                              child: _assetsReady
-                                  ? Image(
-                                      image: _splashLogoProvider,
-                                      fit: BoxFit.contain,
-                                      filterQuality: FilterQuality.medium,
-                                    )
-                                  : const SizedBox.shrink(),
+                              child: const Image(
+                                image: _splashLogoProvider,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.medium,
+                              ),
                             ),
                             const SizedBox(height: 28),
                             RichText(

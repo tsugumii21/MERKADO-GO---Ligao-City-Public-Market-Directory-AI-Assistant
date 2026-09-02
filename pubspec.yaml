@@ -81,7 +81,12 @@ flutter:
     - assets/images/sign-in_illustration.png
     - assets/images/signup_illustration.png
     - assets/images/forgot_password_illustration.png
+    - assets/images/forgot_password_hero.png
     - assets/images/email_verification_illustration.png
+    - assets/images/email_verification_hero.png
+    - assets/images/street_map_bg.png
+    - assets/images/get_started_hero.png
+    - assets/images/public_market.png
     - assets/animations/
     - assets/icons/
     - assets/map/

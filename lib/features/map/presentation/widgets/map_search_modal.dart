@@ -1,14 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/market_categories.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/stall_utils.dart';
 import '../../../../core/widgets/market_category_icon.dart';
 import '../../../stalls/presentation/stall_detail_sheet.dart';
-import '../../domain/zone_palette.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/search_provider.dart';
 

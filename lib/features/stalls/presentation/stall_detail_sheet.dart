@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -72,34 +72,6 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
         );
     widget.onClose();
     mainShellKey.currentState?.goToTab(0);
-  }
-
-  String _formatSchedule(List<String> daysOpen) {
-    if (daysOpen.isEmpty) return 'Open Daily (Mon – Sun)';
-
-    final joined = daysOpen.join(', ').toLowerCase();
-    if (joined.contains('daily') ||
-        joined.contains('everyday') ||
-        daysOpen.length == 7) {
-      return 'Mon – Sun (Open Daily)';
-    }
-
-    if (daysOpen.length == 6 && !joined.contains('sun')) {
-      return 'Mon – Sat';
-    }
-
-    if (daysOpen.length == 5 &&
-        !joined.contains('sat') &&
-        !joined.contains('sun')) {
-      return 'Mon – Fri (Weekdays)';
-    }
-
-    // Convert days to short names
-    return daysOpen.map((d) {
-      final clean = d.trim();
-      if (clean.length > 3) return clean.substring(0, 3);
-      return clean;
-    }).join(', ');
   }
 
   ({

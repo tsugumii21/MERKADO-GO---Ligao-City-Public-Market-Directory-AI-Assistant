@@ -1,4 +1,4 @@
-﻿// Modern Material 3 theme for Merkado Go
+// Modern Material 3 theme for Merkado Go
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -185,7 +185,7 @@ class AppTheme {
         ),
         
         hintStyle: TextStyle(
-          color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           fontSize: 14,
           fontWeight: FontWeight.w400,
         ),
@@ -440,7 +440,7 @@ class AppTheme {
         ),
         
         hintStyle: TextStyle(
-          color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           fontSize: 14,
           fontWeight: FontWeight.w400,
         ),

@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3;
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/app_text_styles.dart';
 import '../../../../models/stall_model.dart';
 import '../../domain/navigation_models.dart';
 import '../../domain/zone_palette.dart';
@@ -255,11 +254,14 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     final targetY = target.dy;
 
     final matrix = Matrix4.identity()
-      ..translate(
-        viewportSize.width / 2 - targetX * zoom,
-        viewportSize.height / 2 - targetY * zoom,
+      ..translateByVector3(
+        Vector3(
+          viewportSize.width / 2 - targetX * zoom,
+          viewportSize.height / 2 - targetY * zoom,
+          0.0,
+        ),
       )
-      ..scale(zoom);
+      ..scaleByVector3(Vector3(zoom, zoom, 1.0));
 
     _transformController.value = matrix;
   }

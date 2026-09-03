@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class FavoriteState {
   final List<String> favoriteIds;
   final bool isLoading;
@@ -34,17 +36,28 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
   
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
+  static const String _localPrefsKey = 'guest_favorite_stalls';
   
   String? get _uid => _auth.currentUser?.uid;
   
   Future<void> loadFavorites() async {
+    state = state.copyWith(isLoading: true);
+
     if (_uid == null) {
-      state = const FavoriteState();
+      // Load guest favorites from SharedPreferences
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final localFavs = prefs.getStringList(_localPrefsKey) ?? [];
+        state = state.copyWith(
+          favoriteIds: localFavs,
+          isLoading: false,
+        );
+      } catch (e) {
+        state = const FavoriteState();
+      }
       return;
     }
 
-    state = state.copyWith(isLoading: true);
-    
     try {
       final doc = await _db
           .collection('users')
@@ -70,7 +83,6 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
       }
       
       final favField = data['favoriteStalls'];
-      
       final favs = List<String>.from(favField ?? []);
 
       state = state.copyWith(
@@ -87,15 +99,7 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
   }
   
   Future<void> toggleFavorite(String stallId) async {
-    // Validate stallId
-    if (stallId.isEmpty) {
-      return;
-    }
-    
-    // Validate user is logged in
-    if (_uid == null) {
-      return;
-    }
+    if (stallId.isEmpty) return;
 
     final isFav = state.isFavorite(stallId);
 
@@ -105,9 +109,20 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
         : [...state.favoriteIds, stallId];
 
     state = state.copyWith(favoriteIds: updatedList);
+
+    // If guest user, persist to SharedPreferences
+    if (_uid == null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList(_localPrefsKey, updatedList);
+      } catch (e) {
+        debugPrint('❌ Error: Failed to save guest favorites: $e');
+      }
+      return;
+    }
     
     try {
-      // Use set with merge:true to handle missing field
+      // Use set with merge:true to handle missing field in Firestore
       await _db
           .collection('users')
           .doc(_uid)

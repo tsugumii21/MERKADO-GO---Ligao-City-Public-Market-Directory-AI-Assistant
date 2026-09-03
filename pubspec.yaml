@@ -54,6 +54,7 @@ dependencies:
   timeago: ^3.7.0
   uuid: ^4.5.1
   flutter_svg: ^2.0.17
+  vector_math: ^2.1.4
 
   # Cupertino Icons (for Android icons fallback)
   cupertino_icons: ^1.0.8

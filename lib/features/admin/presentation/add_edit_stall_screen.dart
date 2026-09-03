@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -57,14 +56,6 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       if (cat != null) return cat.primaryCategoryName;
     }
     return '';
-  }
-
-  String get _finalCategoryValue => _finalPrimaryCategoryName;
-
-  List<String> get _selectedCategories {
-    final primary = _finalPrimaryCategoryName;
-    if (primary.isEmpty) return [];
-    return [primary, ..._selectedSubcategories];
   }
 
   static List<Map<String, dynamic>> get _categoryList =>
@@ -127,32 +118,6 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       'borderColor': Color(0xFFBFDBFE),
     },
   ];
-
-  final List<String> _availableTags = [
-    'fresh_daily',
-    'local',
-    'wholesale',
-    'budget_friendly',
-    'organic',
-    'halal',
-    'made_to_order',
-    'takeout',
-    'dine_in',
-    'delivery_available',
-  ];
-
-  final Map<String, String> _tagLabels = {
-    'fresh_daily': 'Fresh Daily',
-    'local': 'Local Goods',
-    'wholesale': 'Wholesale',
-    'budget_friendly': 'Budget-Friendly',
-    'organic': 'Organic',
-    'halal': 'Halal',
-    'made_to_order': 'Made to Order',
-    'takeout': 'Takeout Available',
-    'dine_in': 'Dine-in Available',
-    'delivery_available': 'Delivery Available',
-  };
 
   final List<Map<String, String>> _days = [
     {'value': 'Mon', 'label': 'Mon'},
@@ -289,7 +254,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
 
       if (doc.exists && mounted) {
         final stall = StallModel.fromFirestore(doc);
-        final data = doc.data() as Map<String, dynamic>? ?? {};
+        final data = doc.data() ?? {};
         _nameController.text = stall.name;
         _products = List<String>.from(stall.products);
         _stallNumberController.text = stall.address;
@@ -567,32 +532,32 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                                         _selectedCategoryKey!,
                                         newName,
                                       );
-                                      if (mounted) {
-                                        setState(() {
-                                          _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
-                                          _selectedSubcategories.add(newName);
-                                        });
+                                      if (!mounted || !context.mounted) return;
+                                      setState(() {
+                                        _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
+                                        _selectedSubcategories.add(newName);
+                                      });
+                                      if (ctx.mounted) {
                                         Navigator.of(ctx).pop();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Subcategory "$newName" added & saved to database!',
-                                              style: GoogleFonts.poppins(),
-                                            ),
-                                            backgroundColor: const Color(0xFF1B5E20),
-                                          ),
-                                        );
                                       }
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Subcategory "$newName" added & saved to database!',
+                                            style: GoogleFonts.poppins(),
+                                          ),
+                                          backgroundColor: const Color(0xFF1B5E20),
+                                        ),
+                                      );
                                     } catch (e) {
                                       setDialogState(() => isAdding = false);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Error: $e', style: GoogleFonts.poppins()),
-                                            backgroundColor: AppColors.error,
-                                          ),
-                                        );
-                                      }
+                                      if (!mounted || !context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error: $e', style: GoogleFonts.poppins()),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
@@ -751,34 +716,34 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                                         oldName: currentName,
                                         newName: newName,
                                       );
-                                      if (mounted) {
-                                        setState(() {
-                                          _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
-                                          if (_selectedSubcategories.remove(currentName)) {
-                                            _selectedSubcategories.add(newName);
-                                          }
-                                        });
+                                      if (!mounted || !context.mounted) return;
+                                      setState(() {
+                                        _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
+                                        if (_selectedSubcategories.remove(currentName)) {
+                                          _selectedSubcategories.add(newName);
+                                        }
+                                      });
+                                      if (ctx.mounted) {
                                         Navigator.of(ctx).pop();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Subcategory renamed to "$newName" in database!',
-                                              style: GoogleFonts.poppins(),
-                                            ),
-                                            backgroundColor: const Color(0xFF1B5E20),
-                                          ),
-                                        );
                                       }
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Subcategory renamed to "$newName" in database!',
+                                            style: GoogleFonts.poppins(),
+                                          ),
+                                          backgroundColor: const Color(0xFF1B5E20),
+                                        ),
+                                      );
                                     } catch (e) {
                                       setDialogState(() => isEditing = false);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Error: $e', style: GoogleFonts.poppins()),
-                                            backgroundColor: AppColors.error,
-                                          ),
-                                        );
-                                      }
+                                      if (!mounted || !context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error: $e', style: GoogleFonts.poppins()),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
@@ -897,32 +862,32 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                                       _selectedCategoryKey!,
                                       nameToDelete,
                                     );
-                                    if (mounted) {
-                                      setState(() {
-                                        _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
-                                        _selectedSubcategories.remove(nameToDelete);
-                                      });
+                                    if (!mounted || !context.mounted) return;
+                                    setState(() {
+                                      _categorySubcategoriesMap[_selectedCategoryKey!] = updatedList;
+                                      _selectedSubcategories.remove(nameToDelete);
+                                    });
+                                    if (ctx.mounted) {
                                       Navigator.of(ctx).pop();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Subcategory "$nameToDelete" removed from database!',
-                                            style: GoogleFonts.poppins(),
-                                          ),
-                                          backgroundColor: const Color(0xFF1B5E20),
-                                        ),
-                                      );
                                     }
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Subcategory "$nameToDelete" removed from database!',
+                                          style: GoogleFonts.poppins(),
+                                        ),
+                                        backgroundColor: const Color(0xFF1B5E20),
+                                      ),
+                                    );
                                   } catch (e) {
                                     setDialogState(() => isDeleting = false);
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Error: $e', style: GoogleFonts.poppins()),
-                                          backgroundColor: AppColors.error,
-                                        ),
-                                      );
-                                    }
+                                    if (!mounted || !context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e', style: GoogleFonts.poppins()),
+                                        backgroundColor: AppColors.error,
+                                      ),
+                                    );
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
@@ -1680,7 +1645,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                                         boxShadow: isSelected
                                             ? [
                                                 BoxShadow(
-                                                  color: const Color(0xFF1B5E20).withOpacity(0.18),
+                                                  color: const Color(0xFF1B5E20).withValues(alpha: 0.18),
                                                   blurRadius: 6,
                                                   offset: const Offset(0, 2),
                                                 ),
@@ -1846,7 +1811,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                                                   color: const Color(0xFFF1F8E9),
                                                   borderRadius: BorderRadius.circular(12),
                                                   border: Border.all(
-                                                    color: const Color(0xFF4CAF50).withOpacity(0.3),
+                                                    color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
                                                   ),
                                                 ),
                                                 child: _isLoadingSubcategories
@@ -2057,7 +2022,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                                               boxShadow: isSelected
                                                   ? [
                                                       BoxShadow(
-                                                        color: const Color(0xFF1B5E20).withOpacity(0.18),
+                                                        color: const Color(0xFF1B5E20).withValues(alpha: 0.18),
                                                         blurRadius: 4,
                                                         offset: const Offset(0, 2),
                                                       ),

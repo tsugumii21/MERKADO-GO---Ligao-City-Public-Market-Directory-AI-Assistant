@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/stall_model.dart';
 
 abstract class StallRepository {
@@ -11,14 +13,69 @@ abstract class StallRepository {
   Future<void> addStall(StallModel stall);
   Future<void> updateStall(String stallId, Map<String, dynamic> updates);
   Future<void> deleteStall(String stallId);
+  Future<List<StallModel>> getOfflineCachedStalls();
 }
 
 class FirestoreStallRepository implements StallRepository {
   final FirebaseFirestore _firestore;
   static const String _collection = 'stalls';
+  static const String _offlineCacheKey = 'offline_cached_stalls';
 
   FirestoreStallRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  Future<void> _saveOfflineCache(List<StallModel> stalls) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = stalls.map((s) {
+        final map = s.toFirestore();
+        map['stallId'] = s.stallId;
+        return jsonEncode(map);
+      }).toList();
+      await prefs.setStringList(_offlineCacheKey, list);
+    } catch (_) {}
+  }
+
+  @override
+  Future<List<StallModel>> getOfflineCachedStalls() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawList = prefs.getStringList(_offlineCacheKey);
+      if (rawList != null && rawList.isNotEmpty) {
+        return rawList
+            .map((str) {
+              try {
+                final map = jsonDecode(str) as Map<String, dynamic>;
+                return StallModel(
+                  stallId: map['stallId'] as String? ?? map['id'] as String? ?? '',
+                  name: map['name'] as String? ?? '',
+                  category: map['category'] as String? ?? '',
+                  categories: List<String>.from(map['categories'] as List? ?? []),
+                  products: List<String>.from(map['products'] as List? ?? []),
+                  address: map['address'] as String? ?? '',
+                  photoUrls: List<String>.from(map['photoUrls'] as List? ?? []),
+                  openTime: map['openTime'] as String? ?? '5:00 AM',
+                  closeTime: map['closeTime'] as String? ?? '6:00 PM',
+                  daysOpen: List<String>.from(map['daysOpen'] as List? ?? []),
+                  latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
+                  longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
+                  isActive: map['isActive'] as bool? ?? true,
+                  status: map['status'] as String? ?? 'open',
+                  section: map['section'] as String?,
+                  stallNumber: map['stallNumber'] as String?,
+                  updatedAt: DateTime.now(),
+                  tags: List<String>.from(map['tags'] as List? ?? []),
+                );
+              } catch (_) {
+                return null;
+              }
+            })
+            .whereType<StallModel>()
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
 
   @override
   Stream<List<StallModel>> getAllStalls() {
@@ -30,7 +87,7 @@ class FirestoreStallRepository implements StallRepository {
           debugPrint('❌ Error: Stalls query failed: $error');
         })
         .map((snapshot) {
-          return snapshot.docs
+          final list = snapshot.docs
               .map((doc) {
                 try {
                   return StallModel.fromFirestore(doc);
@@ -41,6 +98,8 @@ class FirestoreStallRepository implements StallRepository {
               .whereType<StallModel>()
               .where((stall) => stall.isActive != false)
               .toList();
+          _saveOfflineCache(list);
+          return list;
         });
   }
 

@@ -1,4 +1,3 @@
-import '../../features/map/indoor_map_screen.dart';
 // GoRouter configuration with role-based routing
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
@@ -39,10 +38,10 @@ class AppRouter {
       _routerInstance = GoRouter(
         initialLocation: RouteNames.splash,
       routes: [
-        // Indoor Map Screen (user)
+        // Legacy Indoor Map redirect to canonical Home Map
         GoRoute(
           path: '/indoor-map',
-          builder: (context, state) => const IndoorMapScreen(),
+          redirect: (context, state) => RouteNames.home,
         ),
         // Splash Screen
         GoRoute(
@@ -192,18 +191,26 @@ class AppRouter {
       ],
       redirect: (context, state) async {
         try {
-          final user = FirebaseAuth.instance.currentUser;
-          final isLoggingIn = state.uri.toString() == RouteNames.login;
-          final isSigningUp = state.uri.toString() == RouteNames.signup;
-          final isOnSplash = state.uri.toString() == RouteNames.splash;
-          final isVerifyingEmail = state.uri.toString() == RouteNames.verifyEmail;
-          final isGetStarted = state.uri.toString() == RouteNames.getStarted;
-          final isForgotPassword = state.uri.toString() == RouteNames.forgotPassword;
+          final uriStr = state.uri.toString();
+          final isOnSplash = uriStr == RouteNames.splash;
+          final isGetStarted = uriStr == RouteNames.getStarted;
+          final isLoggingIn = uriStr == RouteNames.login;
+          final isSigningUp = uriStr == RouteNames.signup;
+          final isForgotPassword = uriStr == RouteNames.forgotPassword;
 
           // Allow splash, get started, login, signup, forgot password without redirect
           if (isOnSplash || isGetStarted || isLoggingIn || isSigningUp || isForgotPassword) {
             return null;
           }
+
+          User? user;
+          try {
+            user = FirebaseAuth.instance.currentUser;
+          } catch (_) {
+            return null;
+          }
+
+          final isVerifyingEmail = uriStr == RouteNames.verifyEmail;
 
           // Not authenticated -> get started
           if (user == null) {

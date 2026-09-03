@@ -162,11 +162,11 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
                   ),
                 ),
               ),
-              const VerticalDivider(
+              Container(
+                height: 24,
+                width: 1,
                 color: AppColors.border,
-                width: 16,
-                indent: 4,
-                endIndent: 4,
+                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
               ),
               InkWell(
                 onTap: () => EntranceSelectorSheet.show(context),
@@ -180,7 +180,7 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.door_front_door_rounded,
+                        Icons.location_on_rounded,
                         color: AppColors.primary,
                         size: 16,
                       ),

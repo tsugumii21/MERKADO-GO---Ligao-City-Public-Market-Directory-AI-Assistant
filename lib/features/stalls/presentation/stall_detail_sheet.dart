@@ -100,7 +100,10 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     final favNotifier = ref.read(favoriteProvider.notifier);
     final statusInfo = StallUtils.getStallStatusInfo(stall);
     final categoryVisuals = _getCategoryVisuals(stall.category);
-    final hasPhotos = stall.photoUrls.isNotEmpty;
+    final photoList = stall.photoUrls.isNotEmpty
+        ? stall.photoUrls
+        : (stall.primaryPhotoUrl.isNotEmpty ? [stall.primaryPhotoUrl] : <String>[]);
+    final hasPhotos = photoList.isNotEmpty;
 
     return Container(
       constraints: BoxConstraints(
@@ -182,13 +185,13 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                             child: hasPhotos
                                 ? PageView.builder(
                                     controller: _pageController,
-                                    itemCount: stall.photoUrls.length,
+                                    itemCount: photoList.length,
                                     onPageChanged: (idx) {
                                       setState(() => _currentPhotoIndex = idx);
                                     },
                                     itemBuilder: (context, index) {
                                       return CachedNetworkImage(
-                                        imageUrl: stall.photoUrls[index],
+                                        imageUrl: photoList[index],
                                         fit: BoxFit.cover,
                                         placeholder: (_, __) => Center(
                                           child: CircularProgressIndicator(
@@ -197,11 +200,25 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                                           ),
                                         ),
                                         errorWidget: (_, __, ___) => Center(
-                                          child: MarketCategoryIcon(
-                                            category: stall.category,
-                                            fallbackIcon: categoryVisuals.icon,
-                                            size: 48,
-                                            color: categoryVisuals.color,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              MarketCategoryIcon(
+                                                category: stall.category,
+                                                fallbackIcon: categoryVisuals.icon,
+                                                size: 40,
+                                                color: categoryVisuals.color,
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                'No photo available',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 12,
+                                                  color: const Color(0xFF6B7280),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       );
@@ -264,7 +281,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                         ),
 
                         // Photo Indicator Dots (if multiple photos)
-                        if (hasPhotos && stall.photoUrls.length > 1)
+                        if (hasPhotos && photoList.length > 1)
                           Positioned(
                             bottom: 8,
                             left: 0,
@@ -272,7 +289,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: List.generate(
-                                stall.photoUrls.length,
+                                photoList.length,
                                 (idx) => AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
                                   margin: const EdgeInsets.symmetric(

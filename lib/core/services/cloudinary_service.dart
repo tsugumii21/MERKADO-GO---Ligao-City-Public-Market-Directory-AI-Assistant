@@ -5,11 +5,25 @@ import 'package:http/http.dart' as http;
 class CloudinaryService {
   static const String _cloudName = 'diiuzmjnk';
   static const String _uploadPreset = 'merkadogo';
+  static const String baseDeliveryUrl = 'https://res.cloudinary.com/$_cloudName/image/upload/';
+
+  /// Resolves the deterministic Cloudinary CDN URL for a stall photo
+  static String getStallPhotoUrl(String stallId) {
+    final cleanId = stallId.trim();
+    if (cleanId.isEmpty) return '';
+    return '${baseDeliveryUrl}merkadogo/stalls/$cleanId.jpg';
+  }
+
+  /// Resolves the deterministic Cloudinary CDN URL for an entrance gate photo
+  static String getEntrancePhotoUrl(int entranceId) {
+    return '${baseDeliveryUrl}merkadogo/entrances/entry_$entranceId.jpg';
+  }
 
   /// Upload raw image bytes to Cloudinary
   static Future<String?> uploadImageBytes(
     Uint8List bytes, {
     String? folder,
+    String? publicId,
     Function(int sent, int total)? onProgress,
   }) async {
     try {
@@ -27,6 +41,10 @@ class CloudinaryService {
 
       if (folder != null && folder.isNotEmpty) {
         payload['folder'] = folder;
+      }
+
+      if (publicId != null && publicId.isNotEmpty) {
+        payload['public_id'] = publicId;
       }
 
       final response = await http.post(
@@ -64,11 +82,13 @@ class CloudinaryService {
   /// Upload stall image bytes to Cloudinary
   static Future<String?> uploadStallImageBytes(
     Uint8List bytes, {
+    String? stallId,
     Function(int sent, int total)? onProgress,
   }) async {
     return uploadImageBytes(
       bytes,
       folder: 'merkadogo/stalls',
+      publicId: stallId,
       onProgress: onProgress,
     );
   }

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -844,10 +844,10 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
   Widget _buildModernAdminStallCard(StallModel stall) {
     final statusInfo = StallUtils.getStallStatusInfo(stall);
     final visuals = _getCategoryVisuals(stall.category);
-    final hasPhoto = stall.photoUrls.isNotEmpty &&
-        stall.photoUrls.first.isNotEmpty &&
-        !stall.photoUrls.first.contains('placeholder') &&
-        !stall.photoUrls.first.contains('demo');
+    final resolvedPhoto = stall.primaryPhotoUrl;
+    final hasPhoto = resolvedPhoto.isNotEmpty &&
+        !resolvedPhoto.contains('placeholder') &&
+        !resolvedPhoto.contains('demo');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -897,7 +897,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(13),
                               child: Image.network(
-                                stall.photoUrls.first,
+                                resolvedPhoto,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => MarketCategoryIcon(
                                   category: stall.category,

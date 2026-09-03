@@ -1,8 +1,9 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
 import '../../../providers/favorite_provider.dart';
@@ -861,7 +862,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Category Avatar
+                    // Stall Photo or Category Avatar
                     Container(
                       width: 52,
                       height: 52,
@@ -873,13 +874,39 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                           width: 1.5,
                         ),
                       ),
-                      child: Center(
-                        child: MarketCategoryIcon(
-                          category: stall.category,
-                          fallbackIcon: categoryIcon,
-                          size: 26,
-                          color: categoryColor,
-                        ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: stall.primaryPhotoUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: stall.primaryPhotoUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Center(
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      color: categoryColor,
+                                    ),
+                                  ),
+                                ),
+                                errorWidget: (_, __, ___) => Center(
+                                  child: MarketCategoryIcon(
+                                    category: stall.category,
+                                    fallbackIcon: categoryIcon,
+                                    size: 26,
+                                    color: categoryColor,
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: MarketCategoryIcon(
+                                  category: stall.category,
+                                  fallbackIcon: categoryIcon,
+                                  size: 26,
+                                  color: categoryColor,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 14),

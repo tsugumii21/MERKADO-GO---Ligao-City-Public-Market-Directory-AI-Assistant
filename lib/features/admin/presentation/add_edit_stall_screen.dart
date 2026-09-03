@@ -1289,7 +1289,10 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
 
       // Upload newly selected image to Cloudinary if picked
       if (_selectedImageBytes != null) {
-        photoUrl = await CloudinaryService.uploadStallImageBytes(_selectedImageBytes!);
+        photoUrl = await CloudinaryService.uploadStallImageBytes(
+          _selectedImageBytes!,
+          stallId: widget.stallId,
+        );
       }
 
       final combinedTags = <String>[

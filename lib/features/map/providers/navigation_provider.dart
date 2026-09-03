@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/navigation_models.dart';
 import '../services/pathfinding_service.dart';
 
@@ -44,8 +44,13 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     final service = _ref.read(pathfindingServiceProvider);
     if (!service.isInitialized) return;
 
-    final entrance = entranceOverride ?? _ref.read(selectedEntranceProvider);
+    final entrance = entranceOverride ??
+        service.findNearestEntranceByWalkingDistance(stallId) ??
+        _ref.read(selectedEntranceProvider);
     if (entrance == null) return;
+
+    // Update selected entrance state
+    _ref.read(selectedEntranceProvider.notifier).state = entrance;
 
     final route = service.findRoute(
       entranceNodeId: entrance.nodeId,

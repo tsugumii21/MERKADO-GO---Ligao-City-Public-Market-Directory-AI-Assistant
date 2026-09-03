@@ -101,15 +101,16 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   static const double _svgWidth = 8004.0;
   static const double _svgHeight = 8000.0;
 
-  // Calibrated coordinate offsets between node space and SVG canvas space
-  static const double _nodeOffsetX = 7706.4;
-  static const double _nodeOffsetY = 3163.3;
+  // Calibrated coordinate offsets between node space and SVG canvas space (0.0000 diff across 112 markers)
+  static const double _nodeOffsetX = 7823.47;
+  static const double _nodeOffsetY = 3174.00;
 
   late TransformationController _transformController;
   String? _rawSvgContent;
   String? _coloredSvgContent;
   bool _isLoadingSvg = true;
   Map<String, GraphNode> _allGraphNodes = {};
+  final Map<String, Offset> _stallCenterCache = {};
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -186,6 +187,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
           .loadString('assets/map/LigaoCity_PublicMarket_Map.svg');
       // Set pure white background for the SVG map
       svgStr = svgStr.replaceFirst('fill="#1E1E1E"', 'fill="#FFFFFF"');
+      _extractStallCenters(svgStr);
       if (mounted) {
         setState(() {
           _rawSvgContent = svgStr;
@@ -199,6 +201,32 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
         setState(() {
           _isLoadingSvg = false;
         });
+      }
+    }
+  }
+
+  /// Parse SVG stall rectangles once to resolve exact center points
+  void _extractStallCenters(String svgStr) {
+    _stallCenterCache.clear();
+    final rectRegex = RegExp(r'<rect\s+([^>]*?)>', caseSensitive: false);
+    for (final match in rectRegex.allMatches(svgStr)) {
+      final attrs = match.group(1);
+      if (attrs == null) continue;
+      final idMatch = RegExp(r'id="([^"]+)"').firstMatch(attrs);
+      final xMatch = RegExp(r'x="([0-9.-]+)"').firstMatch(attrs);
+      final yMatch = RegExp(r'y="([0-9.-]+)"').firstMatch(attrs);
+      final wMatch = RegExp(r'width="([0-9.-]+)"').firstMatch(attrs);
+      final hMatch = RegExp(r'height="([0-9.-]+)"').firstMatch(attrs);
+
+      if (idMatch != null && xMatch != null && yMatch != null && wMatch != null && hMatch != null) {
+        final id = idMatch.group(1)!;
+        final x = double.tryParse(xMatch.group(1)!);
+        final y = double.tryParse(yMatch.group(1)!);
+        final w = double.tryParse(wMatch.group(1)!);
+        final h = double.tryParse(hMatch.group(1)!);
+        if (x != null && y != null && w != null && h != null) {
+          _stallCenterCache[id] = Offset(x + w / 2, y + h / 2);
+        }
       }
     }
   }
@@ -349,59 +377,44 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                               nodeOffsetX: _nodeOffsetX,
                               nodeOffsetY: _nodeOffsetY,
                               pulseScale: _pulseAnimation.value,
+                              destinationStallCenter: _stallCenterCache[
+                                  widget.activeRoute!.destinationStallId],
                             ),
                           );
                         },
                       ),
 
-                    // Layer 3: Entrance Gate Marker Badges
-                    ...widget.entryPoints.map((entrance) {
+                    // Layer 3: Demand-Driven 3D Vector Entrance Pins
+                    ...widget.entryPoints.where((entrance) {
+                      if (widget.activeRoute != null) {
+                        return entrance.entranceId ==
+                            widget.activeRoute!.entrance.entranceId;
+                      }
+                      return true;
+                    }).map((entrance) {
                       final node = _findNodeInRouteOrService(entrance.nodeId);
                       if (node == null) return const SizedBox.shrink();
                       final pos = Offset(
                         node.x + _nodeOffsetX,
                         node.y + _nodeOffsetY,
                       );
+                      final isSelected = widget.activeRoute?.entrance.entranceId ==
+                          entrance.entranceId;
 
                       return Positioned(
-                        left: pos.dx - 24,
-                        top: pos.dy - 24,
+                        left: pos.dx - 45,
+                        top: pos.dy - 75,
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () => widget.onEntranceTapped?.call(entrance),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.location_on_rounded,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  'Gate ${entrance.entranceId}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
+                          child: SizedBox(
+                            width: 90,
+                            height: 110,
+                            child: CustomPaint(
+                              painter: _EntrancePinCenteredPainter(
+                                label: 'Entry ${entrance.entranceId}',
+                                isSelected: isSelected,
+                              ),
                             ),
                           ),
                         ),
@@ -416,7 +429,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
           // Floating Map Controls (Zoom In, Zoom Out, Reset Center)
           Positioned(
             right: 16,
-            bottom: 24,
+            bottom: widget.activeRoute != null ? 84 : 24,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -474,18 +487,20 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 }
 
-/// CustomPainter for drawing glowing A* Pathfinding route polyline
+/// CustomPainter for drawing two-layer glowing A* Pathfinding route polyline
 class RouteOverlayPainter extends CustomPainter {
   final NavigationRoute route;
   final double nodeOffsetX;
   final double nodeOffsetY;
   final double pulseScale;
+  final Offset? destinationStallCenter;
 
   RouteOverlayPainter({
     required this.route,
     required this.nodeOffsetX,
     required this.nodeOffsetY,
     required this.pulseScale,
+    this.destinationStallCenter,
   });
 
   @override
@@ -496,31 +511,12 @@ class RouteOverlayPainter extends CustomPainter {
       return Offset(node.x + nodeOffsetX, node.y + nodeOffsetY);
     }).toList();
 
+    // Snap polyline into destination stall center if available
+    if (destinationStallCenter != null) {
+      canvasPoints.add(destinationStallCenter!);
+    }
+
     if (canvasPoints.length < 2) return;
-
-    // Draw route outer glow
-    final glowPaint = Paint()
-      ..color = const Color(0xFF4CAF50).withValues(alpha: 0.35)
-      ..strokeWidth = 18.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    // Draw route main line
-    final routePaint = Paint()
-      ..color = const Color(0xFF1B5E20)
-      ..strokeWidth = 8.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    // Draw route inner dash
-    final innerPaint = Paint()
-      ..color = const Color(0xFF81C784)
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
 
     final path = Path();
     path.moveTo(canvasPoints.first.dx, canvasPoints.first.dy);
@@ -528,11 +524,43 @@ class RouteOverlayPainter extends CustomPainter {
       path.lineTo(canvasPoints[i].dx, canvasPoints[i].dy);
     }
 
+    // Layer 1: Translucent 14px Route Track Casing
+    final casingPaint = Paint()
+      ..color = const Color(0x291B5E20) // rgba(27, 94, 32, 0.16)
+      ..strokeWidth = 14.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(path, casingPaint);
+
+    // Layer 2: Route outer glow
+    final glowPaint = Paint()
+      ..color = const Color(0xFF4CAF50).withValues(alpha: 0.35)
+      ..strokeWidth = 10.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
     canvas.drawPath(path, glowPaint);
+
+    // Layer 3: Flowing Forest Green main line
+    final routePaint = Paint()
+      ..color = const Color(0xFF1B5E20)
+      ..strokeWidth = 6.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
     canvas.drawPath(path, routePaint);
+
+    // Layer 4: Light green inner line
+    final innerPaint = Paint()
+      ..color = const Color(0xFF81C784)
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
     canvas.drawPath(path, innerPaint);
 
-    // Draw Start Marker (Entrance)
+    // Draw Start Marker (Entrance Departure)
     final startPt = canvasPoints.first;
     final startPaint = Paint()..color = const Color(0xFF2E7D32);
     final startInner = Paint()..color = Colors.white;
@@ -556,6 +584,97 @@ class RouteOverlayPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant RouteOverlayPainter oldDelegate) {
     return oldDelegate.route != route ||
-        oldDelegate.pulseScale != pulseScale;
+        oldDelegate.pulseScale != pulseScale ||
+        oldDelegate.destinationStallCenter != destinationStallCenter;
   }
+}
+
+/// 3D Vector Pin Painter for Entrance Gate Markers
+class _EntrancePinCenteredPainter extends CustomPainter {
+  final String label;
+  final bool isSelected;
+
+  _EntrancePinCenteredPainter({required this.label, this.isSelected = false});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(size.width / 2, size.height * 0.70);
+    canvas.scale(0.85);
+
+    final paint = Paint()
+      ..color = const Color(0xFFE53935)
+      ..style = PaintingStyle.fill;
+
+    // 1. Draw Teardrop Contour
+    final pinPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(-32.6, -54.5)
+      ..arcToPoint(
+        const Offset(32.6, -54.5),
+        radius: const Radius.circular(38),
+        largeArc: true,
+      )
+      ..close();
+    canvas.drawPath(pinPath, paint);
+
+    // 2. 3D Shaded Right Bevel
+    final bevelPaint = Paint()..color = const Color(0xFFC62828);
+    final bevelPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(0, -92.5)
+      ..arcToPoint(
+        const Offset(32.6, -54.5),
+        radius: const Radius.circular(38),
+      )
+      ..close();
+    canvas.drawPath(bevelPath, bevelPaint);
+
+    // 3. Inner White Disc
+    canvas.drawCircle(const Offset(0, -54.5), 26, Paint()..color = Colors.white);
+
+    // 4. Red Avatar Silhouette
+    canvas.drawCircle(const Offset(0, -62), 7, paint);
+    final shoulderPath = Path()
+      ..moveTo(-12, -43)
+      ..quadraticBezierTo(0, -52, 12, -43)
+      ..lineTo(12, -38)
+      ..lineTo(-12, -38)
+      ..close();
+    canvas.drawPath(shoulderPath, paint);
+
+    // 5. Option A White Pill Badge
+    final badgeRect = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(-58, 7, 116, 36),
+      const Radius.circular(18),
+    );
+    canvas.drawRRect(badgeRect, Paint()..color = Colors.white);
+    canvas.drawRRect(
+      badgeRect,
+      Paint()
+        ..color = const Color(0xFFE53935)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+
+    // 6. Badge Label Typography
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
+          color: Color(0xFF1E293B),
+          fontSize: 19,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(canvas, Offset(-textPainter.width / 2, 14));
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _EntrancePinCenteredPainter oldDelegate) =>
+      oldDelegate.label != label || oldDelegate.isSelected != isSelected;
 }

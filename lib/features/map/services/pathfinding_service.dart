@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import '../domain/navigation_models.dart';
@@ -330,20 +330,15 @@ class PathfindingService {
       if (direction == TurnDirection.straight) {
         accumulatedStraightDist += segDist;
       } else {
-        // If we accumulated straight distance, append a straight step first if significant
-        if (accumulatedStraightDist > 50.0 && steps.isNotEmpty) {
-          final lastStep = steps.last;
-          if (lastStep.direction == TurnDirection.straight) {
-            steps[steps.length - 1] = NavigationStep(
-              stepNumber: lastStep.stepNumber,
-              instruction: 'Continue straight along the corridor',
-              distance: lastStep.distance + accumulatedStraightDist,
-              direction: TurnDirection.straight,
-              nodeId: lastStep.nodeId,
-              fromNodeId: lastStep.fromNodeId,
-              toNodeId: nodeB.id,
-            );
-          }
+        // Flush accumulated straight distance if significant (> 50 units)
+        if (accumulatedStraightDist > 50.0) {
+          steps.add(NavigationStep(
+            stepNumber: steps.length + 1,
+            instruction: 'Continue straight along the corridor',
+            distance: accumulatedStraightDist,
+            direction: TurnDirection.straight,
+            nodeId: nodeA.id,
+          ));
         }
         accumulatedStraightDist = 0.0;
 
@@ -356,10 +351,21 @@ class PathfindingService {
           distance: segDist,
           direction: direction,
           nodeId: nodeB.id,
-          fromNodeId: nodeB.id,
+          fromNodeId: nodeA.id,
           toNodeId: nodeC.id,
         ));
       }
+    }
+
+    // Flush remaining straight distance before arrival
+    if (accumulatedStraightDist > 50.0 && pathNodes.length >= 2) {
+      steps.add(NavigationStep(
+        stepNumber: steps.length + 1,
+        instruction: 'Continue straight towards your destination',
+        distance: accumulatedStraightDist,
+        direction: TurnDirection.straight,
+        nodeId: pathNodes[pathNodes.length - 2].id,
+      ));
     }
 
     // Final Step: Arrive at destination
@@ -428,5 +434,49 @@ class PathfindingService {
     if (nodeId.startsWith('node_fs')) return 'Fruits Section';
     if (nodeId.startsWith('node_ex')) return 'Main Corridor';
     return 'Market Walkway';
+  }
+
+  /// Calculate exact walking distance along aisles from entrance to stall
+  double getPathWalkingCost({
+    required String entranceNodeId,
+    required String goalNodeId,
+  }) {
+    final pathNodeIds = aStarPath(
+      startNodeId: entranceNodeId,
+      goalNodeId: goalNodeId,
+    );
+    if (pathNodeIds.length < 2) return double.infinity;
+
+    double cost = 0.0;
+    for (int i = 0; i < pathNodeIds.length - 1; i++) {
+      final nodeU = _nodes[pathNodeIds[i]];
+      final nodeV = _nodes[pathNodeIds[i + 1]];
+      if (nodeU != null && nodeV != null) {
+        cost += nodeU.distanceTo(nodeV);
+      }
+    }
+    return cost;
+  }
+
+  /// Find nearest entrance by true corridor walking distance
+  MarketEntryPoint? findNearestEntranceByWalkingDistance(String destinationStallId) {
+    final goalNodeId = getPrimaryNodeForStall(destinationStallId);
+    if (goalNodeId == null || _entryPoints.isEmpty) return null;
+
+    MarketEntryPoint? nearest;
+    double minCost = double.infinity;
+
+    for (final entrance in _entryPoints) {
+      final cost = getPathWalkingCost(
+        entranceNodeId: entrance.nodeId,
+        goalNodeId: goalNodeId,
+      );
+      if (cost < minCost) {
+        minCost = cost;
+        nearest = entrance;
+      }
+    }
+
+    return nearest;
   }
 }

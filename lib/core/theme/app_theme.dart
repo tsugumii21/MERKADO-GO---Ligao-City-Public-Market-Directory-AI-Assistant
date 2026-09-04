@@ -202,12 +202,22 @@ class AppTheme {
         elevation: 0,
         color: colorScheme.surface,
         shadowColor: colorScheme.shadow,
-        surfaceTintColor: colorScheme.surfaceTint,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: colorScheme.outlineVariant, width: 1),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+      
+      // Modal, Bottom Sheet & Dialog Themes (pure white, zero green tint)
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
       ),
       
       // Modern Bottom Navigation Bar
@@ -456,12 +466,22 @@ class AppTheme {
         elevation: 0,
         color: colorScheme.surface,
         shadowColor: colorScheme.shadow,
-        surfaceTintColor: colorScheme.surfaceTint,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: colorScheme.outlineVariant, width: 1),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+      
+      // Modal, Bottom Sheet & Dialog Themes (pure surface, zero tint)
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
       ),
       
       navigationBarTheme: NavigationBarThemeData(

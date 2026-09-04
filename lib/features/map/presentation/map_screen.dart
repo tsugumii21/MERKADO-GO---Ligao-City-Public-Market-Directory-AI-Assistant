@@ -145,11 +145,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
 
-          // 4. Floating Aling Suki Avatar Button (Lifted above minimized bar when active route present)
-          Positioned(
-            left: 16,
-            bottom: activeRoute != null ? 84 : 24,
-            child: Stack(
+          // 4. Floating Aling Suki Avatar Button (Hidden during active navigation to avoid card collision)
+          if (activeRoute == null)
+            Positioned(
+              left: 16,
+              bottom: 24,
+              child: Stack(
               clipBehavior: Clip.none,
               children: [
                 Container(

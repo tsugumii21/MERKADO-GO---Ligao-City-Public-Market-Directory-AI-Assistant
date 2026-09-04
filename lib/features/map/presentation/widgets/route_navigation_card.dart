@@ -34,26 +34,32 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
     final currentStep =
         widget.route.steps.isNotEmpty ? widget.route.steps[safeIdx] : null;
 
-    return Card(
-      elevation: 6,
-      shadowColor: Colors.black.withValues(alpha: 0.2),
-      shape: RoundedRectangleBorder(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Material(
+        color: Colors.white,
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      color: AppColors.surface,
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: _isMinimized ? AppSpacing.sm : AppSpacing.md,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: AppColors.border),
           ),
-          child: _isMinimized
-              ? _buildMinimizedBar()
-              : _buildExpandedContent(safeIdx, currentStep),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: _isMinimized ? AppSpacing.sm : AppSpacing.md,
+              ),
+              child: _isMinimized
+                  ? _buildMinimizedBar()
+                  : _buildExpandedContent(safeIdx, currentStep),
+            ),
+          ),
         ),
       ),
     );

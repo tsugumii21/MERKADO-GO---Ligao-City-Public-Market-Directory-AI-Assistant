@@ -32,7 +32,9 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
   @override
   Widget build(BuildContext context) {
     final currentStepIdx = ref.watch(currentStepIndexProvider);
-    final safeIdx = currentStepIdx.clamp(0, widget.route.steps.length - 1);
+    final safeIdx = widget.route.steps.isNotEmpty
+        ? currentStepIdx.clamp(0, widget.route.steps.length - 1)
+        : 0;
     final currentStep =
         widget.route.steps.isNotEmpty ? widget.route.steps[safeIdx] : null;
 

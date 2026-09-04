@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -130,11 +131,16 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   List<MarketEntryPoint> get _effectiveEntryPoints =>
       widget.entryPoints.isNotEmpty ? widget.entryPoints : _localEntryPoints;
 
-  bool get _canZoomOut =>
-      _transformController.value.getMaxScaleOnAxis() > _minScale + 0.005;
+  double _getScale(Matrix4 matrix) {
+    final s = matrix.storage;
+    return math.sqrt(s[0] * s[0] + s[1] * s[1]);
+  }
 
-  bool get _canZoomIn =>
-      _transformController.value.getMaxScaleOnAxis() < _maxScale - 0.005;
+  double get _currentScale => _getScale(_transformController.value);
+
+  bool get _canZoomOut => _currentScale > _minScale + 0.005;
+
+  bool get _canZoomIn => _currentScale < _maxScale - 0.005;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -245,7 +251,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   void _clampScale() {
     if (_isClamping) return;
     final currentMatrix = _transformController.value;
-    final currentScale = currentMatrix.getMaxScaleOnAxis();
+    final currentScale = _getScale(currentMatrix);
 
     if (currentScale < _minScale) {
       _isClamping = true;
@@ -258,7 +264,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
         final clampedMatrix = Matrix4.identity()
           ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
-          ..scaleByVector3(Vector3(factor, factor, 1.0))
+          ..scaleByVector3(Vector3(factor, factor, factor))
           ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
           ..multiply(currentMatrix);
 
@@ -277,7 +283,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
         final clampedMatrix = Matrix4.identity()
           ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
-          ..scaleByVector3(Vector3(factor, factor, 1.0))
+          ..scaleByVector3(Vector3(factor, factor, factor))
           ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
           ..multiply(currentMatrix);
 
@@ -481,7 +487,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
           0.0,
         ),
       )
-      ..scaleByVector3(Vector3(zoom, zoom, 1.0));
+      ..scaleByVector3(Vector3(zoom, zoom, zoom));
 
     if (animate) {
       _animateToMatrix(matrix);
@@ -544,7 +550,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
           0.0,
         ),
       )
-      ..scaleByVector3(Vector3(zoom, zoom, 1.0));
+      ..scaleByVector3(Vector3(zoom, zoom, zoom));
 
     _transformController.value = matrix;
   }
@@ -591,7 +597,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
     final center = Offset(renderBox.size.width / 2, renderBox.size.height / 2);
     final currentMatrix = _transformController.value;
-    final currentScale = currentMatrix.getMaxScaleOnAxis();
+    final currentScale = _getScale(currentMatrix);
 
     if (factor < 1.0 && currentScale <= _minScale + 0.005) return;
     if (factor > 1.0 && currentScale >= _maxScale - 0.005) return;
@@ -603,7 +609,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
     final matrix = Matrix4.identity()
       ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
-      ..scaleByVector3(Vector3(actualFactor, actualFactor, 1.0))
+      ..scaleByVector3(Vector3(actualFactor, actualFactor, actualFactor))
       ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
       ..multiply(currentMatrix);
 

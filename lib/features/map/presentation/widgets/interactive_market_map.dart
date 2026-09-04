@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../models/stall_model.dart';
 import '../../domain/navigation_models.dart';
 import '../../domain/zone_palette.dart';
+import '../../services/stall_svg_parser.dart';
 
 /// Predefined market zones for quick-focus navigation
 class MarketZoneArea {
@@ -123,6 +125,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   Map<String, GraphNode> _allGraphNodes = {};
   List<MarketEntryPoint> _localEntryPoints = [];
   final Map<String, Offset> _stallCenterCache = {};
+  final Map<String, Rect> _stallBoundsCache = {};
   bool _isClamping = false;
   Path? _cachedRoutePath;
   List<ui.PathMetric> _cachedRouteMetrics = [];
@@ -369,7 +372,13 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
           .loadString('assets/map/LigaoCity_PublicMarket_Map.svg');
       // Set pure white background for the SVG map
       svgStr = svgStr.replaceFirst('fill="#1E1E1E"', 'fill="#FFFFFF"');
-      _extractStallCenters(svgStr);
+      final parsedBounds = StallSvgParser.parseBounds(svgStr);
+      _stallBoundsCache.clear();
+      _stallBoundsCache.addAll(parsedBounds);
+      _stallCenterCache.clear();
+      for (final entry in parsedBounds.entries) {
+        _stallCenterCache[entry.key] = entry.value.center;
+      }
       if (mounted) {
         setState(() {
           _rawSvgContent = svgStr;
@@ -392,30 +401,50 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     }
   }
 
-  /// Parse SVG stall rectangles once to resolve exact center points
-  void _extractStallCenters(String svgStr) {
-    _stallCenterCache.clear();
-    final rectRegex = RegExp(r'<rect\s+([^>]*?)>', caseSensitive: false);
-    for (final match in rectRegex.allMatches(svgStr)) {
-      final attrs = match.group(1);
-      if (attrs == null) continue;
-      final idMatch = RegExp(r'id="([^"]+)"').firstMatch(attrs);
-      final xMatch = RegExp(r'x="([0-9.-]+)"').firstMatch(attrs);
-      final yMatch = RegExp(r'y="([0-9.-]+)"').firstMatch(attrs);
-      final wMatch = RegExp(r'width="([0-9.-]+)"').firstMatch(attrs);
-      final hMatch = RegExp(r'height="([0-9.-]+)"').firstMatch(attrs);
+  /// Detects user tap on the interactive map canvas, matches touched stall, and triggers selection
+  void _handleCanvasTap(Offset localPos) {
+    String? hitStallId;
+    double closestDistSq = double.infinity;
 
-      if (idMatch != null && xMatch != null && yMatch != null && wMatch != null && hMatch != null) {
-        final id = idMatch.group(1)!;
-        final x = double.tryParse(xMatch.group(1)!);
-        final y = double.tryParse(yMatch.group(1)!);
-        final w = double.tryParse(wMatch.group(1)!);
-        final h = double.tryParse(hMatch.group(1)!);
-        if (x != null && y != null && w != null && h != null) {
-          _stallCenterCache[id] = Offset(x + w / 2, y + h / 2);
+    // 1. Check all stall bounding boxes (inflated by 12px for forgiving finger tapping)
+    for (final entry in _stallBoundsCache.entries) {
+      final rect = entry.value;
+      final hitRect = rect.inflate(12.0);
+      if (hitRect.contains(localPos)) {
+        final center = _stallCenterCache[entry.key] ?? rect.center;
+        final distSq = (localPos - center).distanceSquared;
+        if (distSq < closestDistSq) {
+          closestDistSq = distSq;
+          hitStallId = entry.key;
         }
       }
     }
+
+    if (hitStallId != null) {
+      StallModel? matchedStall;
+      final hitLower = hitStallId.toLowerCase();
+      final hitNum = hitLower.replaceFirst('id_', '');
+
+      for (final stall in widget.stalls) {
+        final sid = stall.stallId.toLowerCase();
+        if (sid == hitLower ||
+            sid == hitNum ||
+            (stall.stallNumber != null &&
+                stall.stallNumber!.toLowerCase() == hitNum)) {
+          matchedStall = stall;
+          break;
+        }
+      }
+
+      if (matchedStall != null) {
+        HapticFeedback.selectionClick();
+        widget.onStallSelected?.call(matchedStall);
+        return;
+      }
+    }
+
+    // 2. Empty aisle/walkway tapped
+    widget.onMapTapped?.call();
   }
 
   /// Inject dynamic 17-category palette colors into SVG elements matching stall IDs
@@ -649,26 +678,45 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
               constrained: false,
               onInteractionUpdate: (_) => _clampScale(),
               onInteractionEnd: (_) => _clampScale(),
-              child: SizedBox(
-                width: _svgWidth,
-                height: _svgHeight,
-                child: Stack(
-                  children: [
-                    // Layer 1: Base SVG Map with dynamic 17-category coloring
-                    if (_coloredSvgContent != null)
-                      SvgPicture.string(
-                        _coloredSvgContent!,
-                        width: _svgWidth,
-                        height: _svgHeight,
-                        fit: BoxFit.fill,
-                      )
-                    else if (_rawSvgContent != null)
-                      SvgPicture.string(
-                        _rawSvgContent!,
-                        width: _svgWidth,
-                        height: _svgHeight,
-                        fit: BoxFit.fill,
-                      ),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (details) => _handleCanvasTap(details.localPosition),
+                child: SizedBox(
+                  width: _svgWidth,
+                  height: _svgHeight,
+                  child: Stack(
+                    children: [
+                      // Layer 1: Base SVG Map with dynamic 17-category coloring
+                      if (_coloredSvgContent != null)
+                        SvgPicture.string(
+                          _coloredSvgContent!,
+                          width: _svgWidth,
+                          height: _svgHeight,
+                          fit: BoxFit.fill,
+                        )
+                      else if (_rawSvgContent != null)
+                        SvgPicture.string(
+                          _rawSvgContent!,
+                          width: _svgWidth,
+                          height: _svgHeight,
+                          fit: BoxFit.fill,
+                        ),
+
+                      // Layer 1.5: Selected Stall Accent Highlight & Pulse
+                      if (widget.selectedStall != null &&
+                          _stallBoundsCache.containsKey(widget.selectedStall!.stallId))
+                        AnimatedBuilder(
+                          animation: _pulseAnimation,
+                          builder: (context, _) {
+                            return CustomPaint(
+                              size: const Size(_svgWidth, _svgHeight),
+                              painter: _SelectedStallHighlightPainter(
+                                rect: _stallBoundsCache[widget.selectedStall!.stallId]!,
+                                pulseScale: _pulseAnimation.value,
+                              ),
+                            );
+                          },
+                        ),
 
                     // Layer 2: A* Pathfinding Route Polyline Overlay
                     if (widget.activeRoute != null &&
@@ -739,6 +787,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
               ),
             ),
           ),
+        ),
 
           // Floating Skip Walking Button during traversal
           if (_isWalking)
@@ -1167,3 +1216,43 @@ class _EntrancePinCenteredPainter extends CustomPainter {
   bool shouldRepaint(covariant _EntrancePinCenteredPainter oldDelegate) =>
       oldDelegate.label != label || oldDelegate.isSelected != isSelected;
 }
+
+/// Highlights the actively selected stall on the interactive vector map
+class _SelectedStallHighlightPainter extends CustomPainter {
+  final Rect rect;
+  final double pulseScale;
+
+  const _SelectedStallHighlightPainter({
+    required this.rect,
+    required this.pulseScale,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      rect.inflate(4.0),
+      const Radius.circular(6.0),
+    );
+
+    // 1. Soft glowing outer pulse
+    final glowPaint = Paint()
+      ..color = AppColors.primary.withValues(alpha: 0.35 * pulseScale)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10.0 * pulseScale
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawRRect(rrect, glowPaint);
+
+    // 2. High-contrast crisp border
+    final borderPaint = Paint()
+      ..color = AppColors.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0;
+    canvas.drawRRect(rrect, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SelectedStallHighlightPainter oldDelegate) {
+    return oldDelegate.rect != rect || oldDelegate.pulseScale != pulseScale;
+  }
+}
+

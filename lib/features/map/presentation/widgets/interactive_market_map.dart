@@ -97,9 +97,12 @@ class InteractiveMarketMap extends StatefulWidget {
 }
 
 class _InteractiveMarketMapState extends State<InteractiveMarketMap>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const double _svgWidth = 8004.0;
   static const double _svgHeight = 8000.0;
+
+  static const double _minScale = 0.05;
+  static const double _maxScale = 4.0;
 
   // Calibrated coordinate offsets between node space and SVG canvas space (0.0000 diff across 112 markers)
   static const double _nodeOffsetX = 7823.47;
@@ -114,6 +117,9 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  late AnimationController _zoomAnimationController;
+  Animation<Matrix4>? _zoomAnimation;
 
   @override
   void initState() {
@@ -130,12 +136,21 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    _zoomAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    )..addListener(() {
+        if (_zoomAnimation != null) {
+          _transformController.value = _zoomAnimation!.value;
+        }
+      });
+
     _loadAndPrepareSvg();
     _loadGraphNodes();
 
     // Initial center on market complex after layout
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _centerOnMarket();
+      _centerOnMarket(animate: false);
     });
   }
 
@@ -174,6 +189,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   @override
   void dispose() {
+    _zoomAnimationController.dispose();
     _pulseController.dispose();
     if (widget.transformationController == null) {
       _transformController.dispose();
@@ -268,12 +284,12 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     return '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
   }
 
-  void _centerOnMarket() {
-    // Focus on center of market complex (3800, 3500)
-    _animateToPoint(const Offset(3800, 3500), 1.2);
+  void _centerOnMarket({bool animate = true}) {
+    // Focus on center of active market stalls complex
+    _animateToPoint(const Offset(3400, 5400), 0.35, animate: animate);
   }
 
-  void _animateToPoint(Offset target, double zoom) {
+  void _animateToPoint(Offset target, double zoom, {bool animate = true}) {
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
@@ -291,18 +307,34 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
       )
       ..scaleByVector3(Vector3(zoom, zoom, 1.0));
 
-    _transformController.value = matrix;
+    if (animate) {
+      _animateToMatrix(matrix);
+    } else {
+      _transformController.value = matrix;
+    }
+  }
+
+  void _animateToMatrix(Matrix4 targetMatrix) {
+    _zoomAnimationController.stop();
+    _zoomAnimation = Matrix4Tween(
+      begin: _transformController.value,
+      end: targetMatrix,
+    ).animate(CurvedAnimation(
+      parent: _zoomAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+    _zoomAnimationController.forward(from: 0.0);
   }
 
   void _zoomIn() {
     final currentScale = _transformController.value.getMaxScaleOnAxis();
-    final newScale = (currentScale * 1.35).clamp(0.5, 6.0);
+    final newScale = (currentScale * 1.35).clamp(_minScale, _maxScale);
     _animateToScale(newScale);
   }
 
   void _zoomOut() {
     final currentScale = _transformController.value.getMaxScaleOnAxis();
-    final newScale = (currentScale / 1.35).clamp(0.5, 6.0);
+    final newScale = (currentScale / 1.35).clamp(_minScale, _maxScale);
     _animateToScale(newScale);
   }
 
@@ -339,9 +371,9 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
             onTap: widget.onMapTapped,
             child: InteractiveViewer(
               transformationController: _transformController,
-              minScale: 0.4,
-              maxScale: 6.0,
-              boundaryMargin: const EdgeInsets.all(1200),
+              minScale: _minScale,
+              maxScale: _maxScale,
+              boundaryMargin: const EdgeInsets.all(2500),
               constrained: false,
               child: SizedBox(
                 width: _svgWidth,

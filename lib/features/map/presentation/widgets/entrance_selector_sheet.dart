@@ -158,12 +158,16 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
+                      color: selectedEntrance != null
+                          ? AppColors.primaryLight
+                          : const Color(0xFFFFEBEE),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.meeting_room_rounded,
-                      color: AppColors.primary,
+                    child: Icon(
+                      Icons.location_on_rounded,
+                      color: selectedEntrance != null
+                          ? AppColors.primary
+                          : const Color(0xFFE53935),
                       size: 22,
                     ),
                   ),

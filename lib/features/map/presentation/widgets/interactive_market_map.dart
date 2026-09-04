@@ -104,8 +104,8 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   static const double _svgWidth = 8004.0;
   static const double _svgHeight = 8000.0;
 
-  static const double _defaultZoom = 0.20;
-  static const double _minScale = 0.20;
+  static const double _defaultZoom = 0.25;
+  static const double _minScale = 0.25;
   static const double _maxScale = 3.5;
   static const Offset _marketCenter = Offset(3850, 3650);
 
@@ -120,9 +120,16 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   Map<String, GraphNode> _allGraphNodes = {};
   List<MarketEntryPoint> _localEntryPoints = [];
   final Map<String, Offset> _stallCenterCache = {};
+  bool _isClamping = false;
 
   List<MarketEntryPoint> get _effectiveEntryPoints =>
       widget.entryPoints.isNotEmpty ? widget.entryPoints : _localEntryPoints;
+
+  bool get _canZoomOut =>
+      _transformController.value.getMaxScaleOnAxis() > _minScale + 0.005;
+
+  bool get _canZoomIn =>
+      _transformController.value.getMaxScaleOnAxis() < _maxScale - 0.005;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -138,6 +145,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     super.initState();
     _transformController =
         widget.transformationController ?? TransformationController();
+    _transformController.addListener(_onTransformChanged);
 
     _pulseController = AnimationController(
       vsync: this,
@@ -187,6 +195,59 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
         _walkController.forward(from: 0.0);
       }
     });
+  }
+
+  void _onTransformChanged() {
+    _clampScale();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _clampScale() {
+    if (_isClamping) return;
+    final currentMatrix = _transformController.value;
+    final currentScale = currentMatrix.getMaxScaleOnAxis();
+
+    if (currentScale < _minScale) {
+      _isClamping = true;
+      try {
+        final factor = _minScale / currentScale;
+        final renderBox = context.findRenderObject() as RenderBox?;
+        final center = renderBox != null
+            ? Offset(renderBox.size.width / 2, renderBox.size.height / 2)
+            : Offset.zero;
+
+        final clampedMatrix = Matrix4.identity()
+          ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
+          ..scaleByVector3(Vector3(factor, factor, 1.0))
+          ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
+          ..multiply(currentMatrix);
+
+        _transformController.value = clampedMatrix;
+      } finally {
+        _isClamping = false;
+      }
+    } else if (currentScale > _maxScale) {
+      _isClamping = true;
+      try {
+        final factor = _maxScale / currentScale;
+        final renderBox = context.findRenderObject() as RenderBox?;
+        final center = renderBox != null
+            ? Offset(renderBox.size.width / 2, renderBox.size.height / 2)
+            : Offset.zero;
+
+        final clampedMatrix = Matrix4.identity()
+          ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
+          ..scaleByVector3(Vector3(factor, factor, 1.0))
+          ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
+          ..multiply(currentMatrix);
+
+        _transformController.value = clampedMatrix;
+      } finally {
+        _isClamping = false;
+      }
+    }
   }
 
   Future<void> _loadGraphNodes() async {
@@ -243,6 +304,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   @override
   void dispose() {
+    _transformController.removeListener(_onTransformChanged);
     _walkController.dispose();
     _zoomAnimationController.dispose();
     _pulseController.dispose();
@@ -265,6 +327,11 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
           _isLoadingSvg = false;
         });
         _applyCategoryColors();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _centerOnMarket(animate: false);
+          }
+        });
       }
     } catch (e) {
       debugPrint('Error loading market SVG: $e');
@@ -488,9 +555,12 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     final center = Offset(renderBox.size.width / 2, renderBox.size.height / 2);
     final currentMatrix = _transformController.value;
     final currentScale = currentMatrix.getMaxScaleOnAxis();
-    final targetScale = (currentScale * factor).clamp(_minScale, _maxScale);
 
-    if ((targetScale - currentScale).abs() < 0.001) return;
+    if (factor < 1.0 && currentScale <= _minScale + 0.005) return;
+    if (factor > 1.0 && currentScale >= _maxScale - 0.005) return;
+
+    final targetScale = (currentScale * factor).clamp(_minScale, _maxScale);
+    if ((targetScale - currentScale).abs() < 0.005) return;
 
     final actualFactor = targetScale / currentScale;
 
@@ -503,9 +573,15 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     _animateToMatrix(matrix);
   }
 
-  void _zoomIn() => _zoomBy(1.35);
+  void _zoomIn() {
+    if (!_canZoomIn) return;
+    _zoomBy(1.35);
+  }
 
-  void _zoomOut() => _zoomBy(1 / 1.35);
+  void _zoomOut() {
+    if (!_canZoomOut) return;
+    _zoomBy(1 / 1.35);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -528,6 +604,8 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
               maxScale: _maxScale,
               boundaryMargin: const EdgeInsets.all(2500),
               constrained: false,
+              onInteractionUpdate: (_) => _clampScale(),
+              onInteractionEnd: (_) => _clampScale(),
               child: SizedBox(
                 width: _svgWidth,
                 height: _svgHeight,
@@ -669,14 +747,16 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
               children: [
                 _buildMapControlButton(
                   icon: Icons.add_rounded,
-                  tooltip: 'Zoom In',
+                  tooltip: _canZoomIn ? 'Zoom In' : 'Maximum Zoom Reached',
                   onPressed: _zoomIn,
+                  enabled: _canZoomIn,
                 ),
                 const SizedBox(height: 8),
                 _buildMapControlButton(
                   icon: Icons.remove_rounded,
-                  tooltip: 'Zoom Out',
+                  tooltip: _canZoomOut ? 'Zoom Out' : 'Minimum Zoom Reached',
                   onPressed: _zoomOut,
+                  enabled: _canZoomOut,
                 ),
                 const SizedBox(height: 8),
                 _buildMapControlButton(
@@ -707,15 +787,22 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     required IconData icon,
     required String tooltip,
     required VoidCallback onPressed,
+    bool enabled = true,
   }) {
     return Material(
-      color: AppColors.surface,
-      elevation: 4,
-      shadowColor: Colors.black.withValues(alpha: 0.15),
+      color: enabled ? AppColors.surface : AppColors.surfaceDim,
+      elevation: enabled ? 4 : 1,
+      shadowColor: Colors.black.withValues(alpha: enabled ? 0.15 : 0.05),
       shape: const CircleBorder(side: BorderSide(color: AppColors.border)),
       child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, color: AppColors.ink, size: 20),
+        onPressed: enabled ? onPressed : null,
+        icon: Icon(
+          icon,
+          color: enabled
+              ? AppColors.ink
+              : AppColors.inkMuted.withValues(alpha: 0.35),
+          size: 20,
+        ),
         tooltip: tooltip,
         visualDensity: VisualDensity.compact,
       ),

@@ -929,41 +929,14 @@ class RouteOverlayPainter extends CustomPainter {
       endPt = canvasPoints.last;
     }
 
-    // Layer 1: Translucent Route Track Casing
-    final casingPaint = Paint()
-      ..color = const Color(0x291B5E20) // rgba(27, 94, 32, 0.16)
-      ..strokeWidth = 24.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, casingPaint);
-
-    // Layer 2: Route outer glow
-    final glowPaint = Paint()
-      ..color = const Color(0xFF4CAF50).withValues(alpha: 0.35)
-      ..strokeWidth = 18.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, glowPaint);
-
-    // Layer 3: Flowing Forest Green main line
+    // Solid flat direction line (no gradient, casing, or glow layers)
     final routePaint = Paint()
       ..color = const Color(0xFF1B5E20)
-      ..strokeWidth = 12.0
+      ..strokeWidth = 10.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
     canvas.drawPath(path, routePaint);
-
-    // Layer 4: Light green inner line
-    final innerPaint = Paint()
-      ..color = const Color(0xFF81C784)
-      ..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, innerPaint);
 
     // Draw Start Marker (Entrance Departure)
     final startPaint = Paint()..color = const Color(0xFF2E7D32);

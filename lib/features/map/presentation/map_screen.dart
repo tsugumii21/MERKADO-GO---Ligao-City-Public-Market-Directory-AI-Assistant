@@ -106,30 +106,41 @@ class MapScreenState extends ConsumerState<MapScreen> {
             ),
           ),
 
-          // 2. Top Header Overlay (Active Route Card OR Search & Entrance Bar)
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.sm),
-                child: activeRoute != null
-                    ? RouteNavigationCard(
-                        route: activeRoute,
-                        onChangeEntrance: () =>
-                            EntranceSelectorSheet.show(context),
-                        onClose: () {
-                          ref.read(activeRouteProvider.notifier).clearRoute();
-                        },
-                      )
-                    : _buildTopSearchAndEntranceBar(selectedEntrance),
+          // 2. Top Header (Search & Entrance Bar - yields during active navigation)
+          if (activeRoute == null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: _buildTopSearchAndEntranceBar(selectedEntrance),
+                ),
               ),
             ),
-          ),
 
-          // 3. Floating Aling Suki Avatar Button (Positioned on the left with white background)
+          // 3. Bottom Navigation Guidance Card (Two-State: Minimized bar or Expanded sheet)
+          if (activeRoute != null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: RouteNavigationCard(
+                    route: activeRoute,
+                    onChangeEntrance: () =>
+                        EntranceSelectorSheet.show(context),
+                    onClose: () {
+                      ref.read(activeRouteProvider.notifier).clearRoute();
+                    },
+                  ),
+                ),
+              ),
+            ),
+
+          // 4. Floating Aling Suki Avatar Button (Lifted above minimized bar when active route present)
           Positioned(
             left: 16,
-            bottom: 24,
+            bottom: activeRoute != null ? 84 : 24,
             child: Stack(
               clipBehavior: Clip.none,
               children: [

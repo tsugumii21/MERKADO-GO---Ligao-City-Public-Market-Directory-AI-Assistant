@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
@@ -121,6 +122,9 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   late AnimationController _zoomAnimationController;
   Animation<Matrix4>? _zoomAnimation;
 
+  late AnimationController _walkController;
+  bool _isWalking = false;
+
   @override
   void initState() {
     super.initState();
@@ -145,12 +149,35 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
         }
       });
 
+    _walkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3500),
+    )
+      ..addListener(() {
+        if (_isWalking && mounted) {
+          setState(() {});
+          _trackAvatarCamera();
+        }
+      })
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() {
+            _isWalking = false;
+          });
+          _autoFrameRoute();
+        }
+      });
+
     _loadAndPrepareSvg();
     _loadGraphNodes();
 
     // Initial center on market complex after layout
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _centerOnMarket(animate: false);
+      if (widget.activeRoute != null && widget.activeRoute!.nodes.isNotEmpty) {
+        _isWalking = true;
+        _walkController.forward(from: 0.0);
+      }
     });
   }
 
@@ -180,15 +207,20 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
       _applyCategoryColors();
     }
 
-    // Auto-center on selected stall if selection changed
-    if (widget.selectedStall != null &&
-        widget.selectedStall != oldWidget.selectedStall) {
-      // Could center on stall
+    if (widget.activeRoute != oldWidget.activeRoute) {
+      if (widget.activeRoute != null && widget.activeRoute!.nodes.isNotEmpty) {
+        _isWalking = true;
+        _walkController.forward(from: 0.0);
+      } else {
+        _isWalking = false;
+        _walkController.stop();
+      }
     }
   }
 
   @override
   void dispose() {
+    _walkController.dispose();
     _zoomAnimationController.dispose();
     _pulseController.dispose();
     if (widget.transformationController == null) {
@@ -326,6 +358,95 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     _zoomAnimationController.forward(from: 0.0);
   }
 
+  List<Offset> _getRouteCanvasPoints() {
+    if (widget.activeRoute == null || widget.activeRoute!.nodes.isEmpty) {
+      return const [];
+    }
+    final points = widget.activeRoute!.nodes.map((node) {
+      return Offset(node.x + _nodeOffsetX, node.y + _nodeOffsetY);
+    }).toList();
+    final destCenter = _stallCenterCache[widget.activeRoute!.destinationStallId];
+    if (destCenter != null) {
+      points.add(destCenter);
+    }
+    return points;
+  }
+
+  ui.Tangent? _getRouteTangent(double progress) {
+    final points = _getRouteCanvasPoints();
+    if (points.length < 2) return null;
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    final metrics = path.computeMetrics().toList();
+    if (metrics.isEmpty) return null;
+    final totalLength = metrics.fold(0.0, (acc, m) => acc + m.length);
+    final distance = progress.clamp(0.0, 1.0) * totalLength;
+    return metrics.first.getTangentForOffset(distance);
+  }
+
+  void _trackAvatarCamera() {
+    final tangent = _getRouteTangent(_walkController.value);
+    if (tangent == null) return;
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final viewportSize = renderBox.size;
+    const zoom = 0.55;
+    final targetX = tangent.position.dx;
+    final targetY = tangent.position.dy;
+
+    final matrix = Matrix4.identity()
+      ..translateByVector3(
+        Vector3(
+          viewportSize.width / 2 - targetX * zoom,
+          viewportSize.height / 2 - targetY * zoom,
+          0.0,
+        ),
+      )
+      ..scaleByVector3(Vector3(zoom, zoom, 1.0));
+
+    _transformController.value = matrix;
+  }
+
+  void _skipWalking() {
+    _walkController.stop();
+    _walkController.value = 1.0;
+    setState(() {
+      _isWalking = false;
+    });
+    _autoFrameRoute();
+  }
+
+  void _autoFrameRoute() {
+    final points = _getRouteCanvasPoints();
+    if (points.length < 2) return;
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    double minX = points.first.dx, maxX = points.first.dx;
+    double minY = points.first.dy, maxY = points.first.dy;
+    for (final pt in points) {
+      if (pt.dx < minX) minX = pt.dx;
+      if (pt.dx > maxX) maxX = pt.dx;
+      if (pt.dy < minY) minY = pt.dy;
+      if (pt.dy > maxY) maxY = pt.dy;
+    }
+
+    final routeWidth = maxX - minX;
+    final routeHeight = maxY - minY;
+    final center = Offset((minX + maxX) / 2, (minY + maxY) / 2);
+
+    final viewport = renderBox.size;
+    final scaleX = viewport.width / (routeWidth + 360);
+    final scaleY = viewport.height / (routeHeight + 360);
+    final targetScale = (scaleX < scaleY ? scaleX : scaleY).clamp(_minScale, 1.0);
+
+    _animateToPoint(center, targetScale);
+  }
+
   void _zoomIn() {
     final currentScale = _transformController.value.getMaxScaleOnAxis();
     final newScale = (currentScale * 1.35).clamp(_minScale, _maxScale);
@@ -400,7 +521,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                     if (widget.activeRoute != null &&
                         widget.activeRoute!.nodes.isNotEmpty)
                       AnimatedBuilder(
-                        animation: _pulseAnimation,
+                        animation: Listenable.merge([_pulseAnimation, _walkController]),
                         builder: (context, _) {
                           return CustomPaint(
                             size: const Size(_svgWidth, _svgHeight),
@@ -411,6 +532,8 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                               pulseScale: _pulseAnimation.value,
                               destinationStallCenter: _stallCenterCache[
                                   widget.activeRoute!.destinationStallId],
+                              walkProgress: _walkController.value,
+                              isWalking: _isWalking,
                             ),
                           );
                         },
@@ -457,6 +580,50 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
               ),
             ),
           ),
+
+          // Floating Skip Walking Button during traversal
+          if (_isWalking)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: SafeArea(
+                child: Material(
+                  color: AppColors.surface,
+                  elevation: 6,
+                  shadowColor: Colors.black.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    onTap: _skipWalking,
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Skip',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            Icons.fast_forward_rounded,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           // Floating Map Controls (Zoom In, Zoom Out, Reset Center)
           Positioned(
@@ -519,13 +686,15 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 }
 
-/// CustomPainter for drawing two-layer glowing A* Pathfinding route polyline
+/// CustomPainter for drawing two-layer glowing A* Pathfinding route polyline with walking avatar
 class RouteOverlayPainter extends CustomPainter {
   final NavigationRoute route;
   final double nodeOffsetX;
   final double nodeOffsetY;
   final double pulseScale;
   final Offset? destinationStallCenter;
+  final double walkProgress;
+  final bool isWalking;
 
   RouteOverlayPainter({
     required this.route,
@@ -533,6 +702,8 @@ class RouteOverlayPainter extends CustomPainter {
     required this.nodeOffsetY,
     required this.pulseScale,
     this.destinationStallCenter,
+    this.walkProgress = 1.0,
+    this.isWalking = false,
   });
 
   @override
@@ -599,6 +770,46 @@ class RouteOverlayPainter extends CustomPainter {
     canvas.drawCircle(startPt, 14.0, startPaint);
     canvas.drawCircle(startPt, 6.0, startInner);
 
+    // Draw Walking Pedestrian Avatar during traversal
+    if (isWalking) {
+      final metrics = path.computeMetrics().toList();
+      if (metrics.isNotEmpty) {
+        final totalLength = metrics.fold(0.0, (acc, m) => acc + m.length);
+        final currentDist = walkProgress.clamp(0.0, 1.0) * totalLength;
+        final tangent = metrics.first.getTangentForOffset(currentDist);
+        if (tangent != null) {
+          final avatarPos = tangent.position;
+          // Outer halo
+          canvas.drawCircle(
+            avatarPos,
+            18.0 * pulseScale,
+            Paint()..color = const Color(0x441B5E20),
+          );
+          // Solid green disc
+          canvas.drawCircle(
+            avatarPos,
+            12.0,
+            Paint()..color = const Color(0xFF1B5E20),
+          );
+          // White rim
+          canvas.drawCircle(
+            avatarPos,
+            12.0,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.5,
+          );
+          // Inner dot
+          canvas.drawCircle(
+            avatarPos,
+            5.0,
+            Paint()..color = Colors.white,
+          );
+        }
+      }
+    }
+
     // Draw Destination Pulse Pin
     final endPt = canvasPoints.last;
     final pulsePaint = Paint()
@@ -607,7 +818,7 @@ class RouteOverlayPainter extends CustomPainter {
     final destPinPaint = Paint()..color = const Color(0xFFE53935);
     final destInner = Paint()..color = Colors.white;
 
-    // Pulsing outer halo
+    // Pulsing outer halo (Arrival celebration)
     canvas.drawCircle(endPt, 22.0 * pulseScale, pulsePaint);
     canvas.drawCircle(endPt, 14.0, destPinPaint);
     canvas.drawCircle(endPt, 5.0, destInner);
@@ -617,7 +828,9 @@ class RouteOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant RouteOverlayPainter oldDelegate) {
     return oldDelegate.route != route ||
         oldDelegate.pulseScale != pulseScale ||
-        oldDelegate.destinationStallCenter != destinationStallCenter;
+        oldDelegate.destinationStallCenter != destinationStallCenter ||
+        oldDelegate.walkProgress != walkProgress ||
+        oldDelegate.isWalking != isWalking;
   }
 }
 

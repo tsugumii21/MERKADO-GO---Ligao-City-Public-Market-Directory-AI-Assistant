@@ -30,6 +30,13 @@ class EntranceSelectorSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.40),
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 360),
+        curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+        reverseDuration: const Duration(milliseconds: 260),
+        reverseCurve: Curves.easeInCubic,
+      ),
       builder: (context) => EntranceSelectorSheet(
         targetStallId: targetStallId,
         targetStallName: targetStallName,

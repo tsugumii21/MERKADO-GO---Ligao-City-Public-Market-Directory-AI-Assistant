@@ -34,6 +34,13 @@ class StallDetailSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.40),
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 360),
+        curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+        reverseDuration: const Duration(milliseconds: 260),
+        reverseCurve: Curves.easeInCubic,
+      ),
       builder: (ctx) => StallDetailSheet(
         stall: stall,
         onClose: () => Navigator.of(ctx).pop(),
@@ -132,9 +139,16 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.90,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,

@@ -327,8 +327,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   @override
   void didUpdateWidget(covariant InteractiveMarketMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.stalls != oldWidget.stalls ||
-        widget.selectedStall != oldWidget.selectedStall) {
+    if (widget.stalls != oldWidget.stalls) {
       _applyCategoryColors();
     }
 
@@ -459,17 +458,13 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
       final fillHex = _colorToHex(colorSet.fill);
       final outlineHex = _colorToHex(colorSet.outline);
 
-      // Check if selected
-      final isSelected = widget.selectedStall?.stallId == stall.stallId;
-      final effectiveFill = isSelected ? _colorToHex(colorSet.accent) : fillHex;
-
       // Regex replace fill and stroke for id="stall_id"
       final pattern = RegExp(
         'id="${RegExp.escape(stall.stallId)}"[^>]*?(fill="[^"]*")?([^>]*?)(stroke="[^"]*")?',
       );
 
       modified = modified.replaceAllMapped(pattern, (match) {
-        return 'id="${stall.stallId}" fill="$effectiveFill" stroke="$outlineHex" stroke-width="${isSelected ? 4 : 2}"';
+        return 'id="${stall.stallId}" fill="$fillHex" stroke="$outlineHex" stroke-width="2"';
       });
     }
 

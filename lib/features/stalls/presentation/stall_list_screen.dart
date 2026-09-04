@@ -118,15 +118,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   }
 
   void _openStallDetails(StallModel stall) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StallDetailSheet(
-        stall: stall,
-        onClose: () => Navigator.pop(ctx),
-      ),
-    );
+    StallDetailSheet.show(context, stall);
   }
 
   // Category and subcategory matching helper

@@ -311,15 +311,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
   }
 
   void _openStallDetails(StallModel stall) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StallDetailSheet(
-        stall: stall,
-        onClose: () => Navigator.pop(ctx),
-      ),
-    );
+    StallDetailSheet.show(context, stall);
   }
 
   void _showSortFilterModal() {

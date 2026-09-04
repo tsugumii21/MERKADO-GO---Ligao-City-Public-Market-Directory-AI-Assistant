@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -44,15 +45,38 @@ class EntranceSelectorSheet extends ConsumerStatefulWidget {
 class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  MarketEntryPoint? _selectedEntrance;
 
   @override
   void initState() {
     super.initState();
+    _selectedEntrance = ref.read(selectedEntranceProvider);
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
+  }
+
+  void _confirmSelection() {
+    final entrance = _selectedEntrance;
+    if (entrance == null) return;
+
+    HapticFeedback.mediumImpact();
+    ref.read(selectedEntranceProvider.notifier).state = entrance;
+
+    // If route is active and we are just changing entrance from the map card
+    final activeRoute = ref.read(activeRouteProvider);
+    if (activeRoute != null && widget.targetStallId == null) {
+      ref.read(activeRouteProvider.notifier).navigateToStall(
+            stallId: activeRoute.destinationStallId,
+            stallName: activeRoute.destinationStallName,
+            entranceOverride: entrance,
+          );
+    }
+
+    widget.onEntranceSelected?.call(entrance);
+    Navigator.of(context).pop(entrance);
   }
 
   @override
@@ -100,11 +124,11 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
   @override
   Widget build(BuildContext context) {
     final entryPoints = ref.watch(entryPointsProvider);
-    final selectedEntrance = ref.watch(selectedEntranceProvider);
     final service = ref.watch(pathfindingServiceProvider);
     final nearestEntrance = (widget.targetStallId != null && service.isInitialized)
         ? service.findNearestEntranceByWalkingDistance(widget.targetStallId!)
         : null;
+    final effectiveSelected = _selectedEntrance;
 
     final filteredEntryPoints = entryPoints.where((e) {
       if (_searchQuery.isEmpty) return true;
@@ -120,7 +144,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
 
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.72,
+        maxHeight: MediaQuery.of(context).size.height * 0.80,
       ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
@@ -158,14 +182,14 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: selectedEntrance != null
+                      color: effectiveSelected != null
                           ? AppColors.primaryLight
                           : const Color(0xFFFFEBEE),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       Icons.location_on_rounded,
-                      color: selectedEntrance != null
+                      color: effectiveSelected != null
                           ? AppColors.primary
                           : const Color(0xFFE53935),
                       size: 22,
@@ -375,7 +399,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                   itemBuilder: (context, index) {
                     final entrance = filteredEntryPoints[index];
                     final isSelected =
-                        selectedEntrance?.entranceId == entrance.entranceId;
+                        effectiveSelected?.entranceId == entrance.entranceId;
                     final isNearest =
                         nearestEntrance?.entranceId == entrance.entranceId;
 
@@ -388,25 +412,10 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                         borderRadius: BorderRadius.circular(14),
                         child: InkWell(
                           onTap: () {
-                            ref
-                                .read(selectedEntranceProvider.notifier)
-                                .state = entrance;
-
-                            // If route is active and we are just changing entrance from the map card
-                            final activeRoute = ref.read(activeRouteProvider);
-                            if (activeRoute != null &&
-                                widget.targetStallId == null) {
-                              ref
-                                  .read(activeRouteProvider.notifier)
-                                  .navigateToStall(
-                                    stallId: activeRoute.destinationStallId,
-                                    stallName: activeRoute.destinationStallName,
-                                    entranceOverride: entrance,
-                                  );
-                            }
-
-                            widget.onEntranceSelected?.call(entrance);
-                            Navigator.of(context).pop(entrance);
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _selectedEntrance = entrance;
+                            });
                           },
                           borderRadius: BorderRadius.circular(14),
                           child: Container(
@@ -568,6 +577,71 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                   },
                 ),
               ),
+            // Bottom Action Bar: Select Starting Entrance Button
+            SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    top: BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
+                  ),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed:
+                        effectiveSelected != null ? _confirmSelection : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor: const Color(0xFFE2E8F0),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: const Color(0xFF94A3B8),
+                      elevation: effectiveSelected != null ? 1 : 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.directions_walk_rounded,
+                          size: 19,
+                          color: effectiveSelected != null
+                              ? Colors.white
+                              : const Color(0xFF94A3B8),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          effectiveSelected != null
+                              ? 'Select Starting Entrance • Gate ${effectiveSelected.entranceId}'
+                              : 'Select Starting Entrance',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: effectiveSelected != null
+                                ? Colors.white
+                                : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                        if (effectiveSelected != null) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 17,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

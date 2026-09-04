@@ -13,6 +13,7 @@ import '../../../core/widgets/market_category_icon.dart';
 
 import '../../map/providers/navigation_provider.dart';
 import '../../map/presentation/widgets/entrance_selector_sheet.dart';
+import '../../map/presentation/widgets/navigation_loading_dialog.dart';
 
 /// Alias for naming compatibility
 typedef StallDetailsModal = StallDetailSheet;
@@ -76,14 +77,22 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     );
     if (chosenEntrance == null || !mounted) return;
 
-    // 2. Compute route starting at chosen entrance
+    // 2. Display 3-second animated road trip loading screen with dynamic wayfinding phrases
+    await NavigationLoadingDialog.show(
+      context,
+      stallName: widget.stall.name,
+      entrance: chosenEntrance,
+    );
+    if (!mounted) return;
+
+    // 3. Compute route starting at chosen entrance
     await ref.read(activeRouteProvider.notifier).navigateToStall(
           stallId: widget.stall.stallId,
           stallName: widget.stall.name,
           entranceOverride: chosenEntrance,
         );
 
-    // 3. Close stall details modal and switch to Map tab
+    // 4. Close stall details modal and switch to Map tab
     widget.onClose();
     mainShellKey.currentState?.goToTab(0);
   }

@@ -9,6 +9,8 @@ import '../../../../core/widgets/market_category_icon.dart';
 import '../../../stalls/presentation/stall_detail_sheet.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/search_provider.dart';
+import 'entrance_selector_sheet.dart';
+import 'navigation_loading_dialog.dart';
 
 /// Modal search sheet with trilingual keyword matching, category pills, and routing shortcuts
 class MapSearchModal extends ConsumerStatefulWidget {
@@ -644,14 +646,35 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                                     borderRadius: BorderRadius.circular(10),
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(10),
-                                      onTap: () {
-                                        ref
+                                      onTap: () async {
+                                        final chosenEntrance =
+                                            await EntranceSelectorSheet.show(
+                                          context,
+                                          targetStallId: stall.stallId,
+                                          targetStallName: stall.name,
+                                        );
+                                        if (chosenEntrance == null ||
+                                            !context.mounted) {
+                                          return;
+                                        }
+
+                                        await NavigationLoadingDialog.show(
+                                          context,
+                                          stallName: stall.name,
+                                          entrance: chosenEntrance,
+                                        );
+                                        if (!context.mounted) return;
+
+                                        await ref
                                             .read(activeRouteProvider.notifier)
                                             .navigateToStall(
                                               stallId: stall.stallId,
                                               stallName: stall.name,
+                                              entranceOverride: chosenEntrance,
                                             );
-                                        Navigator.of(context).pop();
+                                        if (context.mounted) {
+                                          Navigator.of(context).pop();
+                                        }
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(

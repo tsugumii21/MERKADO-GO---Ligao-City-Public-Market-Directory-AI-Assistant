@@ -1,0 +1,327 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../domain/navigation_models.dart';
+import '../../constants/navigation_phrases.dart';
+
+/// Full-screen overlay dialog with road_trip Lottie animation and dynamic phrases
+class NavigationLoadingDialog extends StatefulWidget {
+  final String stallName;
+  final MarketEntryPoint entrance;
+  final VoidCallback onCompleted;
+
+  const NavigationLoadingDialog({
+    super.key,
+    required this.stallName,
+    required this.entrance,
+    required this.onCompleted,
+  });
+
+  /// Displays the 3-second navigation loading screen
+  static Future<void> show(
+    BuildContext context, {
+    required String stallName,
+    required MarketEntryPoint entrance,
+  }) async {
+    final completer = Completer<void>();
+
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (dialogContext, _, __) {
+        return NavigationLoadingDialog(
+          stallName: stallName,
+          entrance: entrance,
+          onCompleted: () {
+            if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
+              Navigator.of(dialogContext, rootNavigator: true).pop();
+            }
+            if (!completer.isCompleted) {
+              completer.complete();
+            }
+          },
+        );
+      },
+      transitionBuilder: (context, anim, _, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1.0).animate(
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+
+    return completer.future;
+  }
+
+  @override
+  State<NavigationLoadingDialog> createState() => _NavigationLoadingDialogState();
+}
+
+class _NavigationLoadingDialogState extends State<NavigationLoadingDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _progressController;
+  Timer? _phraseTimer;
+  Timer? _completionTimer;
+  late String _currentPhrase;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPhrase = NavigationPhrases.getRandomPhrase(
+      stallName: widget.stallName,
+      entranceName: 'Gate ${widget.entrance.entranceId}',
+    );
+
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..forward();
+
+    // Rotate phrase halfway through 3-second transition
+    _phraseTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _currentPhrase = NavigationPhrases.getRandomPhrase(
+            stallName: widget.stallName,
+            entranceName: 'Gate ${widget.entrance.entranceId}',
+          );
+        });
+      }
+    });
+
+    // Complete exactly after 3.0 seconds
+    _completionTimer = Timer(const Duration(milliseconds: 3000), () {
+      if (mounted) {
+        widget.onCompleted();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _phraseTimer?.cancel();
+    _completionTimer?.cancel();
+    _progressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            elevation: 12,
+            shadowColor: Colors.black.withValues(alpha: 0.25),
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 380),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.border, width: 1.2),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Lottie Animation Container
+                  Container(
+                    width: 220,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F9F7),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Lottie.asset(
+                      'assets/animations/road_trip.json',
+                      fit: BoxFit.contain,
+                      repeat: true,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(
+                            Icons.directions_walk_rounded,
+                            size: 64,
+                            color: AppColors.primary,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Destination Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF81C784), width: 0.8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on_rounded,
+                              size: 13,
+                              color: Color(0xFF1B5E20),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Gate ${widget.entrance.entranceId}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 14,
+                          color: AppColors.inkMuted,
+                        ),
+                      ),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F8E9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border, width: 0.8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.storefront_rounded,
+                                size: 13,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  widget.stallName,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.ink,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Primary Title
+                  Text(
+                    'Directing to ${widget.stallName}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Animated Dynamic Wayfinding Phrase
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Text(
+                      _currentPhrase,
+                      key: ValueKey<String>(_currentPhrase),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.inkMuted,
+                        height: 1.35,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 3-Second Linear Progress Bar
+                  AnimatedBuilder(
+                    animation: _progressController,
+                    builder: (context, _) {
+                      return Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: _progressController.value,
+                              backgroundColor: const Color(0xFFE2E8E2),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.primary,
+                              ),
+                              minHeight: 5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Plotting corridor path...',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.inkMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                '${((1.0 - _progressController.value) * 3).ceil()}s',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

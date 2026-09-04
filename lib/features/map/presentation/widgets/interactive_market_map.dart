@@ -716,14 +716,14 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                               entrance.entranceId);
 
                       return Positioned(
-                        left: pos.dx - 42,
-                        top: pos.dy - 68,
+                        left: pos.dx - 60,
+                        top: pos.dy - 98,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => widget.onEntranceTapped?.call(entrance),
                           child: SizedBox(
-                            width: 84,
-                            height: 72,
+                            width: 120,
+                            height: 104,
                             child: CustomPaint(
                               painter: _EntrancePinCenteredPainter(
                                 label: 'Gate ${entrance.entranceId}',
@@ -939,10 +939,10 @@ class RouteOverlayPainter extends CustomPainter {
     canvas.drawPath(path, routePaint);
 
     // Draw Start Marker (Entrance Departure)
-    final startPaint = Paint()..color = const Color(0xFF2E7D32);
+    final startPaint = Paint()..color = const Color(0xFF1B5E20);
     final startInner = Paint()..color = Colors.white;
-    canvas.drawCircle(startPt, 18.0, startPaint);
-    canvas.drawCircle(startPt, 8.0, startInner);
+    canvas.drawCircle(startPt, 22.0, startPaint);
+    canvas.drawCircle(startPt, 9.0, startInner);
 
     // Draw Walking Pedestrian Avatar during traversal
     if (isWalking) {
@@ -1026,8 +1026,8 @@ class _EntrancePinCenteredPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
-    final cx = w / 2; // 42.0
-    final tipY = size.height - 4.0; // 68.0
+    final cx = w / 2; // 60.0
+    final tipY = size.height - 4.0; // 100.0
 
     // Colors: Red when unselected, Emerald Green when selected/pressed
     final pinColor =
@@ -1039,7 +1039,7 @@ class _EntrancePinCenteredPainter extends CustomPainter {
 
     // 1. Soft Ground Contact Shadow under needle pointer tip
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, tipY + 1.0), width: 14.0, height: 4.5),
+      Rect.fromCenter(center: Offset(cx, tipY + 1.5), width: 22.0, height: 6.5),
       Paint()..color = Colors.black.withValues(alpha: 0.25),
     );
 
@@ -1047,26 +1047,26 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     if (isSelected) {
       canvas.drawCircle(
         Offset(cx, tipY),
-        4.5,
+        6.5,
         Paint()..color = const Color(0xFF4CAF50),
       );
       canvas.drawCircle(
         Offset(cx, tipY),
-        2.0,
+        3.0,
         Paint()..color = Colors.white,
       );
     }
 
     // 3. Teardrop Map Pin Path
-    // Head center at (cx, 40.0), radius 15.0. Tip at (cx, tipY).
-    const headCenter = Offset(42.0, 40.0);
-    const headRadius = 15.0;
+    // Head center at (cx, 56.0), radius 21.0. Tip at (cx, tipY).
+    final headCenter = Offset(cx, 56.0);
+    const headRadius = 21.0;
 
     final pinPath = Path()
       ..moveTo(cx, tipY)
-      ..lineTo(cx - 13.5, 45.0)
+      ..lineTo(cx - 19.0, 63.0)
       ..arcToPoint(
-        Offset(cx + 13.5, 45.0),
+        Offset(cx + 19.0, 63.0),
         radius: const Radius.circular(headRadius),
         largeArc: true,
       )
@@ -1076,7 +1076,7 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     canvas.drawShadow(
       pinPath,
       isSelected ? const Color(0xFF1B5E20) : Colors.black,
-      isSelected ? 5.0 : 3.5,
+      isSelected ? 6.0 : 4.5,
       false,
     );
 
@@ -1086,43 +1086,43 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     // 3D Shaded Right Bevel
     final bevelPath = Path()
       ..moveTo(cx, tipY)
-      ..lineTo(cx, 25.0)
+      ..lineTo(cx, 35.0)
       ..arcToPoint(
-        Offset(cx + 13.5, 45.0),
+        Offset(cx + 19.0, 63.0),
         radius: const Radius.circular(headRadius),
       )
       ..close();
     canvas.drawPath(bevelPath, Paint()..color = bevelColor..style = PaintingStyle.fill);
 
     // 4. Center White Disc
-    canvas.drawCircle(headCenter, 9.5, Paint()..color = Colors.white);
+    canvas.drawCircle(headCenter, 13.5, Paint()..color = Colors.white);
 
     // Dedicated Vector Location Pin Icon inside Disc
     final iconPath = Path()
-      ..moveTo(cx, 46.5)
-      ..cubicTo(cx - 2.8, 43.5, cx - 4.5, 42.0, cx - 4.5, 39.5)
+      ..moveTo(cx, 65.5)
+      ..cubicTo(cx - 3.8, 61.2, cx - 6.0, 59.0, cx - 6.0, 55.5)
       ..arcToPoint(
-        Offset(cx + 4.5, 39.5),
-        radius: const Radius.circular(4.5),
+        Offset(cx + 6.0, 55.5),
+        radius: const Radius.circular(6.0),
       )
-      ..cubicTo(cx + 4.5, 42.0, cx + 2.8, 43.5, cx, 46.5)
+      ..cubicTo(cx + 6.0, 59.0, cx + 3.8, 61.2, cx, 65.5)
       ..close();
     canvas.drawPath(iconPath, Paint()..color = pinColor..style = PaintingStyle.fill);
-    canvas.drawCircle(const Offset(42.0, 39.5), 1.6, Paint()..color = Colors.white);
+    canvas.drawCircle(Offset(cx, 55.5), 2.2, Paint()..color = Colors.white);
 
     // 5. Attached Label Pill Above Pin
-    const pillW = 60.0;
-    const pillH = 20.0;
+    const pillW = 84.0;
+    const pillH = 26.0;
     final pillRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(cx - pillW / 2, 4.0, pillW, pillH),
-      const Radius.circular(10.0),
+      const Radius.circular(13.0),
     );
 
     // Pill drop shadow
     canvas.drawShadow(
       Path()..addRRect(pillRect),
       Colors.black,
-      2.5,
+      3.0,
       false,
     );
 
@@ -1140,7 +1140,7 @@ class _EntrancePinCenteredPainter extends CustomPainter {
       Paint()
         ..color = isSelected ? Colors.white : const Color(0xFFE53935)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
+        ..strokeWidth = 1.6,
     );
 
     // 6. Pill Typography ("Gate 12")
@@ -1149,9 +1149,9 @@ class _EntrancePinCenteredPainter extends CustomPainter {
         text: label,
         style: TextStyle(
           color: isSelected ? Colors.white : textColor,
-          fontSize: 10.5,
+          fontSize: 13.5,
           fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
-          letterSpacing: 0.2,
+          letterSpacing: 0.3,
         ),
       ),
       textDirection: TextDirection.ltr,

@@ -446,18 +446,18 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                               children: [
                                 // Bespoke Gate Map Pin Badge (Red by default, Green when chosen)
                                 Container(
-                                  width: 50,
-                                  height: 48,
+                                  width: 58,
+                                  height: 54,
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? AppColors.primary
                                         : const Color(0xFFFFF5F5),
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isSelected
                                           ? AppColors.primary
                                           : const Color(0xFFFFCDD2),
-                                      width: 1.2,
+                                      width: 1.4,
                                     ),
                                   ),
                                   child: Column(
@@ -466,15 +466,16 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                     children: [
                                       Icon(
                                         Icons.location_on_rounded,
-                                        size: 19,
+                                        size: 24,
                                         color: isSelected
                                             ? Colors.white
                                             : const Color(0xFFE53935),
                                       ),
+                                      const SizedBox(height: 1),
                                       Text(
                                         'Gate ${entrance.entranceId}',
                                         style: TextStyle(
-                                          fontSize: 9,
+                                          fontSize: 10.5,
                                           fontWeight: FontWeight.w800,
                                           color: isSelected
                                               ? Colors.white

@@ -123,6 +123,9 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   List<MarketEntryPoint> _localEntryPoints = [];
   final Map<String, Offset> _stallCenterCache = {};
   bool _isClamping = false;
+  Path? _cachedRoutePath;
+  List<ui.PathMetric> _cachedRouteMetrics = [];
+  double _cachedRouteLength = 0.0;
 
   List<MarketEntryPoint> get _effectiveEntryPoints =>
       widget.entryPoints.isNotEmpty ? widget.entryPoints : _localEntryPoints;
@@ -173,7 +176,6 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     )
       ..addListener(() {
         if (_isWalking && mounted) {
-          setState(() {});
           _trackAvatarCamera();
         }
       })
@@ -198,8 +200,28 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     });
   }
 
+  void _recomputeCachedRoute() {
+    final points = _getRouteCanvasPoints();
+    if (points.length < 2) {
+      _cachedRoutePath = null;
+      _cachedRouteMetrics = [];
+      _cachedRouteLength = 0.0;
+      return;
+    }
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    _cachedRoutePath = path;
+    _cachedRouteMetrics = path.computeMetrics().toList();
+    _cachedRouteLength =
+        _cachedRouteMetrics.fold(0.0, (acc, m) => acc + m.length);
+  }
+
   void _startWalkingTraversal() {
     if (widget.activeRoute == null || widget.activeRoute!.nodes.isEmpty) return;
+    _recomputeCachedRoute();
     _walkController.stop();
     final stepsCount = widget.activeRoute!.steps.length;
     // Slower, calmer redirection speed: ~800ms per step, minimum 6.0s, max 14.0s
@@ -215,7 +237,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   void _onTransformChanged() {
     _clampScale();
-    if (mounted) {
+    if (mounted && !_isWalking) {
       setState(() {});
     }
   }
@@ -495,18 +517,12 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   ui.Tangent? _getRouteTangent(double progress) {
-    final points = _getRouteCanvasPoints();
-    if (points.length < 2) return null;
-
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
+    if (_cachedRouteMetrics.isEmpty || _cachedRouteLength <= 0) {
+      _recomputeCachedRoute();
     }
-    final metrics = path.computeMetrics().toList();
-    if (metrics.isEmpty) return null;
-    final totalLength = metrics.fold(0.0, (acc, m) => acc + m.length);
-    final distance = progress.clamp(0.0, 1.0) * totalLength;
-    return metrics.first.getTangentForOffset(distance);
+    if (_cachedRouteMetrics.isEmpty || _cachedRouteLength <= 0) return null;
+    final distance = progress.clamp(0.0, 1.0) * _cachedRouteLength;
+    return _cachedRouteMetrics.first.getTangentForOffset(distance);
   }
 
   void _trackAvatarCamera() {
@@ -665,6 +681,9 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                                   widget.activeRoute!.destinationStallId],
                               walkProgress: _walkController.value,
                               isWalking: _isWalking,
+                              cachedPath: _cachedRoutePath,
+                              cachedMetrics: _cachedRouteMetrics,
+                              cachedLength: _cachedRouteLength,
                             ),
                           );
                         },
@@ -848,6 +867,9 @@ class RouteOverlayPainter extends CustomPainter {
   final Offset? destinationStallCenter;
   final double walkProgress;
   final bool isWalking;
+  final Path? cachedPath;
+  final List<ui.PathMetric> cachedMetrics;
+  final double cachedLength;
 
   RouteOverlayPainter({
     required this.route,
@@ -857,27 +879,48 @@ class RouteOverlayPainter extends CustomPainter {
     this.destinationStallCenter,
     this.walkProgress = 1.0,
     this.isWalking = false,
+    this.cachedPath,
+    this.cachedMetrics = const [],
+    this.cachedLength = 0.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (route.nodes.isEmpty) return;
 
-    final canvasPoints = route.nodes.map((node) {
-      return Offset(node.x + nodeOffsetX, node.y + nodeOffsetY);
-    }).toList();
+    final Path path;
+    final Offset startPt;
+    final Offset endPt;
 
-    // Snap polyline into destination stall center if available
-    if (destinationStallCenter != null) {
-      canvasPoints.add(destinationStallCenter!);
-    }
+    if (cachedPath != null) {
+      path = cachedPath!;
+      startPt = Offset(
+        route.nodes.first.x + nodeOffsetX,
+        route.nodes.first.y + nodeOffsetY,
+      );
+      endPt = destinationStallCenter ??
+          Offset(
+            route.nodes.last.x + nodeOffsetX,
+            route.nodes.last.y + nodeOffsetY,
+          );
+    } else {
+      final canvasPoints = route.nodes.map((node) {
+        return Offset(node.x + nodeOffsetX, node.y + nodeOffsetY);
+      }).toList();
 
-    if (canvasPoints.length < 2) return;
+      if (destinationStallCenter != null) {
+        canvasPoints.add(destinationStallCenter!);
+      }
 
-    final path = Path();
-    path.moveTo(canvasPoints.first.dx, canvasPoints.first.dy);
-    for (int i = 1; i < canvasPoints.length; i++) {
-      path.lineTo(canvasPoints[i].dx, canvasPoints[i].dy);
+      if (canvasPoints.length < 2) return;
+
+      path = Path();
+      path.moveTo(canvasPoints.first.dx, canvasPoints.first.dy);
+      for (int i = 1; i < canvasPoints.length; i++) {
+        path.lineTo(canvasPoints[i].dx, canvasPoints[i].dy);
+      }
+      startPt = canvasPoints.first;
+      endPt = canvasPoints.last;
     }
 
     // Layer 1: Translucent Route Track Casing
@@ -917,7 +960,6 @@ class RouteOverlayPainter extends CustomPainter {
     canvas.drawPath(path, innerPaint);
 
     // Draw Start Marker (Entrance Departure)
-    final startPt = canvasPoints.first;
     final startPaint = Paint()..color = const Color(0xFF2E7D32);
     final startInner = Paint()..color = Colors.white;
     canvas.drawCircle(startPt, 18.0, startPaint);
@@ -925,46 +967,52 @@ class RouteOverlayPainter extends CustomPainter {
 
     // Draw Walking Pedestrian Avatar during traversal
     if (isWalking) {
-      final metrics = path.computeMetrics().toList();
-      if (metrics.isNotEmpty) {
-        final totalLength = metrics.fold(0.0, (acc, m) => acc + m.length);
-        final currentDist = walkProgress.clamp(0.0, 1.0) * totalLength;
-        final tangent = metrics.first.getTangentForOffset(currentDist);
-        if (tangent != null) {
-          final avatarPos = tangent.position;
-          // Outer halo
-          canvas.drawCircle(
-            avatarPos,
-            24.0 * pulseScale,
-            Paint()..color = const Color(0x441B5E20),
-          );
-          // Solid green disc
-          canvas.drawCircle(
-            avatarPos,
-            16.0,
-            Paint()..color = const Color(0xFF1B5E20),
-          );
-          // White rim
-          canvas.drawCircle(
-            avatarPos,
-            16.0,
-            Paint()
-              ..color = Colors.white
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 3.0,
-          );
-          // Inner dot
-          canvas.drawCircle(
-            avatarPos,
-            6.5,
-            Paint()..color = Colors.white,
-          );
+      ui.Tangent? tangent;
+      if (cachedMetrics.isNotEmpty && cachedLength > 0) {
+        final currentDist = walkProgress.clamp(0.0, 1.0) * cachedLength;
+        tangent = cachedMetrics.first.getTangentForOffset(currentDist);
+      } else {
+        final metrics = path.computeMetrics().toList();
+        if (metrics.isNotEmpty) {
+          final totalLength = metrics.fold(0.0, (acc, m) => acc + m.length);
+          final currentDist = walkProgress.clamp(0.0, 1.0) * totalLength;
+          tangent = metrics.first.getTangentForOffset(currentDist);
         }
+      }
+
+      if (tangent != null) {
+        final avatarPos = tangent.position;
+        // Outer halo
+        canvas.drawCircle(
+          avatarPos,
+          24.0 * pulseScale,
+          Paint()..color = const Color(0x441B5E20),
+        );
+        // Solid green disc
+        canvas.drawCircle(
+          avatarPos,
+          16.0,
+          Paint()..color = const Color(0xFF1B5E20),
+        );
+        // White rim
+        canvas.drawCircle(
+          avatarPos,
+          16.0,
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.0,
+        );
+        // Inner dot
+        canvas.drawCircle(
+          avatarPos,
+          6.5,
+          Paint()..color = Colors.white,
+        );
       }
     }
 
     // Draw Destination Pulse Pin
-    final endPt = canvasPoints.last;
     final pulsePaint = Paint()
       ..color = const Color(0xFFE53935).withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
@@ -983,7 +1031,8 @@ class RouteOverlayPainter extends CustomPainter {
         oldDelegate.pulseScale != pulseScale ||
         oldDelegate.destinationStallCenter != destinationStallCenter ||
         oldDelegate.walkProgress != walkProgress ||
-        oldDelegate.isWalking != isWalking;
+        oldDelegate.isWalking != isWalking ||
+        oldDelegate.cachedPath != cachedPath;
   }
 }
 

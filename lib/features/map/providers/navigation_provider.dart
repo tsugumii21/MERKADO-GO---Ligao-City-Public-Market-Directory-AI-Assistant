@@ -41,13 +41,15 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
   ActiveRouteNotifier(this._ref) : super(null);
 
   /// Calculate route from chosen or default entrance to destination stall
-  void navigateToStall({
+  Future<void> navigateToStall({
     required String stallId,
     String? stallName,
     MarketEntryPoint? entranceOverride,
-  }) {
+  }) async {
     final service = _ref.read(pathfindingServiceProvider);
-    if (!service.isInitialized) return;
+    if (!service.isInitialized) {
+      await service.initialize();
+    }
 
     final entrance = entranceOverride ??
         _ref.read(selectedEntranceProvider) ??
@@ -82,3 +84,7 @@ final activeRouteProvider =
 
 /// Current active navigation instruction step index (0-indexed)
 final currentStepIndexProvider = StateProvider<int>((ref) => 0);
+
+/// Trigger counter to replay the walking traversal animation on the map
+final routeTraversalTriggerProvider = StateProvider<int>((ref) => 0);
+

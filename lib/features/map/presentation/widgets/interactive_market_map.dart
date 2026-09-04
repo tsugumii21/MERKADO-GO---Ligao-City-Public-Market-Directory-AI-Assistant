@@ -81,6 +81,7 @@ class InteractiveMarketMap extends StatefulWidget {
   final ValueChanged<MarketEntryPoint>? onEntranceTapped;
   final TransformationController? transformationController;
   final VoidCallback? onMapTapped;
+  final int traversalTrigger;
 
   const InteractiveMarketMap({
     super.key,
@@ -93,6 +94,7 @@ class InteractiveMarketMap extends StatefulWidget {
     this.onEntranceTapped,
     this.transformationController,
     this.onMapTapped,
+    this.traversalTrigger = 0,
   });
 
   @override
@@ -167,7 +169,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
     _walkController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3500),
+      duration: const Duration(milliseconds: 7000),
     )
       ..addListener(() {
         if (_isWalking && mounted) {
@@ -191,10 +193,24 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _centerOnMarket(animate: false);
       if (widget.activeRoute != null && widget.activeRoute!.nodes.isNotEmpty) {
-        _isWalking = true;
-        _walkController.forward(from: 0.0);
+        _startWalkingTraversal();
       }
     });
+  }
+
+  void _startWalkingTraversal() {
+    if (widget.activeRoute == null || widget.activeRoute!.nodes.isEmpty) return;
+    _walkController.stop();
+    final stepsCount = widget.activeRoute!.steps.length;
+    // Slower, calmer redirection speed: ~800ms per step, minimum 6.0s, max 14.0s
+    final calculatedDuration = (stepsCount * 800).clamp(6000, 14000);
+    _walkController.duration = Duration(milliseconds: calculatedDuration);
+    if (mounted) {
+      setState(() {
+        _isWalking = true;
+      });
+    }
+    _walkController.forward(from: 0.0);
   }
 
   void _onTransformChanged() {
@@ -291,10 +307,15 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
       _repositionMap(animate: true);
     }
 
+    if (widget.traversalTrigger != oldWidget.traversalTrigger &&
+        widget.activeRoute != null &&
+        widget.activeRoute!.nodes.isNotEmpty) {
+      _startWalkingTraversal();
+    }
+
     if (widget.activeRoute != oldWidget.activeRoute) {
       if (widget.activeRoute != null && widget.activeRoute!.nodes.isNotEmpty) {
-        _isWalking = true;
-        _walkController.forward(from: 0.0);
+        _startWalkingTraversal();
       } else {
         _isWalking = false;
         _walkController.stop();
@@ -738,13 +759,21 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
               ),
             ),
 
-          // Floating Map Controls (Zoom In, Zoom Out, Reposition)
+          // Floating Map Controls (Replay, Zoom In, Zoom Out, Reposition)
           Positioned(
             right: 16,
             bottom: widget.activeRoute != null ? 84 : 24,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (widget.activeRoute != null && !_isWalking) ...[
+                  _buildMapControlButton(
+                    icon: Icons.replay_rounded,
+                    tooltip: 'Repeat Walk Redirection',
+                    onPressed: _startWalkingTraversal,
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 _buildMapControlButton(
                   icon: Icons.add_rounded,
                   tooltip: _canZoomIn ? 'Zoom In' : 'Maximum Zoom Reached',
@@ -851,10 +880,10 @@ class RouteOverlayPainter extends CustomPainter {
       path.lineTo(canvasPoints[i].dx, canvasPoints[i].dy);
     }
 
-    // Layer 1: Translucent 14px Route Track Casing
+    // Layer 1: Translucent Route Track Casing
     final casingPaint = Paint()
       ..color = const Color(0x291B5E20) // rgba(27, 94, 32, 0.16)
-      ..strokeWidth = 14.0
+      ..strokeWidth = 24.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
@@ -863,7 +892,7 @@ class RouteOverlayPainter extends CustomPainter {
     // Layer 2: Route outer glow
     final glowPaint = Paint()
       ..color = const Color(0xFF4CAF50).withValues(alpha: 0.35)
-      ..strokeWidth = 10.0
+      ..strokeWidth = 18.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
@@ -872,7 +901,7 @@ class RouteOverlayPainter extends CustomPainter {
     // Layer 3: Flowing Forest Green main line
     final routePaint = Paint()
       ..color = const Color(0xFF1B5E20)
-      ..strokeWidth = 6.0
+      ..strokeWidth = 12.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
@@ -881,7 +910,7 @@ class RouteOverlayPainter extends CustomPainter {
     // Layer 4: Light green inner line
     final innerPaint = Paint()
       ..color = const Color(0xFF81C784)
-      ..strokeWidth = 2.0
+      ..strokeWidth = 4.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
@@ -891,8 +920,8 @@ class RouteOverlayPainter extends CustomPainter {
     final startPt = canvasPoints.first;
     final startPaint = Paint()..color = const Color(0xFF2E7D32);
     final startInner = Paint()..color = Colors.white;
-    canvas.drawCircle(startPt, 14.0, startPaint);
-    canvas.drawCircle(startPt, 6.0, startInner);
+    canvas.drawCircle(startPt, 18.0, startPaint);
+    canvas.drawCircle(startPt, 8.0, startInner);
 
     // Draw Walking Pedestrian Avatar during traversal
     if (isWalking) {
@@ -906,28 +935,28 @@ class RouteOverlayPainter extends CustomPainter {
           // Outer halo
           canvas.drawCircle(
             avatarPos,
-            18.0 * pulseScale,
+            24.0 * pulseScale,
             Paint()..color = const Color(0x441B5E20),
           );
           // Solid green disc
           canvas.drawCircle(
             avatarPos,
-            12.0,
+            16.0,
             Paint()..color = const Color(0xFF1B5E20),
           );
           // White rim
           canvas.drawCircle(
             avatarPos,
-            12.0,
+            16.0,
             Paint()
               ..color = Colors.white
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2.5,
+              ..strokeWidth = 3.0,
           );
           // Inner dot
           canvas.drawCircle(
             avatarPos,
-            5.0,
+            6.5,
             Paint()..color = Colors.white,
           );
         }
@@ -943,9 +972,9 @@ class RouteOverlayPainter extends CustomPainter {
     final destInner = Paint()..color = Colors.white;
 
     // Pulsing outer halo (Arrival celebration)
-    canvas.drawCircle(endPt, 22.0 * pulseScale, pulsePaint);
-    canvas.drawCircle(endPt, 14.0, destPinPaint);
-    canvas.drawCircle(endPt, 5.0, destInner);
+    canvas.drawCircle(endPt, 28.0 * pulseScale, pulsePaint);
+    canvas.drawCircle(endPt, 18.0, destPinPaint);
+    canvas.drawCircle(endPt, 7.0, destInner);
   }
 
   @override

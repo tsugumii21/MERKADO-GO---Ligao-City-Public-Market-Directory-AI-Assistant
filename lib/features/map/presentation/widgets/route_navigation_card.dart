@@ -11,12 +11,14 @@ class RouteNavigationCard extends ConsumerStatefulWidget {
   final NavigationRoute route;
   final VoidCallback onChangeEntrance;
   final VoidCallback onClose;
+  final VoidCallback? onRepeatRoute;
 
   const RouteNavigationCard({
     super.key,
     required this.route,
     required this.onChangeEntrance,
     required this.onClose,
+    this.onRepeatRoute,
   });
 
   @override
@@ -125,11 +127,19 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
             padding: const EdgeInsets.symmetric(horizontal: 6),
           ),
         ),
+        if (widget.onRepeatRoute != null)
+          IconButton(
+            onPressed: widget.onRepeatRoute,
+            icon: const Icon(Icons.replay_rounded, size: 20),
+            color: AppColors.primary,
+            tooltip: 'Repeat Map Redirection',
+            visualDensity: VisualDensity.compact,
+          ),
         IconButton(
           onPressed: widget.onChangeEntrance,
-          icon: const Icon(Icons.sync_rounded, size: 20),
+          icon: const Icon(Icons.alt_route_rounded, size: 20),
           color: AppColors.inkMuted,
-          tooltip: 'Change Entrance',
+          tooltip: 'Change Entrance Gate',
           visualDensity: VisualDensity.compact,
         ),
         IconButton(
@@ -201,6 +211,14 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                 ],
               ),
             ),
+            if (widget.onRepeatRoute != null)
+              IconButton(
+                onPressed: widget.onRepeatRoute,
+                icon: const Icon(Icons.replay_rounded, size: 20),
+                color: AppColors.primary,
+                tooltip: 'Repeat Map Redirection',
+                visualDensity: VisualDensity.compact,
+              ),
             IconButton(
               onPressed: () => setState(() => _isMinimized = true),
               icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 22),

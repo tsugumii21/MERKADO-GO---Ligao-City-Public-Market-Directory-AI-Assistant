@@ -12,6 +12,7 @@ import '../../../core/constants/market_categories.dart';
 import '../../../core/widgets/market_category_icon.dart';
 
 import '../../map/providers/navigation_provider.dart';
+import '../../map/presentation/widgets/entrance_selector_sheet.dart';
 
 /// Alias for naming compatibility
 typedef StallDetailsModal = StallDetailSheet;
@@ -64,12 +65,25 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     );
   }
 
-  void _navigateToStallOnMap() {
+  Future<void> _navigateToStallOnMap() async {
+    // ignore: unawaited_futures
     HapticFeedback.mediumImpact();
-    ref.read(activeRouteProvider.notifier).navigateToStall(
+    // 1. Prompt user to choose starting entry point before directing them to map
+    final chosenEntrance = await EntranceSelectorSheet.show(
+      context,
+      targetStallId: widget.stall.stallId,
+      targetStallName: widget.stall.name,
+    );
+    if (chosenEntrance == null || !mounted) return;
+
+    // 2. Compute route starting at chosen entrance
+    await ref.read(activeRouteProvider.notifier).navigateToStall(
           stallId: widget.stall.stallId,
           stallName: widget.stall.name,
+          entranceOverride: chosenEntrance,
         );
+
+    // 3. Close stall details modal and switch to Map tab
     widget.onClose();
     mainShellKey.currentState?.goToTab(0);
   }

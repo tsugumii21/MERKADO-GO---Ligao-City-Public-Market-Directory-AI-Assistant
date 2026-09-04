@@ -9,18 +9,29 @@ import '../../providers/navigation_provider.dart';
 /// Bottom sheet modal for selecting starting market entrance
 class EntranceSelectorSheet extends ConsumerWidget {
   final ValueChanged<MarketEntryPoint>? onEntranceSelected;
+  final String? targetStallId;
+  final String? targetStallName;
 
   const EntranceSelectorSheet({
     super.key,
     this.onEntranceSelected,
+    this.targetStallId,
+    this.targetStallName,
   });
 
-  static Future<MarketEntryPoint?> show(BuildContext context) {
+  static Future<MarketEntryPoint?> show(
+    BuildContext context, {
+    String? targetStallId,
+    String? targetStallName,
+  }) {
     return showModalBottomSheet<MarketEntryPoint>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const EntranceSelectorSheet(),
+      builder: (context) => EntranceSelectorSheet(
+        targetStallId: targetStallId,
+        targetStallName: targetStallName,
+      ),
     );
   }
 
@@ -28,6 +39,10 @@ class EntranceSelectorSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final entryPoints = ref.watch(entryPointsProvider);
     final selectedEntrance = ref.watch(selectedEntranceProvider);
+    final service = ref.watch(pathfindingServiceProvider);
+    final nearestEntrance = (targetStallId != null && service.isInitialized)
+        ? service.findNearestEntranceByWalkingDistance(targetStallId!)
+        : null;
 
     return Container(
       constraints: BoxConstraints(
@@ -78,8 +93,12 @@ class EntranceSelectorSheet extends ConsumerWidget {
                         style: AppTextStyles.cardTitle,
                       ),
                       Text(
-                        'Where are you entering the market from?',
+                        targetStallName != null
+                            ? 'Where are you entering to reach $targetStallName?'
+                            : 'Where are you entering the market from?',
                         style: AppTextStyles.caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -116,6 +135,9 @@ class EntranceSelectorSheet extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final entrance = entryPoints[index];
                 final isSelected = selectedEntrance?.entranceId == entrance.entranceId;
+
+                final isNearest =
+                    nearestEntrance?.entranceId == entrance.entranceId;
 
                 return ListTile(
                   contentPadding: const EdgeInsets.symmetric(
@@ -164,12 +186,43 @@ class EntranceSelectorSheet extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  title: Text(
-                    entrance.description,
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? AppColors.primary : AppColors.ink,
-                    ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          entrance.description,
+                          style: AppTextStyles.body.copyWith(
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                            color: isSelected ? AppColors.primary : AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      if (isNearest) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFF4CAF50).withValues(alpha: 0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            'Shortest Walk',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1B5E20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   trailing: isSelected
                       ? const Icon(
@@ -181,9 +234,9 @@ class EntranceSelectorSheet extends ConsumerWidget {
                   onTap: () {
                     ref.read(selectedEntranceProvider.notifier).state = entrance;
 
-                    // If route is active, re-calculate route from new entrance
+                    // If route is active and we are just changing entrance from the map card
                     final activeRoute = ref.read(activeRouteProvider);
-                    if (activeRoute != null) {
+                    if (activeRoute != null && targetStallId == null) {
                       ref.read(activeRouteProvider.notifier).navigateToStall(
                             stallId: activeRoute.destinationStallId,
                             stallName: activeRoute.destinationStallName,

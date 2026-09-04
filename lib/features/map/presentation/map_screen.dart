@@ -50,6 +50,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final activeRoute = ref.watch(activeRouteProvider);
     final selectedEntrance = ref.watch(selectedEntranceProvider);
     final entryPoints = ref.watch(entryPointsProvider);
+    final traversalTrigger = ref.watch(routeTraversalTriggerProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -63,6 +64,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
               activeRoute: activeRoute,
               entryPoints: entryPoints,
               selectedEntrance: selectedEntrance,
+              traversalTrigger: traversalTrigger,
               onStallSelected: (stall) {
                 setState(() => _selectedStall = stall);
                 StallDetailSheet.show(context, stall);
@@ -137,6 +139,9 @@ class MapScreenState extends ConsumerState<MapScreen> {
                     route: activeRoute,
                     onChangeEntrance: () =>
                         EntranceSelectorSheet.show(context),
+                    onRepeatRoute: () {
+                      ref.read(routeTraversalTriggerProvider.notifier).state++;
+                    },
                     onClose: () {
                       ref.read(activeRouteProvider.notifier).clearRoute();
                     },

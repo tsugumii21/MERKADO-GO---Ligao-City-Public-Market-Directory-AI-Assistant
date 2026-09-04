@@ -62,12 +62,20 @@ class MapScreenState extends ConsumerState<MapScreen> {
               selectedStall: _selectedStall,
               activeRoute: activeRoute,
               entryPoints: entryPoints,
+              selectedEntrance: selectedEntrance,
               onStallSelected: (stall) {
                 setState(() => _selectedStall = stall);
                 StallDetailSheet.show(context, stall);
               },
               onEntranceTapped: (entrance) {
-                EntranceSelectorSheet.show(context);
+                ref.read(selectedEntranceProvider.notifier).state = entrance;
+                final activeRoute = ref.read(activeRouteProvider);
+                if (activeRoute != null) {
+                  ref.read(activeRouteProvider.notifier).navigateToStall(
+                    stallId: activeRoute.destinationStallId,
+                    entranceOverride: entrance,
+                  );
+                }
               },
               onMapTapped: () {
                 if (_selectedStall != null) {

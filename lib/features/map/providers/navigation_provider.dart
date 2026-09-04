@@ -18,15 +18,20 @@ final pathfindingInitProvider = FutureProvider<bool>((ref) async {
 
 /// List of all 14 market entrance gates
 final entryPointsProvider = Provider<List<MarketEntryPoint>>((ref) {
+  final init = ref.watch(pathfindingInitProvider);
   final service = ref.watch(pathfindingServiceProvider);
-  return service.entryPoints;
+  if (service.entryPoints.isNotEmpty) {
+    return service.entryPoints;
+  }
+  return init.maybeWhen(
+    data: (_) => service.entryPoints,
+    orElse: () => service.entryPoints,
+  );
 });
 
-/// Currently selected starting entrance gate (Defaults to Entrance 1: Straight From Church)
+/// Currently selected starting entrance gate (Null by default until chosen by user)
 final selectedEntranceProvider = StateProvider<MarketEntryPoint?>((ref) {
-  final entryPoints = ref.watch(entryPointsProvider);
-  if (entryPoints.isEmpty) return null;
-  return entryPoints.first;
+  return null;
 });
 
 /// Active navigation route state notifier
@@ -45,8 +50,9 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     if (!service.isInitialized) return;
 
     final entrance = entranceOverride ??
+        _ref.read(selectedEntranceProvider) ??
         service.findNearestEntranceByWalkingDistance(stallId) ??
-        _ref.read(selectedEntranceProvider);
+        (service.entryPoints.isNotEmpty ? service.entryPoints.first : null);
     if (entrance == null) return;
 
     // Update selected entrance state

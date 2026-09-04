@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -97,8 +96,16 @@ class EntranceSelectorSheet extends ConsumerWidget {
           const Divider(color: AppColors.border, height: 1),
 
           // Entrance list
-          Flexible(
-            child: ListView.separated(
+          if (entryPoints.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(AppSpacing.xl),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.separated(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
                 vertical: AppSpacing.sm,
@@ -120,28 +127,41 @@ class EntranceSelectorSheet extends ConsumerWidget {
                   ),
                   tileColor: isSelected ? AppColors.surfaceDim : Colors.transparent,
                   leading: Container(
-                    width: 40,
-                    height: 40,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : AppColors.primaryLight,
+                      color: isSelected
+                          ? const Color(0xFFE53935)
+                          : const Color(0xFFFEE2E2),
                       borderRadius: BorderRadius.circular(AppSpacing.sm),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFC62828)
+                            : const Color(0xFFEF4444).withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    alignment: Alignment.center,
-                    child: Image.network(
-                      CloudinaryService.getEntrancePhotoUrl(entrance.entranceId),
-                      fit: BoxFit.cover,
-                      width: 40,
-                      height: 40,
-                      errorBuilder: (_, __, ___) => Center(
-                        child: Text(
-                          '#${entrance.entranceId}',
-                          style: AppTextStyles.caption.copyWith(
-                            color: isSelected ? Colors.white : AppColors.primary,
-                            fontWeight: FontWeight.w700,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.location_on_rounded,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFFE53935),
+                          size: 18,
+                        ),
+                        Text(
+                          'Gate ${entrance.entranceId}',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFFB91C1C),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   title: Text(

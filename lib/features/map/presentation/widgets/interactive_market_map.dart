@@ -76,6 +76,7 @@ class InteractiveMarketMap extends StatefulWidget {
   final StallModel? selectedStall;
   final NavigationRoute? activeRoute;
   final List<MarketEntryPoint> entryPoints;
+  final MarketEntryPoint? selectedEntrance;
   final ValueChanged<StallModel>? onStallSelected;
   final ValueChanged<MarketEntryPoint>? onEntranceTapped;
   final TransformationController? transformationController;
@@ -87,6 +88,7 @@ class InteractiveMarketMap extends StatefulWidget {
     this.selectedStall,
     this.activeRoute,
     this.entryPoints = const [],
+    this.selectedEntrance,
     this.onStallSelected,
     this.onEntranceTapped,
     this.transformationController,
@@ -102,8 +104,10 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   static const double _svgWidth = 8004.0;
   static const double _svgHeight = 8000.0;
 
-  static const double _minScale = 0.05;
-  static const double _maxScale = 4.0;
+  static const double _defaultZoom = 0.20;
+  static const double _minScale = 0.20;
+  static const double _maxScale = 3.5;
+  static const Offset _marketCenter = Offset(3850, 3650);
 
   // Calibrated coordinate offsets between node space and SVG canvas space (0.0000 diff across 112 markers)
   static const double _nodeOffsetX = 7823.47;
@@ -114,7 +118,11 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   String? _coloredSvgContent;
   bool _isLoadingSvg = true;
   Map<String, GraphNode> _allGraphNodes = {};
+  List<MarketEntryPoint> _localEntryPoints = [];
   final Map<String, Offset> _stallCenterCache = {};
+
+  List<MarketEntryPoint> get _effectiveEntryPoints =>
+      widget.entryPoints.isNotEmpty ? widget.entryPoints : _localEntryPoints;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -183,17 +191,26 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   Future<void> _loadGraphNodes() async {
     try {
-      final str = await DefaultAssetBundle.of(context)
-          .loadString('assets/map/map_nodes.json');
+      final bundle = DefaultAssetBundle.of(context);
+      final str = await bundle.loadString('assets/map/map_nodes.json');
       final map = jsonDecode(str) as Map<String, dynamic>;
       final parsed = <String, GraphNode>{};
       for (final entry in map.entries) {
         parsed[entry.key] = GraphNode.fromJson(
             entry.key, entry.value as Map<String, dynamic>);
       }
+
+      final entryStr =
+          await bundle.loadString('assets/map/market_entry_points.json');
+      final entryList = jsonDecode(entryStr) as List<dynamic>;
+      final parsedEntries = entryList
+          .map((e) => MarketEntryPoint.fromJson(e as Map<String, dynamic>))
+          .toList();
+
       if (mounted) {
         setState(() {
           _allGraphNodes = parsed;
+          _localEntryPoints = parsedEntries;
         });
       }
     } catch (_) {}
@@ -205,6 +222,12 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     if (widget.stalls != oldWidget.stalls ||
         widget.selectedStall != oldWidget.selectedStall) {
       _applyCategoryColors();
+    }
+
+    if (widget.selectedEntrance != oldWidget.selectedEntrance &&
+        widget.selectedEntrance != null &&
+        widget.activeRoute == null) {
+      _repositionMap(animate: true);
     }
 
     if (widget.activeRoute != oldWidget.activeRoute) {
@@ -317,8 +340,19 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _centerOnMarket({bool animate = true}) {
-    // Focus on center of active market stalls complex
-    _animateToPoint(const Offset(3400, 5400), 0.35, animate: animate);
+    _animateToPoint(_marketCenter, _defaultZoom, animate: animate);
+  }
+
+  void _repositionMap({bool animate = true}) {
+    if (widget.selectedEntrance != null) {
+      final node = _findNodeInRouteOrService(widget.selectedEntrance!.nodeId);
+      if (node != null) {
+        final entrancePos = Offset(node.x + _nodeOffsetX, node.y + _nodeOffsetY);
+        _animateToPoint(entrancePos, 0.45, animate: animate);
+        return;
+      }
+    }
+    _centerOnMarket(animate: animate);
   }
 
   void _animateToPoint(Offset target, double zoom, {bool animate = true}) {
@@ -447,33 +481,31 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
     _animateToPoint(center, targetScale);
   }
 
-  void _zoomIn() {
-    final currentScale = _transformController.value.getMaxScaleOnAxis();
-    final newScale = (currentScale * 1.35).clamp(_minScale, _maxScale);
-    _animateToScale(newScale);
-  }
-
-  void _zoomOut() {
-    final currentScale = _transformController.value.getMaxScaleOnAxis();
-    final newScale = (currentScale / 1.35).clamp(_minScale, _maxScale);
-    _animateToScale(newScale);
-  }
-
-  void _animateToScale(double targetScale) {
+  void _zoomBy(double factor) {
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
-    final viewportSize = renderBox.size;
+    final center = Offset(renderBox.size.width / 2, renderBox.size.height / 2);
     final currentMatrix = _transformController.value;
     final currentScale = currentMatrix.getMaxScaleOnAxis();
+    final targetScale = (currentScale * factor).clamp(_minScale, _maxScale);
 
-    final centerPoint = Offset(
-      (-currentMatrix.getTranslation().x + viewportSize.width / 2) / currentScale,
-      (-currentMatrix.getTranslation().y + viewportSize.height / 2) / currentScale,
-    );
+    if ((targetScale - currentScale).abs() < 0.001) return;
 
-    _animateToPoint(centerPoint, targetScale);
+    final actualFactor = targetScale / currentScale;
+
+    final matrix = Matrix4.identity()
+      ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
+      ..scaleByVector3(Vector3(actualFactor, actualFactor, 1.0))
+      ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
+      ..multiply(currentMatrix);
+
+    _animateToMatrix(matrix);
   }
+
+  void _zoomIn() => _zoomBy(1.35);
+
+  void _zoomOut() => _zoomBy(1 / 1.35);
 
   @override
   Widget build(BuildContext context) {
@@ -540,7 +572,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                       ),
 
                     // Layer 3: Demand-Driven 3D Vector Entrance Pins
-                    ...widget.entryPoints.where((entrance) {
+                    ..._effectiveEntryPoints.where((entrance) {
                       if (widget.activeRoute != null) {
                         return entrance.entranceId ==
                             widget.activeRoute!.entrance.entranceId;
@@ -553,12 +585,15 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                         node.x + _nodeOffsetX,
                         node.y + _nodeOffsetY,
                       );
-                      final isSelected = widget.activeRoute?.entrance.entranceId ==
-                          entrance.entranceId;
+                      final isSelected = (widget.activeRoute != null &&
+                              widget.activeRoute!.entrance.entranceId ==
+                                  entrance.entranceId) ||
+                          (widget.selectedEntrance?.entranceId ==
+                              entrance.entranceId);
 
                       return Positioned(
                         left: pos.dx - 45,
-                        top: pos.dy - 75,
+                        top: pos.dy - 77,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => widget.onEntranceTapped?.call(entrance),
@@ -567,7 +602,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                             height: 110,
                             child: CustomPaint(
                               painter: _EntrancePinCenteredPainter(
-                                label: 'Entry ${entrance.entranceId}',
+                                label: 'Gate ${entrance.entranceId}',
                                 isSelected: isSelected,
                               ),
                             ),
@@ -625,7 +660,7 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
               ),
             ),
 
-          // Floating Map Controls (Zoom In, Zoom Out, Reset Center)
+          // Floating Map Controls (Zoom In, Zoom Out, Reposition)
           Positioned(
             right: 16,
             bottom: widget.activeRoute != null ? 84 : 24,
@@ -645,9 +680,11 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                 ),
                 const SizedBox(height: 8),
                 _buildMapControlButton(
-                  icon: Icons.center_focus_strong_rounded,
-                  tooltip: 'Center Market',
-                  onPressed: _centerOnMarket,
+                  icon: Icons.my_location_rounded,
+                  tooltip: widget.selectedEntrance != null
+                      ? 'Reposition to Gate ${widget.selectedEntrance!.entranceId}'
+                      : 'Reposition to Center',
+                  onPressed: _repositionMap,
                 ),
               ],
             ),
@@ -834,7 +871,7 @@ class RouteOverlayPainter extends CustomPainter {
   }
 }
 
-/// 3D Vector Pin Painter for Entrance Gate Markers
+/// 3D Vector Pin Painter for Entrance Gate Markers with Location Pin Icon
 class _EntrancePinCenteredPainter extends CustomPainter {
   final String label;
   final bool isSelected;
@@ -847,8 +884,13 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     canvas.translate(size.width / 2, size.height * 0.70);
     canvas.scale(0.85);
 
+    final primaryColor =
+        isSelected ? const Color(0xFF2E7D32) : const Color(0xFFE53935);
+    final shadowColor =
+        isSelected ? const Color(0xFF1B5E20) : const Color(0xFFC62828);
+
     final paint = Paint()
-      ..color = const Color(0xFFE53935)
+      ..color = primaryColor
       ..style = PaintingStyle.fill;
 
     // 1. Draw Teardrop Contour
@@ -864,7 +906,7 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     canvas.drawPath(pinPath, paint);
 
     // 2. 3D Shaded Right Bevel
-    final bevelPaint = Paint()..color = const Color(0xFFC62828);
+    final bevelPaint = Paint()..color = shadowColor;
     final bevelPath = Path()
       ..moveTo(0, 0)
       ..lineTo(0, -92.5)
@@ -878,17 +920,24 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     // 3. Inner White Disc
     canvas.drawCircle(const Offset(0, -54.5), 26, Paint()..color = Colors.white);
 
-    // 4. Red Avatar Silhouette
-    canvas.drawCircle(const Offset(0, -62), 7, paint);
-    final shoulderPath = Path()
-      ..moveTo(-12, -43)
-      ..quadraticBezierTo(0, -52, 12, -43)
-      ..lineTo(12, -38)
-      ..lineTo(-12, -38)
+    // 4. Dedicated Location Pin Icon in center of disc
+    final iconPaint = Paint()
+      ..color = primaryColor
+      ..style = PaintingStyle.fill;
+    final pinIconPath = Path()
+      ..moveTo(0, -42)
+      ..cubicTo(-7, -50, -11, -54, -11, -59)
+      ..arcToPoint(
+        const Offset(11, -59),
+        radius: const Radius.circular(11),
+      )
+      ..cubicTo(11, -54, 7, -50, 0, -42)
       ..close();
-    canvas.drawPath(shoulderPath, paint);
+    canvas.drawPath(pinIconPath, iconPaint);
+    // Inner hole of location pin icon
+    canvas.drawCircle(const Offset(0, -59), 4.2, Paint()..color = Colors.white);
 
-    // 5. Option A White Pill Badge
+    // 5. White Pill Badge
     final badgeRect = RRect.fromRectAndRadius(
       const Rect.fromLTWH(-58, 7, 116, 36),
       const Radius.circular(18),
@@ -897,7 +946,7 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     canvas.drawRRect(
       badgeRect,
       Paint()
-        ..color = const Color(0xFFE53935)
+        ..color = primaryColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5,
     );
@@ -906,8 +955,8 @@ class _EntrancePinCenteredPainter extends CustomPainter {
     final textPainter = TextPainter(
       text: TextSpan(
         text: label,
-        style: const TextStyle(
-          color: Color(0xFF1E293B),
+        style: TextStyle(
+          color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFF1E293B),
           fontSize: 19,
           fontWeight: FontWeight.w900,
         ),

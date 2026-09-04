@@ -286,9 +286,11 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on_rounded,
-                        color: AppColors.primary,
+                        color: selectedEntrance != null
+                            ? AppColors.primary
+                            : const Color(0xFFE53935),
                         size: 16,
                       ),
                       const SizedBox(width: 4),
@@ -297,7 +299,9 @@ class MapScreenState extends ConsumerState<MapScreen> {
                             ? 'Gate ${selectedEntrance.entranceId}'
                             : 'Entrance',
                         style: AppTextStyles.captionSmall.copyWith(
-                          color: AppColors.primary,
+                          color: selectedEntrance != null
+                              ? AppColors.primary
+                              : AppColors.ink,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

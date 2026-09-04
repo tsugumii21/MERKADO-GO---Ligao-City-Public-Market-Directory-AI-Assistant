@@ -431,19 +431,19 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                             ),
                             child: Row(
                               children: [
-                                // Bespoke Gate Emblem Badge
+                                // Bespoke Gate Map Pin Badge (Red by default, Green when chosen)
                                 Container(
                                   width: 50,
                                   height: 48,
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? AppColors.primary
-                                        : const Color(0xFFF4F8F4),
+                                        : const Color(0xFFFFF5F5),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
                                       color: isSelected
                                           ? AppColors.primary
-                                          : const Color(0xFFD1E2D1),
+                                          : const Color(0xFFFFCDD2),
                                       width: 1.2,
                                     ),
                                   ),
@@ -451,26 +451,21 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        'GATE',
-                                        style: TextStyle(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 0.8,
-                                          color: isSelected
-                                              ? const Color(0xFFA5D6A7)
-                                              : const Color(0xFF2E7D32),
-                                        ),
+                                      Icon(
+                                        Icons.location_on_rounded,
+                                        size: 19,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : const Color(0xFFE53935),
                                       ),
                                       Text(
-                                        '${entrance.entranceId}',
+                                        'Gate ${entrance.entranceId}',
                                         style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w900,
-                                          height: 1.1,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
                                           color: isSelected
                                               ? Colors.white
-                                              : AppColors.primary,
+                                              : const Color(0xFFC62828),
                                         ),
                                       ),
                                     ],

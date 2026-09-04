@@ -716,14 +716,14 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                               entrance.entranceId);
 
                       return Positioned(
-                        left: pos.dx - 45,
-                        top: pos.dy - 77,
+                        left: pos.dx - 53,
+                        top: pos.dy - 44,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => widget.onEntranceTapped?.call(entrance),
                           child: SizedBox(
-                            width: 90,
-                            height: 110,
+                            width: 106,
+                            height: 46,
                             child: CustomPaint(
                               painter: _EntrancePinCenteredPainter(
                                 label: 'Gate ${entrance.entranceId}',
@@ -1042,7 +1042,7 @@ class RouteOverlayPainter extends CustomPainter {
   }
 }
 
-/// 3D Vector Pin Painter for Entrance Gate Markers with Location Pin Icon
+/// Modern Seamless Gate Callout Pin Painter
 class _EntrancePinCenteredPainter extends CustomPainter {
   final String label;
   final bool isSelected;
@@ -1051,92 +1051,107 @@ class _EntrancePinCenteredPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.translate(size.width / 2, size.height * 0.70);
-    canvas.scale(0.85);
+    final w = size.width;
+    final cx = w / 2;
+    const top = 2.0;
+    const bottom = 35.0;
+    const r = 16.5;
+    const pointerHalfW = 6.5;
+    final tipY = size.height - 2.0; // 44.0
 
-    final primaryColor =
-        isSelected ? const Color(0xFF2E7D32) : const Color(0xFFE53935);
-    final shadowColor =
-        isSelected ? const Color(0xFF1B5E20) : const Color(0xFFC62828);
-
-    final paint = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.fill;
-
-    // 1. Draw Teardrop Contour
-    final pinPath = Path()
-      ..moveTo(0, 0)
-      ..lineTo(-32.6, -54.5)
-      ..arcToPoint(
-        const Offset(32.6, -54.5),
-        radius: const Radius.circular(38),
-        largeArc: true,
-      )
-      ..close();
-    canvas.drawPath(pinPath, paint);
-
-    // 2. 3D Shaded Right Bevel
-    final bevelPaint = Paint()..color = shadowColor;
-    final bevelPath = Path()
-      ..moveTo(0, 0)
-      ..lineTo(0, -92.5)
-      ..arcToPoint(
-        const Offset(32.6, -54.5),
-        radius: const Radius.circular(38),
-      )
-      ..close();
-    canvas.drawPath(bevelPath, bevelPaint);
-
-    // 3. Inner White Disc
-    canvas.drawCircle(const Offset(0, -54.5), 26, Paint()..color = Colors.white);
-
-    // 4. Dedicated Location Pin Icon in center of disc
-    final iconPaint = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.fill;
-    final pinIconPath = Path()
-      ..moveTo(0, -42)
-      ..cubicTo(-7, -50, -11, -54, -11, -59)
-      ..arcToPoint(
-        const Offset(11, -59),
-        radius: const Radius.circular(11),
-      )
-      ..cubicTo(11, -54, 7, -50, 0, -42)
-      ..close();
-    canvas.drawPath(pinIconPath, iconPaint);
-    // Inner hole of location pin icon
-    canvas.drawCircle(const Offset(0, -59), 4.2, Paint()..color = Colors.white);
-
-    // 5. White Pill Badge
-    final badgeRect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(-58, 7, 116, 36),
-      const Radius.circular(18),
+    // 1. Soft Ground Shadow under the pointer
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, tipY + 1), width: 14, height: 4.5),
+      Paint()..color = Colors.black.withValues(alpha: 0.22),
     );
-    canvas.drawRRect(badgeRect, Paint()..color = Colors.white);
-    canvas.drawRRect(
-      badgeRect,
+
+    // 2. Continuous Outline Path (Pill Capsule + Downward Pointer)
+    final path = Path()
+      ..moveTo(3 + r, top)
+      ..lineTo(w - 3 - r, top)
+      ..arcToPoint(Offset(w - 3, top + r), radius: const Radius.circular(r))
+      ..arcToPoint(Offset(w - 3 - r, bottom), radius: const Radius.circular(r))
+      ..lineTo(cx + pointerHalfW, bottom)
+      ..lineTo(cx, tipY)
+      ..lineTo(cx - pointerHalfW, bottom)
+      ..lineTo(3 + r, bottom)
+      ..arcToPoint(Offset(3, bottom - r), radius: const Radius.circular(r))
+      ..arcToPoint(Offset(3 + r, top), radius: const Radius.circular(r))
+      ..close();
+
+    // 3. Elevated Drop Shadow
+    canvas.drawShadow(
+      path,
+      isSelected ? const Color(0xFF1B5E20) : Colors.black,
+      isSelected ? 6.0 : 3.5,
+      false,
+    );
+
+    // 4. Card Body Fill
+    final primaryColor = isSelected ? const Color(0xFF1B5E20) : Colors.white;
+    canvas.drawPath(path, Paint()..color = primaryColor..style = PaintingStyle.fill);
+
+    // 5. Border
+    final borderColor = isSelected ? Colors.white : const Color(0xFF1B5E20);
+    canvas.drawPath(
+      path,
       Paint()
-        ..color = primaryColor
+        ..color = borderColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
+        ..strokeWidth = isSelected ? 2.2 : 1.8,
     );
 
-    // 6. Badge Label Typography
+    // 6. Left Emblem Badge (Location Pin Icon)
+    const emblemCenter = Offset(19.0, 18.5);
+    const emblemRadius = 10.5;
+    final emblemBgColor = isSelected ? Colors.white : const Color(0xFF1B5E20);
+    canvas.drawCircle(emblemCenter, emblemRadius, Paint()..color = emblemBgColor);
+
+    // Precise vector location pin inside emblem
+    final iconColor = isSelected ? const Color(0xFF1B5E20) : Colors.white;
+    final pinPath = Path()
+      ..moveTo(19.0, 23.5)
+      ..cubicTo(16.0, 20.0, 14.0, 18.0, 14.0, 15.5)
+      ..arcToPoint(
+        const Offset(24.0, 15.5),
+        radius: const Radius.circular(5.0),
+      )
+      ..cubicTo(24.0, 18.0, 22.0, 20.0, 19.0, 23.5)
+      ..close();
+    canvas.drawPath(pinPath, Paint()..color = iconColor..style = PaintingStyle.fill);
+    canvas.drawCircle(
+      const Offset(19.0, 15.5),
+      2.0,
+      Paint()..color = emblemBgColor,
+    );
+
+    // 7. Gate Label Typography
+    final textColor = isSelected ? Colors.white : const Color(0xFF1A241A);
     final textPainter = TextPainter(
       text: TextSpan(
         text: label,
         style: TextStyle(
-          color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFF1E293B),
-          fontSize: 19,
-          fontWeight: FontWeight.w900,
+          color: textColor,
+          fontSize: 13.5,
+          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
+          letterSpacing: 0.1,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    textPainter.paint(canvas, Offset(-textPainter.width / 2, 14));
+    textPainter.paint(
+      canvas,
+      Offset(34.0, 18.5 - textPainter.height / 2),
+    );
 
-    canvas.restore();
+    // 8. Active Beacon Indicator on Selected Pointer Tip
+    if (isSelected) {
+      canvas.drawCircle(
+        Offset(cx, tipY),
+        3.5,
+        Paint()..color = const Color(0xFF4CAF50),
+      );
+    }
   }
 
   @override

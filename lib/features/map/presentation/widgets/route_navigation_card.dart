@@ -136,6 +136,8 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
             color: AppColors.primary,
             tooltip: 'Repeat Map Redirection',
             visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
         IconButton(
           onPressed: widget.onChangeEntrance,
@@ -143,6 +145,8 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
           color: AppColors.inkMuted,
           tooltip: 'Change Entrance Gate',
           visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.all(4),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
         IconButton(
           onPressed: widget.onClose,
@@ -150,6 +154,8 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
           color: AppColors.inkMuted,
           tooltip: 'End Navigation',
           visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.all(4),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
       ],
     );
@@ -193,14 +199,16 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'From: ${widget.route.entrance.description}',
-                          style: AppTextStyles.captionSmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            'From Gate ${widget.route.entrance.entranceId}: ${widget.route.entrance.description}',
+                            style: AppTextStyles.captionSmall.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const Icon(
                           Icons.arrow_drop_down_rounded,
@@ -220,6 +228,8 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                 color: AppColors.primary,
                 tooltip: 'Repeat Map Redirection',
                 visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
             IconButton(
               onPressed: () => setState(() => _isMinimized = true),
@@ -227,6 +237,8 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
               color: AppColors.inkMuted,
               tooltip: 'Minimize Guidance',
               visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
             IconButton(
               onPressed: widget.onClose,
@@ -234,6 +246,8 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
               color: AppColors.inkMuted,
               tooltip: 'End Navigation',
               visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
           ],
         ),

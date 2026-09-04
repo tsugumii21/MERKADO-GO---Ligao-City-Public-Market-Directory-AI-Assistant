@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -70,13 +71,25 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 StallDetailSheet.show(context, stall);
               },
               onEntranceTapped: (entrance) {
-                ref.read(selectedEntranceProvider.notifier).state = entrance;
-                final activeRoute = ref.read(activeRouteProvider);
-                if (activeRoute != null) {
-                  ref.read(activeRouteProvider.notifier).navigateToStall(
-                    stallId: activeRoute.destinationStallId,
-                    entranceOverride: entrance,
-                  );
+                final current = ref.read(selectedEntranceProvider);
+                HapticFeedback.selectionClick();
+                if (current?.entranceId == entrance.entranceId) {
+                  // Gate pressed again: unchoose/deselect it
+                  ref.read(selectedEntranceProvider.notifier).state = null;
+                  final activeRoute = ref.read(activeRouteProvider);
+                  if (activeRoute != null) {
+                    ref.read(activeRouteProvider.notifier).clearRoute();
+                  }
+                } else {
+                  // Gate chosen: select it and recalculate active route if navigating
+                  ref.read(selectedEntranceProvider.notifier).state = entrance;
+                  final activeRoute = ref.read(activeRouteProvider);
+                  if (activeRoute != null) {
+                    ref.read(activeRouteProvider.notifier).navigateToStall(
+                      stallId: activeRoute.destinationStallId,
+                      entranceOverride: entrance,
+                    );
+                  }
                 }
               },
               onMapTapped: () {

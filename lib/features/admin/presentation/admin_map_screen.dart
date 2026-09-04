@@ -52,6 +52,7 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
               selectedStall: _selectedStall,
               activeRoute: activeRoute,
               entryPoints: entryPoints,
+              selectedEntrance: selectedEntrance,
               onStallSelected: (stall) {
                 setState(() => _selectedStall = stall);
                 StallDetailSheet.show(context, stall);

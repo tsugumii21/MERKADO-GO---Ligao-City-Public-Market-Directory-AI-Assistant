@@ -60,22 +60,26 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
 
   void _confirmSelection() {
     final entrance = _selectedEntrance;
-    if (entrance == null) return;
-
     HapticFeedback.mediumImpact();
     ref.read(selectedEntranceProvider.notifier).state = entrance;
 
     // If route is active and we are just changing entrance from the map card
     final activeRoute = ref.read(activeRouteProvider);
     if (activeRoute != null && widget.targetStallId == null) {
-      ref.read(activeRouteProvider.notifier).navigateToStall(
-            stallId: activeRoute.destinationStallId,
-            stallName: activeRoute.destinationStallName,
-            entranceOverride: entrance,
-          );
+      if (entrance != null) {
+        ref.read(activeRouteProvider.notifier).navigateToStall(
+              stallId: activeRoute.destinationStallId,
+              stallName: activeRoute.destinationStallName,
+              entranceOverride: entrance,
+            );
+      } else {
+        ref.read(activeRouteProvider.notifier).clearRoute();
+      }
     }
 
-    widget.onEntranceSelected?.call(entrance);
+    if (entrance != null) {
+      widget.onEntranceSelected?.call(entrance);
+    }
     Navigator.of(context).pop(entrance);
   }
 
@@ -414,7 +418,12 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                           onTap: () {
                             HapticFeedback.selectionClick();
                             setState(() {
-                              _selectedEntrance = entrance;
+                              if (_selectedEntrance?.entranceId ==
+                                  entrance.entranceId) {
+                                _selectedEntrance = null;
+                              } else {
+                                _selectedEntrance = entrance;
+                              }
                             });
                           },
                           borderRadius: BorderRadius.circular(14),
@@ -593,14 +602,36 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed:
-                        effectiveSelected != null ? _confirmSelection : null,
+                    onPressed: effectiveSelected != null
+                        ? _confirmSelection
+                        : (widget.targetStallId == null &&
+                                ref.read(selectedEntranceProvider) != null
+                            ? _confirmSelection
+                            : null),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: effectiveSelected != null
+                          ? AppColors.primary
+                          : (widget.targetStallId == null &&
+                                  ref.read(selectedEntranceProvider) != null
+                              ? AppColors.surface
+                              : const Color(0xFFE2E8F0)),
                       disabledBackgroundColor: const Color(0xFFE2E8F0),
-                      foregroundColor: Colors.white,
+                      foregroundColor: effectiveSelected != null
+                          ? Colors.white
+                          : (widget.targetStallId == null &&
+                                  ref.read(selectedEntranceProvider) != null
+                              ? AppColors.ink
+                              : const Color(0xFF94A3B8)),
                       disabledForegroundColor: const Color(0xFF94A3B8),
                       elevation: effectiveSelected != null ? 1 : 0,
+                      side: (effectiveSelected == null &&
+                              widget.targetStallId == null &&
+                              ref.read(selectedEntranceProvider) != null)
+                          ? const BorderSide(
+                              color: Color(0xFFD1D5DB),
+                              width: 1.2,
+                            )
+                          : BorderSide.none,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -610,23 +641,38 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.directions_walk_rounded,
+                          effectiveSelected != null
+                              ? Icons.directions_walk_rounded
+                              : (widget.targetStallId == null &&
+                                      ref.read(selectedEntranceProvider) != null
+                                  ? Icons.clear_rounded
+                                  : Icons.directions_walk_rounded),
                           size: 19,
                           color: effectiveSelected != null
                               ? Colors.white
-                              : const Color(0xFF94A3B8),
+                              : (widget.targetStallId == null &&
+                                      ref.read(selectedEntranceProvider) != null
+                                  ? AppColors.ink
+                                  : const Color(0xFF94A3B8)),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           effectiveSelected != null
                               ? 'Select Starting Entrance • Gate ${effectiveSelected.entranceId}'
-                              : 'Select Starting Entrance',
+                              : (widget.targetStallId == null &&
+                                      ref.read(selectedEntranceProvider) != null
+                                  ? 'Clear Selected Entrance'
+                                  : 'Select Starting Entrance'),
                           style: GoogleFonts.outfit(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: effectiveSelected != null
                                 ? Colors.white
-                                : const Color(0xFF94A3B8),
+                                : (widget.targetStallId == null &&
+                                        ref.read(selectedEntranceProvider) !=
+                                            null
+                                    ? AppColors.ink
+                                    : const Color(0xFF94A3B8)),
                           ),
                         ),
                         if (effectiveSelected != null) ...[

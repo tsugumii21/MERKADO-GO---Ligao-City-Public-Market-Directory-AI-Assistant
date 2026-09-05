@@ -350,44 +350,52 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
               // Search filter field
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                height: 40,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F7F5),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8E2)),
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFE2E8F0),
+                    width: 1.0,
+                  ),
                 ),
                 child: TextField(
                   controller: _searchController,
-                  style: const TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1A241A),
+                    color: const Color(0xFF0F172A),
                   ),
                   decoration: InputDecoration(
                     hintText: 'Search by gate number or landmark...',
-                    hintStyle: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF9E9E9E),
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF94A3B8),
                     ),
                     prefixIcon: const Icon(
                       Icons.search_rounded,
-                      color: Color(0xFF667066),
-                      size: 18,
+                      color: AppColors.primary,
+                      size: 19,
                     ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.cancel_rounded, size: 16),
-                            color: const Color(0xFF667066),
+                            icon: const Icon(Icons.cancel_rounded, size: 17),
+                            color: const Color(0xFF94A3B8),
+                            splashRadius: 16,
                             onPressed: () => _searchController.clear(),
                           )
                         : null,
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 9),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
                   ),
                 ),
               ),
 
-              const Divider(color: AppColors.border, height: 1),
+              const Divider(color: Color(0xFFE2E8F0), height: 1),
 
               // Entrance list
               if (entryPoints.isEmpty)
@@ -735,9 +743,9 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
       height: 38,
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F1),
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8E2), width: 1.0),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
       ),
       padding: const EdgeInsets.all(2.5),
       child: Row(
@@ -831,9 +839,9 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF7F7F5),
+          color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8E2)),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(

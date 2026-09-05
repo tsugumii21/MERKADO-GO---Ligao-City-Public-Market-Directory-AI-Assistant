@@ -20,7 +20,7 @@ class NavigationLoadingDialog extends StatefulWidget {
     required this.onCompleted,
   });
 
-  /// Displays the 3-second navigation loading screen
+  /// Displays the 2-second navigation loading screen
   static Future<void> show(
     BuildContext context, {
     required String stallName,
@@ -75,8 +75,8 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog> {
       entranceName: 'Gate ${widget.entrance.entranceId}',
     );
 
-    // Rotate phrase halfway through 3-second transition
-    _phraseTimer = Timer(const Duration(milliseconds: 1500), () {
+    // Rotate phrase halfway through 2-second transition
+    _phraseTimer = Timer(const Duration(milliseconds: 1000), () {
       if (mounted) {
         setState(() {
           _currentPhrase = NavigationPhrases.getRandomPhrase(
@@ -87,8 +87,8 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog> {
       }
     });
 
-    // Complete exactly after 3.0 seconds
-    _completionTimer = Timer(const Duration(milliseconds: 3000), () {
+    // Complete exactly after 2.0 seconds
+    _completionTimer = Timer(const Duration(milliseconds: 2000), () {
       if (mounted) {
         widget.onCompleted();
       }

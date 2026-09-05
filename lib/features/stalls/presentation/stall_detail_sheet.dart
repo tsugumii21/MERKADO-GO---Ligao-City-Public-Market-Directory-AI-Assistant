@@ -84,7 +84,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     );
     if (chosenEntrance == null || !mounted) return;
 
-    // 2. Display 3-second animated road trip loading screen with dynamic wayfinding phrases
+    // 2. Display 2-second animated road trip loading screen with dynamic wayfinding phrases
     await NavigationLoadingDialog.show(
       context,
       stallName: widget.stall.name,

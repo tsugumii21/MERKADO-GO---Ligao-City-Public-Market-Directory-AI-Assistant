@@ -5,8 +5,7 @@
     "neighbors": [
       "node_ea_t4",
       "node_dm_t2",
-      "node_ea_t5",
-      "node_dm_x1"
+      "node_ea_t5"
     ]
   },
   "node_dm_t2": {
@@ -24,8 +23,7 @@
     "neighbors": [
       "node_ex_t16",
       "node_dm_t2",
-      "node_dm_t4",
-      "node_dm_x1"
+      "node_dm_t4"
     ]
   },
   "node_dm_t4": {
@@ -50,10 +48,8 @@
     "x": -4361,
     "y": -406,
     "neighbors": [
-      "node_dm_t1",
       "node_ea_t5",
       "node_dm_t4",
-      "node_dm_t3",
       "node_dm_t2",
       "node_dm_t5"
     ]
@@ -490,8 +486,7 @@
     "y": 922,
     "neighbors": [
       "node_wm_t12",
-      "node_wm_t14",
-      "node_wm_x6"
+      "node_wm_t14"
     ]
   },
   "node_wm_t14": {
@@ -562,8 +557,7 @@
     "y": 488,
     "neighbors": [
       "node_wm_t21",
-      "node_wm_t9",
-      "node_wm_x31"
+      "node_wm_t9"
     ]
   },
   "node_wm_t21": {
@@ -581,7 +575,6 @@
     "neighbors": [
       "node_wm_t21",
       "node_wm_t23",
-      "node_wm_t26",
       "node_wm_x33"
     ]
   },
@@ -590,8 +583,7 @@
     "y": 488,
     "neighbors": [
       "node_wm_t22",
-      "node_wm_t24",
-      "node_wm_x34"
+      "node_wm_t24"
     ]
   },
   "node_wm_t24": {
@@ -618,7 +610,6 @@
     "neighbors": [
       "node_ex_t23",
       "node_wm_t10",
-      "node_wm_t22",
       "node_wm_x39"
     ]
   },
@@ -790,8 +781,7 @@
     "neighbors": [
       "node_wm_t6",
       "node_wm_x10",
-      "node_wm_x19",
-      "node_wm_x23"
+      "node_wm_x19"
     ]
   },
   "node_wm_x19": {
@@ -849,9 +839,7 @@
     "y": 632,
     "neighbors": [
       "node_wm_t7",
-      "node_wm_x18",
-      "node_wm_x24",
-      "node_wm_x31"
+      "node_wm_x24"
     ]
   },
   "node_wm_x24": {
@@ -938,9 +926,7 @@
     "x": -3396,
     "y": 565,
     "neighbors": [
-      "node_wm_t20",
       "node_wm_t8",
-      "node_wm_x23",
       "node_wm_x32"
     ]
   },
@@ -968,7 +954,6 @@
     "x": -3732,
     "y": 565,
     "neighbors": [
-      "node_wm_t23",
       "node_wm_x26",
       "node_wm_x33",
       "node_wm_x35"
@@ -1047,7 +1032,6 @@
     "x": -3508,
     "y": 842,
     "neighbors": [
-      "node_wm_t13",
       "node_wm_x11",
       "node_wm_x5",
       "node_wm_x7"

@@ -149,13 +149,31 @@ class PathfindingService {
           description: 'Selected Entrance',
         );
 
-    final goalNodeId = getPrimaryNodeForStall(destinationStallId);
-    if (goalNodeId == null) return null;
+    final candidateNodes = getCandidateNodesForStall(destinationStallId);
+    if (candidateNodes.isEmpty) return null;
 
-    final pathNodeIds = aStarPath(
-      startNodeId: entranceNodeId,
-      goalNodeId: goalNodeId,
-    );
+    // Evaluate all candidate access nodes for multi-entrance/corner stalls
+    // and select the optimal valid path with lowest true walking distance from the entrance gate.
+    List<String> pathNodeIds = const [];
+    double bestDistance = double.infinity;
+
+    for (final candidateId in candidateNodes) {
+      if (!_nodes.containsKey(candidateId)) continue;
+      final path = aStarPath(
+        startNodeId: entranceNodeId,
+        goalNodeId: candidateId,
+      );
+      if (path.isNotEmpty) {
+        double dist = 0.0;
+        for (int i = 0; i < path.length - 1; i++) {
+          dist += _nodes[path[i]]!.distanceTo(_nodes[path[i + 1]]!);
+        }
+        if (dist < bestDistance) {
+          bestDistance = dist;
+          pathNodeIds = path;
+        }
+      }
+    }
 
     if (pathNodeIds.isEmpty) return null;
 
@@ -460,20 +478,22 @@ class PathfindingService {
 
   /// Find nearest entrance by true corridor walking distance
   MarketEntryPoint? findNearestEntranceByWalkingDistance(String destinationStallId) {
-    final goalNodeId = getPrimaryNodeForStall(destinationStallId);
-    if (goalNodeId == null || _entryPoints.isEmpty) return null;
+    final candidateNodes = getCandidateNodesForStall(destinationStallId);
+    if (candidateNodes.isEmpty || _entryPoints.isEmpty) return null;
 
     MarketEntryPoint? nearest;
     double minCost = double.infinity;
 
     for (final entrance in _entryPoints) {
-      final cost = getPathWalkingCost(
-        entranceNodeId: entrance.nodeId,
-        goalNodeId: goalNodeId,
-      );
-      if (cost < minCost) {
-        minCost = cost;
-        nearest = entrance;
+      for (final candidateId in candidateNodes) {
+        final cost = getPathWalkingCost(
+          entranceNodeId: entrance.nodeId,
+          goalNodeId: candidateId,
+        );
+        if (cost < minCost) {
+          minCost = cost;
+          nearest = entrance;
+        }
       }
     }
 

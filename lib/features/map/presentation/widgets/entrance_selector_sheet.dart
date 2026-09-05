@@ -156,7 +156,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
         ? service.findNearestEntranceByWalkingDistance(widget.targetStallId!)
         : null;
     final effectiveSelected = _selectedEntrance;
-    final isMapMode = _viewMode == _EntranceViewMode.map;
+    final isMapMode = _viewMode == _EntranceViewMode.map && widget.targetStallId != null;
     final screenHeight = MediaQuery.of(context).size.height;
 
     final filteredEntryPoints = entryPoints.where((e) {
@@ -172,9 +172,9 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
     }).toList();
 
     return Container(
-      height: isMapMode ? screenHeight * 0.88 : null,
+      height: isMapMode ? screenHeight * 0.70 : null,
       constraints: BoxConstraints(
-        maxHeight: screenHeight * 0.88,
+        maxHeight: screenHeight * 0.70,
       ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
@@ -343,8 +343,9 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                 ),
               ),
 
-            // View mode toggle: [ List View ] | [ Pick on Map ]
-            _buildViewModeToggle(),
+            // View mode toggle: [ List View ] | [ Pick on Map ] (strictly on stall page)
+            if (widget.targetStallId != null)
+              _buildViewModeToggle(),
 
             if (!isMapMode) ...[
               // Search filter field
@@ -511,7 +512,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         Icon(
-                                          Icons.sensor_door_rounded,
+                                          Icons.location_on_rounded,
                                           color: isSelected
                                               ? Colors.white
                                               : const Color(0xFFE53935),
@@ -852,6 +853,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
               selectedStall: targetStall,
               entryPoints: entryPoints,
               selectedEntrance: _selectedEntrance,
+              showEntrancePins: true,
               onEntranceTapped: (entrance) {
                 HapticFeedback.selectionClick();
                 setState(() {

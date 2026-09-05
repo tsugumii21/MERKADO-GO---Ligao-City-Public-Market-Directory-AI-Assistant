@@ -85,6 +85,7 @@ class InteractiveMarketMap extends StatefulWidget {
   final TransformationController? transformationController;
   final VoidCallback? onMapTapped;
   final int traversalTrigger;
+  final bool showEntrancePins;
 
   const InteractiveMarketMap({
     super.key,
@@ -98,6 +99,7 @@ class InteractiveMarketMap extends StatefulWidget {
     this.transformationController,
     this.onMapTapped,
     this.traversalTrigger = 0,
+    this.showEntrancePins = false,
   });
 
   @override
@@ -739,13 +741,14 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                       ),
 
                     // Layer 3: Demand-Driven 3D Vector Entrance Pins
-                    ..._effectiveEntryPoints.where((entrance) {
-                      if (widget.activeRoute != null) {
-                        return entrance.entranceId ==
-                            widget.activeRoute!.entrance.entranceId;
-                      }
-                      return true;
-                    }).map((entrance) {
+                    if (widget.activeRoute != null || widget.showEntrancePins)
+                      ..._effectiveEntryPoints.where((entrance) {
+                        if (widget.activeRoute != null) {
+                          return entrance.entranceId ==
+                              widget.activeRoute!.entrance.entranceId;
+                        }
+                        return widget.showEntrancePins;
+                      }).map((entrance) {
                       final node = _findNodeInRouteOrService(entrance.nodeId);
                       if (node == null) return const SizedBox.shrink();
                       final pos = Offset(

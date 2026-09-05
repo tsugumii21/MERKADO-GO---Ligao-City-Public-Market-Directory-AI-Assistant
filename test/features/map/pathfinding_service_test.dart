@@ -232,8 +232,8 @@ void main() {
       );
     });
 
-    test('Real graph has 116 nodes and 14 entry points', () {
-      expect(service.nodes.length, 116);
+    test('Real graph has 136 nodes and 14 entry points', () {
+      expect(service.nodes.length, 136);
       expect(service.entryPoints.length, 14);
       expect(service.stallToNodes.length, 231); // 134 assigned + 97 vacant slots
     });

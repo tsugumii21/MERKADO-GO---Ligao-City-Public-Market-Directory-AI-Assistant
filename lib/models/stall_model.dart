@@ -41,15 +41,11 @@ class StallModel {
     this.tags = const [],
   }) : categories = categories ?? [category];
 
-  /// Resolves the primary stall photo URL: prefers explicitly saved Firestore
-  /// photoUrls, falling back to the deterministic Cloudinary CDN URL (merkadogo/stalls/{stallId}.jpg).
+  /// Resolves the primary stall photo URL from explicitly saved photoUrls.
+  /// Returns empty string if no photos have been uploaded by admin.
   String get primaryPhotoUrl {
     if (photoUrls.isNotEmpty && photoUrls.first.trim().isNotEmpty) {
       return photoUrls.first.trim();
-    }
-    final cleanId = stallId.trim();
-    if (cleanId.isNotEmpty) {
-      return 'https://res.cloudinary.com/diiuzmjnk/image/upload/merkadogo/stalls/$cleanId.jpg';
     }
     return '';
   }

@@ -836,10 +836,6 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
   Widget _buildModernAdminStallCard(StallModel stall) {
     final statusInfo = StallUtils.getStallStatusInfo(stall);
     final visuals = _getCategoryVisuals(stall.category);
-    final resolvedPhoto = stall.primaryPhotoUrl;
-    final hasPhoto = resolvedPhoto.isNotEmpty &&
-        !resolvedPhoto.contains('placeholder') &&
-        !resolvedPhoto.contains('demo');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -869,11 +865,11 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Top Row: Avatar/Image + Stall Title & Badges + Action Buttons
+                // 1. Top Row: Category Avatar + Stall Title & Badges + Action Buttons
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Visual Category Avatar or Image Thumbnail
+                    // Visual Category Avatar (Instant, consistent, never replaced by photos)
                     Container(
                       width: 50,
                       height: 50,
@@ -885,26 +881,14 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                           width: 1,
                         ),
                       ),
-                      child: hasPhoto
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(13),
-                              child: Image.network(
-                                resolvedPhoto,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => MarketCategoryIcon(
-                                  category: stall.category,
-                                  fallbackIcon: visuals.icon,
-                                  color: visuals.color,
-                                  size: 24,
-                                ),
-                              ),
-                            )
-                          : MarketCategoryIcon(
-                              category: stall.category,
-                              fallbackIcon: visuals.icon,
-                              color: visuals.color,
-                              size: 24,
-                            ),
+                      child: Center(
+                        child: MarketCategoryIcon(
+                          category: stall.category,
+                          fallbackIcon: visuals.icon,
+                          color: visuals.color,
+                          size: 24,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
 
@@ -979,6 +963,42 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                                   ),
                                 ),
                               ),
+
+                              // Photo indicator badge if photos uploaded
+                              if (stall.photoUrls.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFCBD5E1),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.photo_camera_rounded,
+                                        size: 11,
+                                        color: Color(0xFF475569),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${stall.photoUrls.length} ${stall.photoUrls.length == 1 ? 'photo' : 'photos'}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF475569),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ],

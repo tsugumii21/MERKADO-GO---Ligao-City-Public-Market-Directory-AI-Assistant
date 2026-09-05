@@ -557,10 +557,11 @@ class AppTheme {
           }
           return const Color(0xFF1F2937);
         }),
-        hourMinuteTextStyle: GoogleFonts.outfit(
+        hourMinuteTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 42,
           fontWeight: FontWeight.w700,
         ),
+
         dayPeriodShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2),
@@ -653,10 +654,11 @@ class AppTheme {
             }
             return const Color(0xFF1F2937);
           }),
-          hourMinuteTextStyle: GoogleFonts.outfit(
+          hourMinuteTextStyle: GoogleFonts.plusJakartaSans(
             fontSize: 42,
             fontWeight: FontWeight.w700,
           ),
+
           dayPeriodShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2),

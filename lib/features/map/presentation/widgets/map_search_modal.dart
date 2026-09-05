@@ -900,7 +900,7 @@ class _SearchFilterBottomSheetState extends State<_SearchFilterBottomSheet> {
                     children: [
                       Text(
                         'Sort & Filter',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 19,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF1F2937),

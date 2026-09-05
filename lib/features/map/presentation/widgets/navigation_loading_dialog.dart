@@ -151,13 +151,14 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog> {
                     // Primary Title
                     Text(
                       'Directing to ${widget.stallName}',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
                         letterSpacing: -0.3,
                       ),
                       textAlign: TextAlign.center,
+
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

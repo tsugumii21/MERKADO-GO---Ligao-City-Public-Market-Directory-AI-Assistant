@@ -694,7 +694,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                                         const SizedBox(height: 16),
                                         Text(
                                           'No Stalls Found',
-                                          style: GoogleFonts.outfit(
+                                          style: GoogleFonts.plusJakartaSans(
                                             fontSize: 18,
                                             fontWeight: FontWeight.w700,
                                             color: const Color(0xFF374151),
@@ -1364,7 +1364,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     children: [
                       Text(
                         'Sort & Filter',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 19,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF1F2937),

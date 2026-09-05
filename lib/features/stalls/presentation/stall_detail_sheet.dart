@@ -177,12 +177,13 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                 children: [
                   Text(
                     'Stall Details',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 19,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF1F2937),
                     ),
                   ),
+
                   IconButton(
                     icon: const Icon(
                       Icons.close_rounded,

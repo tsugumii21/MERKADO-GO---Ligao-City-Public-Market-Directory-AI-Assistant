@@ -244,12 +244,13 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                       children: [
                         Text(
                           'Select Starting Entrance',
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             color: AppColors.ink,
                           ),
                         ),
+
                         Text(
                           widget.targetStallName != null
                               ? 'Choose where you will enter the market'
@@ -402,12 +403,13 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                               children: [
                                 Text(
                                   'Pick on the Map',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                     color: const Color(0xFF14532D),
                                   ),
                                 ),
+
                                 Text(
                                   'Zoom out to view and tap all 14 gates',
                                   style: GoogleFonts.poppins(
@@ -630,7 +632,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                         const SizedBox(height: 2),
                                         Text(
                                           'Gate ${entrance.entranceId}',
-                                          style: GoogleFonts.outfit(
+                                          style: GoogleFonts.plusJakartaSans(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w800,
                                             color: isSelected
@@ -653,7 +655,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                           children: [
                                             Text(
                                               'Entrance Gate ${entrance.entranceId}',
-                                              style: GoogleFonts.outfit(
+                                              style: GoogleFonts.plusJakartaSans(
                                                 fontSize: 14.5,
                                                 fontWeight: FontWeight.w700,
                                                 color: AppColors.ink,
@@ -814,9 +816,10 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                       ref.read(selectedEntranceProvider) != null
                                   ? 'Clear Selected Entrance'
                                   : 'Select Starting Entrance'),
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
+
                             color: effectiveSelected != null
                                 ? Colors.white
                                 : (widget.targetStallId == null &&
@@ -1066,7 +1069,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                         child: Center(
                           child: Text(
                             'G${_selectedEntrance!.entranceId}',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -1084,12 +1087,13 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                               children: [
                                 Text(
                                   'Gate ${_selectedEntrance!.entranceId}',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.ink,
                                   ),
                                 ),
+
                                 if (nearestEntrance?.entranceId ==
                                     _selectedEntrance!.entranceId) ...[
                                   const SizedBox(width: 6),

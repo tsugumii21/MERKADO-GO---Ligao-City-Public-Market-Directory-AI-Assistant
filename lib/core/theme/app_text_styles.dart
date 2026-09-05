@@ -1,30 +1,31 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Centralized text style constants for MerkadoGo.
-/// Uses Outfit for headings and Plus Jakarta Sans for body/UI text.
+/// Uses Plus Jakarta Sans for headings and Poppins for body/UI text.
 class AppTextStyles {
   AppTextStyles._();
 
   // ── Page titles / section headers ──────────────────────
-  static TextStyle get pageTitle => GoogleFonts.outfit(
+  static TextStyle get pageTitle => GoogleFonts.plusJakartaSans(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
       );
 
-  static TextStyle get pageTitleWhite => GoogleFonts.outfit(
+  static TextStyle get pageTitleWhite => GoogleFonts.plusJakartaSans(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: Colors.white,
       );
 
-  static TextStyle get sectionTitle => GoogleFonts.outfit(
+  static TextStyle get sectionTitle => GoogleFonts.plusJakartaSans(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AppColors.ink,
       );
+
 
   // ── Card titles (stall names, profile username) ────────
   static TextStyle get cardTitle => GoogleFonts.poppins(

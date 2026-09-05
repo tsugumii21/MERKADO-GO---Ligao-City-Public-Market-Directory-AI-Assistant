@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
@@ -58,12 +58,13 @@ class _IndoorMapScreenState extends ConsumerState<IndoorMapScreen> {
           children: [
             Text(
               'Public Market Floor Plan',
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink,
               ),
             ),
+
             Text(
               'Ligao City Public Market • Architectural Vector View',
               style: GoogleFonts.poppins(

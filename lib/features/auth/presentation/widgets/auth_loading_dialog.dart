@@ -147,12 +147,13 @@ class _AuthLoadingDialogState extends State<AuthLoadingDialog> {
                       widget.userName != null && widget.userName!.trim().isNotEmpty
                           ? 'Welcome Back, ${widget.userName!.trim()}!'
                           : 'Welcome Back!',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
                         letterSpacing: -0.4,
                       ),
+
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

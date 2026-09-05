@@ -173,20 +173,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Top Hero Illustration Header Layer (Top 38% of screen, collapses smoothly when typing)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutCubic,
+          // 1. Top Hero Illustration Header Layer (Top 38% of screen)
+          Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: isKeyboardOpen ? 105.0 : screenHeight * 0.38,
+            height: screenHeight * 0.38,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -257,11 +254,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
 
-          // 2. Floating Bottom Sheet Card Layer (Expands room when keyboard opens to eliminate jitter)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutCubic,
-            top: isKeyboardOpen ? 90.0 : screenHeight * 0.33,
+          // 2. Floating Bottom Sheet Card Layer (Overlaps hero header)
+          Positioned(
+            top: screenHeight * 0.33,
             left: 0,
             right: 0,
             bottom: 0,

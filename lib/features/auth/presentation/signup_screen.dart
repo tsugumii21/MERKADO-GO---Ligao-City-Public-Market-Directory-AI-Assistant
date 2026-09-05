@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -98,17 +98,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Top Hero Header Layer (Top 34% of screen)
-          Positioned(
+          // 1. Top Hero Header Layer (Top 34% of screen, collapses smoothly when typing)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
             top: 0,
             left: 0,
             right: 0,
-            height: screenHeight * 0.34,
+            height: isKeyboardOpen ? 105.0 : screenHeight * 0.34,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -131,7 +134,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: 100,
+                  height: 110,
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -179,9 +182,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
           ),
 
-          // 2. Floating Bottom Sheet Card Layer (Overlaps hero header)
-          Positioned(
-            top: screenHeight * 0.28,
+          // 2. Floating Bottom Sheet Card Layer (Expands room when keyboard opens to eliminate jitter)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            top: isKeyboardOpen ? 90.0 : screenHeight * 0.28,
             left: 0,
             right: 0,
             bottom: 0,

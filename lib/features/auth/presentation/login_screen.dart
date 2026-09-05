@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/router/route_names.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/favorite_provider.dart';
+import 'widgets/auth_loading_dialog.dart';
 
 /// Alias for SignInScreen to maintain naming compatibility
 typedef SignInScreen = LoginScreen;
@@ -117,6 +118,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final authRepo = ref.read(authRepositoryProvider);
         final userData = await authRepo.getUserData(user.uid);
 
+        if (mounted) {
+          final resolvedName = (userData?.fullName.trim().isNotEmpty == true)
+              ? userData!.fullName.trim()
+              : (userData?.username.trim().isNotEmpty == true ? userData!.username.trim() : null);
+
+          // 3-second frosted loading transition with map.json animation and market phrases
+          await AuthLoadingDialog.show(
+            context,
+            userName: resolvedName,
+          );
+        }
+
         if (userData?.role == 'admin') {
           if (mounted) context.go(RouteNames.admin);
         } else {
@@ -160,17 +173,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Top Hero Illustration Header Layer (Top 38% of screen)
-          Positioned(
+          // 1. Top Hero Illustration Header Layer (Top 38% of screen, collapses smoothly when typing)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
             top: 0,
             left: 0,
             right: 0,
-            height: screenHeight * 0.38,
+            height: isKeyboardOpen ? 105.0 : screenHeight * 0.38,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -241,9 +257,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
 
-          // 2. Floating Bottom Sheet Card Layer (Overlaps hero header)
-          Positioned(
-            top: screenHeight * 0.33,
+          // 2. Floating Bottom Sheet Card Layer (Expands room when keyboard opens to eliminate jitter)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            top: isKeyboardOpen ? 90.0 : screenHeight * 0.33,
             left: 0,
             right: 0,
             bottom: 0,

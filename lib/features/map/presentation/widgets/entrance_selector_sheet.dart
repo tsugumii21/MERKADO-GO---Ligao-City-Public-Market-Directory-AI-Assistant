@@ -22,20 +22,23 @@ class EntranceSelectorSheet extends ConsumerStatefulWidget {
   final ValueChanged<MarketEntryPoint>? onEntranceSelected;
   final String? targetStallId;
   final String? targetStallName;
+  final VoidCallback? onPickOnMap;
 
   const EntranceSelectorSheet({
     super.key,
     this.onEntranceSelected,
     this.targetStallId,
     this.targetStallName,
+    this.onPickOnMap,
   });
 
-  static Future<MarketEntryPoint?> show(
+  static Future<dynamic> show(
     BuildContext context, {
     String? targetStallId,
     String? targetStallName,
+    VoidCallback? onPickOnMap,
   }) {
-    return showModalBottomSheet<MarketEntryPoint>(
+    return showModalBottomSheet<dynamic>(
       context: context,
       isScrollControlled: true,
       enableDrag: false,
@@ -50,9 +53,11 @@ class EntranceSelectorSheet extends ConsumerStatefulWidget {
       builder: (context) => EntranceSelectorSheet(
         targetStallId: targetStallId,
         targetStallName: targetStallName,
+        onPickOnMap: onPickOnMap,
       ),
     );
   }
+
 
   @override
   ConsumerState<EntranceSelectorSheet> createState() =>
@@ -100,6 +105,13 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
     }
     Navigator.of(context).pop(entrance);
   }
+
+  void _triggerPickOnMap() {
+    HapticFeedback.selectionClick();
+    Navigator.of(context).pop('pick_on_map');
+    widget.onPickOnMap?.call();
+  }
+
 
   @override
   void dispose() {
@@ -347,10 +359,107 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
             if (widget.targetStallId != null)
               _buildViewModeToggle(),
 
+            if (widget.targetStallId == null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Material(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: _triggerPickOnMap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF86EFAC),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.map_rounded,
+                              color: Colors.white,
+                              size: 19,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Pick on the Map',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF14532D),
+                                  ),
+                                ),
+                                Text(
+                                  'Zoom out to view and tap all 14 gates',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF166534),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Pick',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.touch_app_rounded,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
             if (!isMapMode) ...[
               // Search filter field
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+
                 height: 44,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),

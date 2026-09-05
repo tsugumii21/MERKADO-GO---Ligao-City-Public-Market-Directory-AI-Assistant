@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -26,6 +27,7 @@ class MapScreen extends ConsumerStatefulWidget {
 class MapScreenState extends ConsumerState<MapScreen> {
   bool _isChatOpen = false;
   StallModel? _selectedStall;
+  bool _isPickingEntranceOnMap = false;
 
   @override
   void initState() {
@@ -37,7 +39,9 @@ class MapScreenState extends ConsumerState<MapScreen> {
 
   void resetUI() {
     if (!mounted) return;
+    _isPickingEntranceOnMap = false;
     if (_isChatOpen) {
+
       setState(() => _isChatOpen = false);
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
@@ -53,118 +57,143 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final entryPoints = ref.watch(entryPointsProvider);
     final traversalTrigger = ref.watch(routeTraversalTriggerProvider);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // 1. Interactive Vector Map Layer
-          stallsAsync.when(
-            data: (stalls) => InteractiveMarketMap(
-              stalls: stalls,
-              selectedStall: _selectedStall,
-              activeRoute: activeRoute,
-              entryPoints: entryPoints,
-              selectedEntrance: selectedEntrance,
-              traversalTrigger: traversalTrigger,
-              onStallSelected: (stall) {
-                setState(() => _selectedStall = stall);
-                StallDetailSheet.show(context, stall);
-              },
-              onEntranceTapped: (entrance) {
-                final current = ref.read(selectedEntranceProvider);
-                HapticFeedback.selectionClick();
-                if (current?.entranceId == entrance.entranceId) {
-                  // Gate pressed again: unchoose/deselect it
-                  ref.read(selectedEntranceProvider.notifier).state = null;
-                  final activeRoute = ref.read(activeRouteProvider);
-                  if (activeRoute != null) {
-                    ref.read(activeRouteProvider.notifier).clearRoute();
+    return PopScope(
+      canPop: !_isPickingEntranceOnMap,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isPickingEntranceOnMap) {
+          setState(() => _isPickingEntranceOnMap = false);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            // 1. Interactive Vector Map Layer
+            stallsAsync.when(
+              data: (stalls) => InteractiveMarketMap(
+                stalls: stalls,
+                selectedStall: _selectedStall,
+                activeRoute: activeRoute,
+                entryPoints: entryPoints,
+                selectedEntrance: selectedEntrance,
+                showEntrancePins: _isPickingEntranceOnMap,
+                traversalTrigger: traversalTrigger,
+                onStallSelected: (stall) {
+                  if (_isPickingEntranceOnMap) return;
+                  setState(() => _selectedStall = stall);
+                  StallDetailSheet.show(context, stall);
+                },
+                onEntranceTapped: (entrance) {
+                  final current = ref.read(selectedEntranceProvider);
+                  HapticFeedback.selectionClick();
+                  if (_isPickingEntranceOnMap) {
+                    ref.read(selectedEntranceProvider.notifier).state = entrance;
+                    setState(() => _isPickingEntranceOnMap = false);
+                    final activeRoute = ref.read(activeRouteProvider);
+                    if (activeRoute != null) {
+                      ref.read(activeRouteProvider.notifier).navigateToStall(
+                            stallId: activeRoute.destinationStallId,
+                            entranceOverride: entrance,
+                          );
+                    }
+                    return;
                   }
-                } else {
-                  // Gate chosen: select it and recalculate active route if navigating
-                  ref.read(selectedEntranceProvider.notifier).state = entrance;
-                  final activeRoute = ref.read(activeRouteProvider);
-                  if (activeRoute != null) {
-                    ref.read(activeRouteProvider.notifier).navigateToStall(
-                      stallId: activeRoute.destinationStallId,
-                      entranceOverride: entrance,
-                    );
-                  }
-                }
-              },
-              onMapTapped: () {
-                if (_selectedStall != null) {
-                  setState(() => _selectedStall = null);
-                }
-              },
-            ),
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-            error: (err, stack) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      color: AppColors.error,
-                      size: 40,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Failed to load market stalls',
-                      style: AppTextStyles.cardTitle,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Please check your internet connection and try again.',
-                      style: AppTextStyles.caption,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // 2. Top Header (Search & Entrance Bar - yields during active navigation)
-          if (activeRoute == null)
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.sm),
-                  child: _buildTopSearchAndEntranceBar(selectedEntrance),
-                ),
-              ),
-            ),
-
-          // 3. Bottom Navigation Guidance Card (Two-State: Minimized bar or Expanded sheet)
-          if (activeRoute != null)
-            SafeArea(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                  child: RouteNavigationCard(
-                    route: activeRoute,
-                    onChangeEntrance: () =>
-                        EntranceSelectorSheet.show(context),
-                    onRepeatRoute: () {
-                      ref.read(routeTraversalTriggerProvider.notifier).state++;
-                    },
-                    onClose: () {
+                  if (current?.entranceId == entrance.entranceId) {
+                    // Gate pressed again: unchoose/deselect it
+                    ref.read(selectedEntranceProvider.notifier).state = null;
+                    final activeRoute = ref.read(activeRouteProvider);
+                    if (activeRoute != null) {
                       ref.read(activeRouteProvider.notifier).clearRoute();
-                    },
+                    }
+                  } else {
+                    // Gate chosen: select it and recalculate active route if navigating
+                    ref.read(selectedEntranceProvider.notifier).state = entrance;
+                    final activeRoute = ref.read(activeRouteProvider);
+                    if (activeRoute != null) {
+                      ref.read(activeRouteProvider.notifier).navigateToStall(
+                            stallId: activeRoute.destinationStallId,
+                            entranceOverride: entrance,
+                          );
+                    }
+                  }
+                },
+                onMapTapped: () {
+                  if (_isPickingEntranceOnMap) return;
+                  if (_selectedStall != null) {
+                    setState(() => _selectedStall = null);
+                  }
+                },
+              ),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+              error: (err, stack) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: AppColors.error,
+                        size: 40,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Failed to load market stalls',
+                        style: AppTextStyles.cardTitle,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Please check your internet connection and try again.',
+                        style: AppTextStyles.caption,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
 
-          // 4. Floating Aling Suki Avatar Button (Hidden during active navigation to avoid card collision)
-          if (activeRoute == null)
+            // 2. Top Header (Search & Entrance Bar OR Picking Mode Guidance Banner)
+            if (activeRoute == null)
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: _isPickingEntranceOnMap
+                        ? _buildPickingEntranceBanner()
+                        : _buildTopSearchAndEntranceBar(selectedEntrance),
+                  ),
+                ),
+              ),
+
+            // 3. Bottom Navigation Guidance Card (Two-State: Minimized bar or Expanded sheet)
+            if (activeRoute != null)
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: RouteNavigationCard(
+                      route: activeRoute,
+                      onChangeEntrance: () =>
+                          EntranceSelectorSheet.show(context),
+                      onRepeatRoute: () {
+                        ref.read(routeTraversalTriggerProvider.notifier).state++;
+                      },
+                      onClose: () {
+                        ref.read(activeRouteProvider.notifier).clearRoute();
+                      },
+                    ),
+                  ),
+                ),
+              ),
+
+            // 4. Floating Aling Suki Avatar Button (Hidden during active navigation or picking mode)
+            if (activeRoute == null && !_isPickingEntranceOnMap)
+
             Positioned(
               left: 16,
               bottom: 24,
@@ -232,8 +261,10 @@ class MapScreenState extends ConsumerState<MapScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildTopSearchAndEntranceBar(selectedEntrance) {
     return Padding(
@@ -289,7 +320,15 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 margin: const EdgeInsets.symmetric(horizontal: 8),
               ),
               InkWell(
-                onTap: () => EntranceSelectorSheet.show(context),
+                onTap: () async {
+                  final result = await EntranceSelectorSheet.show(context);
+                  if (result == 'pick_on_map') {
+                    setState(() {
+                      _isPickingEntranceOnMap = true;
+                      _selectedStall = null;
+                    });
+                  }
+                },
                 borderRadius: BorderRadius.circular(AppSpacing.xs),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -333,6 +372,73 @@ class MapScreenState extends ConsumerState<MapScreen> {
       ),
     );
   }
+
+  Widget _buildPickingEntranceBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Material(
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.25),
+        color: const Color(0xFF1B5E20),
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: Container(
+          height: 50,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 4,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: const Color(0xFF81C784), width: 1.2),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.touch_app_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Tap any gate pin on the map to set entrance',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _isPickingEntranceOnMap = false);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   void _showAlingSukiOverlay() {
     AlingSukiChatScreen.show(context).then((_) {

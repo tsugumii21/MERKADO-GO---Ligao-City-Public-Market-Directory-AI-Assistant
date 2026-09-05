@@ -72,5 +72,85 @@ void main() {
       // Must now be Gate 2
       expect(container.read(selectedEntranceProvider)?.entranceId, equals(2));
     });
+
+    group('Demand-Driven Entrance Pin Visibility Filter Tests', () {
+      final allGates = List.generate(
+        14,
+        (i) => MarketEntryPoint(
+          entranceId: i + 1,
+          nodeId: 'node_ex_$i',
+          description: 'Gate ${i + 1}',
+        ),
+      );
+
+      bool isPinVisible({
+        required MarketEntryPoint entrance,
+        NavigationRoute? activeRoute,
+        required bool showEntrancePins,
+        MarketEntryPoint? selectedEntrance,
+      }) {
+        if (activeRoute != null) {
+          return entrance.entranceId == activeRoute.entrance.entranceId;
+        }
+        if (showEntrancePins) {
+          return true;
+        }
+        if (selectedEntrance != null) {
+          return entrance.entranceId == selectedEntrance.entranceId;
+        }
+        return false;
+      }
+
+      test('When showEntrancePins is true (Pick on Map mode), all 14 gates are visible', () {
+        final visibleGates = allGates.where(
+          (e) => isPinVisible(
+            entrance: e,
+            showEntrancePins: true,
+            selectedEntrance: gate1,
+          ),
+        ).toList();
+
+        expect(visibleGates.length, equals(14));
+      });
+
+      test('When Gate 1 is selected and showEntrancePins is false, ONLY Gate 1 is visible', () {
+        final visibleGates = allGates.where(
+          (e) => isPinVisible(
+            entrance: e,
+            showEntrancePins: false,
+            selectedEntrance: gate1,
+          ),
+        ).toList();
+
+        expect(visibleGates.length, equals(1));
+        expect(visibleGates.first.entranceId, equals(1));
+      });
+
+      test('When Gate 2 is selected and showEntrancePins is false, ONLY Gate 2 is visible and others hidden', () {
+        final visibleGates = allGates.where(
+          (e) => isPinVisible(
+            entrance: e,
+            showEntrancePins: false,
+            selectedEntrance: gate2,
+          ),
+        ).toList();
+
+        expect(visibleGates.length, equals(1));
+        expect(visibleGates.first.entranceId, equals(2));
+      });
+
+      test('When no entrance is selected and showEntrancePins is false, all gates are hidden', () {
+        final visibleGates = allGates.where(
+          (e) => isPinVisible(
+            entrance: e,
+            showEntrancePins: false,
+            selectedEntrance: null,
+          ),
+        ).toList();
+
+        expect(visibleGates, isEmpty);
+      });
+    });
   });
 }
+

@@ -103,11 +103,16 @@ class InteractiveMarketMap extends StatefulWidget {
   });
 
   @override
-  State<InteractiveMarketMap> createState() => _InteractiveMarketMapState();
+  State<InteractiveMarketMap> createState() => InteractiveMarketMapState();
 }
 
-class _InteractiveMarketMapState extends State<InteractiveMarketMap>
+class InteractiveMarketMapState extends State<InteractiveMarketMap>
     with TickerProviderStateMixin {
+  /// Smoothly zooms out and centers the map over the entire market complex
+  void zoomOutToMarket({bool animate = true}) {
+    _centerOnMarket(animate: animate);
+  }
+
   static const double _svgWidth = 8004.0;
   static const double _svgHeight = 8000.0;
 
@@ -337,6 +342,10 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
         widget.selectedEntrance != null &&
         widget.activeRoute == null) {
       _repositionMap(animate: true);
+    }
+
+    if (widget.showEntrancePins && !oldWidget.showEntrancePins) {
+      _centerOnMarket(animate: true);
     }
 
     if (widget.traversalTrigger != oldWidget.traversalTrigger &&
@@ -741,14 +750,24 @@ class _InteractiveMarketMapState extends State<InteractiveMarketMap>
                       ),
 
                     // Layer 3: Demand-Driven 3D Vector Entrance Pins
-                    if (widget.activeRoute != null || widget.showEntrancePins)
+                    if (widget.activeRoute != null ||
+                        widget.showEntrancePins ||
+                        widget.selectedEntrance != null)
                       ..._effectiveEntryPoints.where((entrance) {
                         if (widget.activeRoute != null) {
                           return entrance.entranceId ==
                               widget.activeRoute!.entrance.entranceId;
                         }
-                        return widget.showEntrancePins;
+                        if (widget.showEntrancePins) {
+                          return true;
+                        }
+                        if (widget.selectedEntrance != null) {
+                          return entrance.entranceId ==
+                              widget.selectedEntrance!.entranceId;
+                        }
+                        return false;
                       }).map((entrance) {
+
                       final node = _findNodeInRouteOrService(entrance.nodeId);
                       if (node == null) return const SizedBox.shrink();
                       final pos = Offset(

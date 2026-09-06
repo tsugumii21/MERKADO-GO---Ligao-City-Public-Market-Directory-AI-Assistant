@@ -62,7 +62,9 @@ class NavigationLoadingDialog extends StatefulWidget {
   State<NavigationLoadingDialog> createState() => _NavigationLoadingDialogState();
 }
 
-class _NavigationLoadingDialogState extends State<NavigationLoadingDialog> {
+class _NavigationLoadingDialogState extends State<NavigationLoadingDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _lottieController;
   Timer? _phraseTimer;
   Timer? _completionTimer;
   late String _currentPhrase;
@@ -70,6 +72,8 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog> {
   @override
   void initState() {
     super.initState();
+    _lottieController = AnimationController(vsync: this);
+
     _currentPhrase = NavigationPhrases.getRandomPhrase(
       stallName: widget.stallName,
       entranceName: 'Gate ${widget.entrance.entranceId}',
@@ -99,6 +103,7 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog> {
   void dispose() {
     _phraseTimer?.cancel();
     _completionTimer?.cancel();
+    _lottieController.dispose();
     super.dispose();
   }
 
@@ -133,8 +138,18 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog> {
                       height: 190,
                       child: Lottie.asset(
                         'assets/animations/road_trip.json',
+                        controller: _lottieController,
+                        onLoaded: (composition) {
+                          // Play animation 1.4x faster for snappier feedback
+                          _lottieController
+                            ..duration = Duration(
+                              milliseconds:
+                                  (composition.duration.inMilliseconds / 1.4)
+                                      .round(),
+                            )
+                            ..repeat();
+                        },
                         fit: BoxFit.contain,
-                        repeat: true,
                         errorBuilder: (context, error, stackTrace) {
                           return const Center(
                             child: Icon(

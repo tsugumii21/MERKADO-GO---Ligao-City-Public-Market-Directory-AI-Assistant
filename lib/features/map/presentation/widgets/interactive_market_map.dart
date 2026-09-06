@@ -10,6 +10,7 @@ import '../../../../models/stall_model.dart';
 import '../../domain/navigation_models.dart';
 import '../../domain/zone_palette.dart';
 import '../../services/stall_svg_parser.dart';
+import '../../constants/map_constants.dart';
 
 /// Predefined market zones for quick-focus navigation
 class MarketZoneArea {
@@ -146,7 +147,14 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     return math.sqrt(s[0] * s[0] + s[1] * s[1]);
   }
 
+  double _getRotation(Matrix4 matrix) {
+    final s = matrix.storage;
+    return math.atan2(s[1], s[0]);
+  }
+
   double get _currentScale => _getScale(_transformController.value);
+
+  double get _currentRotation => _getRotation(_transformController.value);
 
   bool get _canZoomOut => _currentScale > _minScale + 0.005;
 
@@ -573,21 +581,39 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     if (renderBox == null) return;
 
     final viewportSize = renderBox.size;
-    const zoom = 0.55;
+    const targetScale = 0.55;
     final targetX = tangent.position.dx;
     final targetY = tangent.position.dy;
+    final rad = _currentRotation;
 
-    final matrix = Matrix4.identity()
-      ..translateByVector3(
-        Vector3(
-          viewportSize.width / 2 - targetX * zoom,
-          viewportSize.height / 2 - targetY * zoom,
-          0.0,
-        ),
-      )
-      ..scaleByVector3(Vector3(zoom, zoom, zoom));
+    if (rad.abs() > 0.001) {
+      final cosVal = math.cos(rad);
+      final sinVal = math.sin(rad);
+      final dx = targetX - _marketCenter.dx;
+      final dy = targetY - _marketCenter.dy;
+      final rotX = _marketCenter.dx + (dx * cosVal - dy * sinVal);
+      final rotY = _marketCenter.dy + (dx * sinVal + dy * cosVal);
 
-    _transformController.value = matrix;
+      final tx = (viewportSize.width / 2.0) - (rotX * targetScale);
+      final ty = (viewportSize.height / 2.0) - (rotY * targetScale);
+
+      final matrix = Matrix4.identity()
+        ..translateByVector3(Vector3(tx, ty, 0.0))
+        ..scaleByVector3(Vector3(targetScale, targetScale, targetScale))
+        ..rotateZ(rad);
+      _transformController.value = matrix;
+    } else {
+      final matrix = Matrix4.identity()
+        ..translateByVector3(
+          Vector3(
+            viewportSize.width / 2 - targetX * targetScale,
+            viewportSize.height / 2 - targetY * targetScale,
+            0.0,
+          ),
+        )
+        ..scaleByVector3(Vector3(targetScale, targetScale, targetScale));
+      _transformController.value = matrix;
+    }
   }
 
   void _skipWalking() {
@@ -619,9 +645,14 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     final center = Offset((minX + maxX) / 2, (minY + maxY) / 2);
 
     final viewport = renderBox.size;
-    final scaleX = viewport.width / (routeWidth + 360);
-    final scaleY = viewport.height / (routeHeight + 360);
-    final targetScale = (scaleX < scaleY ? scaleX : scaleY).clamp(_minScale, 1.0);
+    final rad = _currentRotation;
+    final cosAbs = math.cos(rad).abs();
+    final sinAbs = math.sin(rad).abs();
+    final wScreen = routeWidth * cosAbs + routeHeight * sinAbs;
+    final hScreen = routeWidth * sinAbs + routeHeight * cosAbs;
+    final aspect = viewport.height / viewport.width;
+    final fitWidth = math.max(wScreen, hScreen / aspect) * 1.40; // 40% breathing room
+    final targetScale = (viewport.width / fitWidth).clamp(_minScale, 1.0);
 
     _animateToPoint(center, targetScale);
   }
@@ -744,6 +775,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                               cachedPath: _cachedRoutePath,
                               cachedMetrics: _cachedRouteMetrics,
                               cachedLength: _cachedRouteLength,
+                              mapRotationRadians: _currentRotation,
                             ),
                           );
                         },
@@ -781,18 +813,19 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                               entrance.entranceId);
 
                       return Positioned(
-                        left: pos.dx - 60,
-                        top: pos.dy - 98,
+                        left: pos.dx - 135,
+                        top: pos.dy - 245,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => widget.onEntranceTapped?.call(entrance),
                           child: SizedBox(
-                            width: 120,
-                            height: 104,
+                            width: 270,
+                            height: 275,
                             child: CustomPaint(
                               painter: _EntrancePinCenteredPainter(
                                 label: 'Gate ${entrance.entranceId}',
                                 isSelected: isSelected,
+                                mapRotationRadians: _currentRotation,
                               ),
                             ),
                           ),
@@ -930,7 +963,8 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 }
 
-/// CustomPainter for drawing two-layer glowing A* Pathfinding route polyline with walking avatar
+/// CustomPainter for drawing two-layer corridor ribbon, progressive under-heel path reveal,
+/// articulated vector walking pedestrian avatar with screen-space facing, and floating speech bubble HUD (MD §3, §4, §5, §7, §8).
 class RouteOverlayPainter extends CustomPainter {
   final NavigationRoute route;
   final double nodeOffsetX;
@@ -942,6 +976,7 @@ class RouteOverlayPainter extends CustomPainter {
   final Path? cachedPath;
   final List<ui.PathMetric> cachedMetrics;
   final double cachedLength;
+  final double mapRotationRadians;
 
   RouteOverlayPainter({
     required this.route,
@@ -954,18 +989,19 @@ class RouteOverlayPainter extends CustomPainter {
     this.cachedPath,
     this.cachedMetrics = const [],
     this.cachedLength = 0.0,
+    this.mapRotationRadians = 0.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (route.nodes.isEmpty) return;
 
-    final Path path;
+    final Path fullPath;
     final Offset startPt;
     final Offset endPt;
 
     if (cachedPath != null) {
-      path = cachedPath!;
+      fullPath = cachedPath!;
       startPt = Offset(
         route.nodes.first.x + nodeOffsetX,
         route.nodes.first.y + nodeOffsetY,
@@ -986,88 +1022,272 @@ class RouteOverlayPainter extends CustomPainter {
 
       if (canvasPoints.length < 2) return;
 
-      path = Path();
-      path.moveTo(canvasPoints.first.dx, canvasPoints.first.dy);
+      fullPath = Path();
+      fullPath.moveTo(canvasPoints.first.dx, canvasPoints.first.dy);
       for (int i = 1; i < canvasPoints.length; i++) {
-        path.lineTo(canvasPoints[i].dx, canvasPoints[i].dy);
+        fullPath.lineTo(canvasPoints[i].dx, canvasPoints[i].dy);
       }
       startPt = canvasPoints.first;
       endPt = canvasPoints.last;
     }
 
-    // Solid flat direction line (no gradient, casing, or glow layers)
-    final routePaint = Paint()
-      ..color = const Color(0xFF1B5E20)
-      ..strokeWidth = 10.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, routePaint);
+    // 1. Metric measurement & progressive path extraction (MD §3.2)
+    final double totalLength;
+    final ui.PathMetric? primaryMetric;
+    if (cachedMetrics.isNotEmpty && cachedLength > 0) {
+      totalLength = cachedLength;
+      primaryMetric = cachedMetrics.first;
+    } else {
+      final metrics = fullPath.computeMetrics().toList();
+      totalLength = metrics.fold(0.0, (acc, m) => acc + m.length);
+      primaryMetric = metrics.isNotEmpty ? metrics.first : null;
+    }
 
-    // Draw Start Marker (Entrance Departure)
-    final startPaint = Paint()..color = const Color(0xFF1B5E20);
-    final startInner = Paint()..color = Colors.white;
-    canvas.drawCircle(startPt, 22.0, startPaint);
-    canvas.drawCircle(startPt, 9.0, startInner);
+    final double currentDist = walkProgress.clamp(0.0, 1.0) * totalLength;
+    final Path revealedPath;
+    ui.Tangent? tangent;
 
-    // Draw Walking Pedestrian Avatar during traversal
-    if (isWalking) {
-      ui.Tangent? tangent;
-      if (cachedMetrics.isNotEmpty && cachedLength > 0) {
-        final currentDist = walkProgress.clamp(0.0, 1.0) * cachedLength;
-        tangent = cachedMetrics.first.getTangentForOffset(currentDist);
-      } else {
-        final metrics = path.computeMetrics().toList();
-        if (metrics.isNotEmpty) {
-          final totalLength = metrics.fold(0.0, (acc, m) => acc + m.length);
-          final currentDist = walkProgress.clamp(0.0, 1.0) * totalLength;
-          tangent = metrics.first.getTangentForOffset(currentDist);
-        }
-      }
-
-      if (tangent != null) {
-        final avatarPos = tangent.position;
-        // Outer halo
-        canvas.drawCircle(
-          avatarPos,
-          24.0 * pulseScale,
-          Paint()..color = const Color(0x441B5E20),
-        );
-        // Solid green disc
-        canvas.drawCircle(
-          avatarPos,
-          16.0,
-          Paint()..color = const Color(0xFF1B5E20),
-        );
-        // White rim
-        canvas.drawCircle(
-          avatarPos,
-          16.0,
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3.0,
-        );
-        // Inner dot
-        canvas.drawCircle(
-          avatarPos,
-          6.5,
-          Paint()..color = Colors.white,
-        );
+    if (isWalking && primaryMetric != null && totalLength > 0) {
+      revealedPath = primaryMetric.extractPath(0.0, currentDist);
+      tangent = primaryMetric.getTangentForOffset(currentDist);
+    } else {
+      revealedPath = fullPath;
+      if (primaryMetric != null && totalLength > 0) {
+        tangent = primaryMetric.getTangentForOffset(totalLength);
       }
     }
 
-    // Draw Destination Pulse Pin
+    // 2. TWO-LAYER CORRIDOR RIBBON (MD §3.1)
+    // Layer A: 54px Translucent Buffer Zone (rgba(27, 94, 32, 0.20))
+    final casingPaint = Paint()
+      ..color = MapCalibrationConstants.casingColor
+      ..strokeWidth = MapCalibrationConstants.casingStrokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(revealedPath, casingPaint);
+
+    // Layer B: 28px Authoritative Solid Forest Green Ribbon (#1B5E20)
+    final ribbonPaint = Paint()
+      ..color = MapCalibrationConstants.ribbonColor
+      ..strokeWidth = MapCalibrationConstants.ribbonStrokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(revealedPath, ribbonPaint);
+
+    // 3. Start Marker (Departure Gate Pin Origin)
+    final startPaint = Paint()..color = const Color(0xFF1B5E20);
+    final startInner = Paint()..color = Colors.white;
+    canvas.drawCircle(startPt, 28.0, startPaint);
+    canvas.drawCircle(startPt, 12.0, startInner);
+
+    // 4. ARTICULATED VECTOR WALKING PEDESTRIAN AVATAR (MD §4, §8, Fix 13.8)
+    if (isWalking && tangent != null) {
+      final avatarPos = tangent.position;
+      final double dxLayer = tangent.vector.dx;
+      final double dyLayer = tangent.vector.dy;
+
+      // Screen-space facing projection: Δx_screen = Δx*cos(R) - Δy*sin(R) with 0.8 deadband
+      final double screenDx =
+          dxLayer * math.cos(mapRotationRadians) - dyLayer * math.sin(mapRotationRadians);
+      final double facingSign = screenDx < -0.8 ? -1.0 : (screenDx > 0.8 ? 1.0 : 1.0);
+
+      canvas.save();
+      canvas.translate(avatarPos.dx, avatarPos.dy);
+      // DYNAMIC BILLBOARDING: Counter-rotate avatar by -R so cap is always upright on mobile
+      canvas.rotate(-mapRotationRadians);
+      canvas.scale(facingSign, 1.0);
+      canvas.scale(1.8, 1.8); // 1.8x scale for mobile corridor visibility
+
+      // Stride swing cycle calculation (1 cycle every ~45 units)
+      final double strideCycle =
+          (walkProgress * (totalLength / 45.0)) * 2 * math.pi;
+      final double legAngle = math.sin(strideCycle) * 0.42;
+
+      // Ground Shadow Pulse
+      final double shadowScale = 1.0 + 0.12 * math.cos(strideCycle * 2);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: const Offset(0, 36),
+          width: 32.0 * shadowScale,
+          height: 10.0 * shadowScale,
+        ),
+        Paint()..color = Colors.black.withValues(alpha: 0.24),
+      );
+
+      // Limbs: Dark Denim Pants (#1A237E) with warm skin shoes (#E0A96D)
+      final legPaint = Paint()
+        ..color = const Color(0xFF1A237E)
+        ..strokeWidth = 4.8
+        ..strokeCap = StrokeCap.round;
+
+      // Left Leg
+      canvas.save();
+      canvas.translate(-4, 14);
+      canvas.rotate(-legAngle);
+      canvas.drawLine(Offset.zero, const Offset(0, 22), legPaint);
+      canvas.drawCircle(const Offset(0, 22), 2.8, Paint()..color = const Color(0xFFE0A96D));
+      canvas.restore();
+
+      // Right Leg
+      canvas.save();
+      canvas.translate(4, 14);
+      canvas.rotate(legAngle);
+      canvas.drawLine(Offset.zero, const Offset(0, 22), legPaint);
+      canvas.drawCircle(const Offset(0, 22), 2.8, Paint()..color = const Color(0xFFE0A96D));
+      canvas.restore();
+
+      // Torso: Forest Green Civic Polo (#2E7D32)
+      final poloPaint = Paint()..color = const Color(0xFF2E7D32);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: const Offset(0, -2), width: 22, height: 28),
+          const Radius.circular(5),
+        ),
+        poloPaint,
+      );
+      // White collar trim
+      canvas.drawLine(
+        const Offset(-5, -16),
+        const Offset(5, -16),
+        Paint()..color = Colors.white..strokeWidth = 2.0,
+      );
+
+      // Crimson Market Tote Bag (#E53935)
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: const Offset(6, 3), width: 12, height: 15),
+          const Radius.circular(2),
+        ),
+        Paint()..color = const Color(0xFFE53935),
+      );
+      // Tote shoulder strap
+      canvas.drawLine(
+        const Offset(-4, -14),
+        const Offset(6, -4),
+        Paint()..color = Colors.white..strokeWidth = 1.5,
+      );
+
+      // Head: Warm skin (#E0A96D)
+      canvas.drawCircle(const Offset(0, -22), 8.5, Paint()..color = const Color(0xFFE0A96D));
+
+      // Visor Cap: Forest Green (#1B5E20)
+      canvas.drawArc(
+        Rect.fromCenter(center: const Offset(0, -25), width: 19, height: 14),
+        math.pi,
+        math.pi,
+        true,
+        Paint()..color = const Color(0xFF1B5E20),
+      );
+      // Athletic white sweatband trim
+      canvas.drawLine(
+        const Offset(-9, -24),
+        const Offset(9, -24),
+        Paint()..color = Colors.white..strokeWidth = 1.8,
+      );
+      // Cap visor bill
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, -24, 11, 3.5),
+          const Radius.circular(1.5),
+        ),
+        Paint()..color = const Color(0xFF1B5E20),
+      );
+
+      canvas.restore();
+
+      // 5. FLOATING TURN ANNOUNCEMENT SPEECH BUBBLE HUD (MD §5, §13.9)
+      final String announcementText;
+      if (walkProgress < 0.12) {
+        announcementText = '1. Enter via Gate ${route.entrance.entranceId}';
+      } else if (walkProgress >= 0.95) {
+        announcementText = '🏁 Arrived!';
+      } else {
+        final stepIdx = (walkProgress * route.steps.length).floor().clamp(0, route.steps.length - 1);
+        final step = route.steps[stepIdx];
+        announcementText = step.instruction.isNotEmpty ? step.instruction : 'Follow Walkway';
+      }
+
+      canvas.save();
+      canvas.translate(avatarPos.dx, avatarPos.dy);
+      canvas.rotate(-mapRotationRadians); // Dynamic Billboarding: upright speech bubble
+
+      final bubbleSpan = TextSpan(
+        text: announcementText,
+        style: const TextStyle(
+          fontSize: 13.0,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF1B5E20),
+          letterSpacing: 0.2,
+        ),
+      );
+      final bubblePainter = TextPainter(
+        text: bubbleSpan,
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: 240.0);
+
+      final double bubbleWidth = bubblePainter.width + 24.0;
+      const double bubbleHeight = 28.0;
+      const double bubbleY = -72.0;
+
+      final bubbleRRect = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: const Offset(0, bubbleY),
+          width: bubbleWidth,
+          height: bubbleHeight,
+        ),
+        const Radius.circular(14.0),
+      );
+
+      // Bubble drop shadow
+      canvas.drawShadow(Path()..addRRect(bubbleRRect), Colors.black, 4.0, false);
+
+      // Bubble background & border
+      canvas.drawRRect(bubbleRRect, Paint()..color = Colors.white..style = PaintingStyle.fill);
+      canvas.drawRRect(
+        bubbleRRect,
+        Paint()
+          ..color = const Color(0xFF2E7D32)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0,
+      );
+
+      // Downward pointer tail
+      final tailPath = Path()
+        ..moveTo(-6, bubbleY + bubbleHeight / 2)
+        ..lineTo(6, bubbleY + bubbleHeight / 2)
+        ..lineTo(0, bubbleY + bubbleHeight / 2 + 7)
+        ..close();
+      canvas.drawPath(tailPath, Paint()..color = Colors.white..style = PaintingStyle.fill);
+      canvas.drawPath(
+        tailPath,
+        Paint()
+          ..color = const Color(0xFF2E7D32)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+
+      // Bubble text
+      bubblePainter.paint(
+        canvas,
+        Offset(-bubblePainter.width / 2, bubbleY - bubblePainter.height / 2),
+      );
+
+      canvas.restore();
+    }
+
+    // 6. Destination Arrival Marker & Celebration Pulse (MD §10)
     final pulsePaint = Paint()
-      ..color = const Color(0xFFE53935).withValues(alpha: 0.3)
+      ..color = const Color(0xFF1B5E20).withValues(alpha: 0.25 * pulseScale)
       ..style = PaintingStyle.fill;
     final destPinPaint = Paint()..color = const Color(0xFFE53935);
     final destInner = Paint()..color = Colors.white;
 
-    // Pulsing outer halo (Arrival celebration)
-    canvas.drawCircle(endPt, 28.0 * pulseScale, pulsePaint);
-    canvas.drawCircle(endPt, 18.0, destPinPaint);
-    canvas.drawCircle(endPt, 7.0, destInner);
+    // Green pulse halo (Arrival celebration)
+    canvas.drawCircle(endPt, 42.0 * pulseScale, pulsePaint);
+    canvas.drawCircle(endPt, 20.0, destPinPaint);
+    canvas.drawCircle(endPt, 8.0, destInner);
   }
 
   @override
@@ -1077,147 +1297,155 @@ class RouteOverlayPainter extends CustomPainter {
         oldDelegate.destinationStallCenter != destinationStallCenter ||
         oldDelegate.walkProgress != walkProgress ||
         oldDelegate.isWalking != isWalking ||
-        oldDelegate.cachedPath != cachedPath;
+        oldDelegate.cachedPath != cachedPath ||
+        oldDelegate.mapRotationRadians != mapRotationRadians;
   }
 }
 
-/// 3D Vector Map Pin Painter for Entrance Gate Markers
-/// Default: Red pin map icon. When pressed or chosen: turns vibrant emerald green.
+/// 3D Vector Map Pin Painter for Entrance Gate Markers with Elevated Crown Badges
+/// and dynamic billboarding counter-rotation around the entrance threshold point (MD §7, §9, Fix 13.5).
 class _EntrancePinCenteredPainter extends CustomPainter {
   final String label;
   final bool isSelected;
+  final double mapRotationRadians;
 
-  _EntrancePinCenteredPainter({required this.label, this.isSelected = false});
+  _EntrancePinCenteredPainter({
+    required this.label,
+    this.isSelected = false,
+    this.mapRotationRadians = 0.0,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final cx = w / 2; // 60.0
-    final tipY = size.height - 4.0; // 100.0
+    // Pin ground tip is anchored at (cx, tipY) = (135.0, 245.0) within 270x275 box
+    const double cx = 135.0;
+    const double tipY = 245.0;
 
-    // Colors: Red when unselected, Emerald Green when selected/pressed
-    final pinColor =
-        isSelected ? const Color(0xFF1B5E20) : const Color(0xFFE53935);
-    final bevelColor =
-        isSelected ? const Color(0xFF0E3813) : const Color(0xFFC62828);
-    final textColor =
-        isSelected ? const Color(0xFF1B5E20) : const Color(0xFFC62828);
+    canvas.save();
+    canvas.translate(cx, tipY);
+    // DYNAMIC BILLBOARDING: Counter-rotate canvas by -R around physical entrance tip (0, 0)
+    canvas.rotate(-mapRotationRadians);
 
-    // 1. Soft Ground Contact Shadow under needle pointer tip
+    // 1. Soft Ground Contact Shadow Ellipse at (0, 0)
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, tipY + 1.5), width: 22.0, height: 6.5),
-      Paint()..color = Colors.black.withValues(alpha: 0.25),
+      Rect.fromCenter(center: const Offset(0, 1.5), width: 56.0, height: 16.0),
+      Paint()..color = Colors.black.withValues(alpha: 0.28),
     );
 
-    // 2. Active Ground Beacon Ring (when chosen)
+    // Active Ground Beacon Ring (when chosen)
     if (isSelected) {
       canvas.drawCircle(
-        Offset(cx, tipY),
-        6.5,
+        Offset.zero,
+        14.0,
+        Paint()
+          ..color = const Color(0xFF4CAF50).withValues(alpha: 0.4)
+          ..style = PaintingStyle.fill,
+      );
+      canvas.drawCircle(
+        Offset.zero,
+        8.0,
         Paint()..color = const Color(0xFF4CAF50),
       );
       canvas.drawCircle(
-        Offset(cx, tipY),
-        3.0,
+        Offset.zero,
+        3.5,
         Paint()..color = Colors.white,
       );
     }
 
-    // 3. Teardrop Map Pin Path
-    // Head center at (cx, 56.0), radius 21.0. Tip at (cx, tipY).
-    final headCenter = Offset(cx, 56.0);
-    const headRadius = 21.0;
+    // 2. Scaled Teardrop Pin Body (Apex at (0, 0); Head center at (0, -96); R = 48)
+    final pinColor =
+        isSelected ? const Color(0xFF1B5E20) : const Color(0xFFE53935);
+    final bevelColor =
+        isSelected ? const Color(0xFF0E3D12) : const Color(0xFFC62828);
 
-    final pinPath = Path()
-      ..moveTo(cx, tipY)
-      ..lineTo(cx - 19.0, 63.0)
+    final Path teardropPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(-41.57, -72.0)
       ..arcToPoint(
-        Offset(cx + 19.0, 63.0),
-        radius: const Radius.circular(headRadius),
+        const Offset(41.57, -72.0),
+        radius: const Radius.circular(48.0),
         largeArc: true,
       )
       ..close();
 
-    // Elevated Pin Drop Shadow
+    // Pin Drop Shadow
     canvas.drawShadow(
-      pinPath,
+      teardropPath,
       isSelected ? const Color(0xFF1B5E20) : Colors.black,
-      isSelected ? 6.0 : 4.5,
+      isSelected ? 8.0 : 6.0,
       false,
     );
+    canvas.drawPath(teardropPath, Paint()..color = pinColor..style = PaintingStyle.fill);
 
-    // Pin Fill
-    canvas.drawPath(pinPath, Paint()..color = pinColor..style = PaintingStyle.fill);
-
-    // 3D Shaded Right Bevel
-    final bevelPath = Path()
-      ..moveTo(cx, tipY)
-      ..lineTo(cx, 35.0)
+    // 3. 3D Shaded Bevel on Right Half
+    final Path bevelPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(0, -144.0)
       ..arcToPoint(
-        Offset(cx + 19.0, 63.0),
-        radius: const Radius.circular(headRadius),
+        const Offset(41.57, -72.0),
+        radius: const Radius.circular(48.0),
+        clockwise: true,
       )
       ..close();
     canvas.drawPath(bevelPath, Paint()..color = bevelColor..style = PaintingStyle.fill);
 
-    // 4. Center White Disc
-    canvas.drawCircle(headCenter, 13.5, Paint()..color = Colors.white);
+    // 4. Inner White Disc (center: 0, -96; r: 33)
+    canvas.drawCircle(const Offset(0, -96.0), 33.0, Paint()..color = Colors.white);
 
-    // Dedicated Vector Location Pin Icon inside Disc
-    final iconPath = Path()
-      ..moveTo(cx, 65.5)
-      ..cubicTo(cx - 3.8, 61.2, cx - 6.0, 59.0, cx - 6.0, 55.5)
-      ..arcToPoint(
-        Offset(cx + 6.0, 55.5),
-        radius: const Radius.circular(6.0),
-      )
-      ..cubicTo(cx + 6.0, 59.0, cx + 3.8, 61.2, cx, 65.5)
-      ..close();
-    canvas.drawPath(iconPath, Paint()..color = pinColor..style = PaintingStyle.fill);
-    canvas.drawCircle(Offset(cx, 55.5), 2.2, Paint()..color = Colors.white);
+    // Shopper Silhouette
+    final iconPaint = Paint()..color = pinColor..style = PaintingStyle.fill;
+    canvas.drawCircle(const Offset(0, -106.0), 11.0, iconPaint); // Head
+    canvas.drawArc(
+      Rect.fromCenter(center: const Offset(0, -71.0), width: 44.0, height: 44.0),
+      math.pi,
+      math.pi,
+      true,
+      iconPaint,
+    ); // Torso
 
-    // 5. Attached Label Pill Above Pin
-    const pillW = 84.0;
-    const pillH = 26.0;
-    final pillRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(cx - pillW / 2, 4.0, pillW, pillH),
-      const Radius.circular(13.0),
+    // 5. ELEVATED CROWN BADGE: Floats above pin apex (y: -226 to -156, center at (0, -191))
+    // Leaves physical doorway and street text at (0, 0) 100% visible and unoccluded!
+    final isDoubleDigit = label.length >= 7; // e.g. "Gate 10"
+    final double badgeWidth = isDoubleDigit ? 220.0 : 190.0;
+    const double badgeHeight = 60.0;
+    final crownBadgeRRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: const Offset(0, -191.0),
+        width: badgeWidth,
+        height: badgeHeight,
+      ),
+      const Radius.circular(30.0),
     );
 
-    // Pill drop shadow
+    // Badge drop shadow
     canvas.drawShadow(
-      Path()..addRRect(pillRect),
+      Path()..addRRect(crownBadgeRRect),
       Colors.black,
-      3.0,
+      6.0,
       false,
     );
 
-    // Pill background
-    canvas.drawRRect(
-      pillRect,
-      Paint()
-        ..color = isSelected ? const Color(0xFF1B5E20) : Colors.white
-        ..style = PaintingStyle.fill,
-    );
+    // Badge Fill & 4px Border
+    final badgeFill = Paint()
+      ..color = isSelected ? const Color(0xFF1B5E20) : Colors.white
+      ..style = PaintingStyle.fill;
+    final badgeBorder = Paint()
+      ..color = isSelected ? const Color(0xFF81C784) : const Color(0xFFE2E8E2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5;
+    canvas.drawRRect(crownBadgeRRect, badgeFill);
+    canvas.drawRRect(crownBadgeRRect, badgeBorder);
 
-    // Pill border (Red if unselected, White if selected)
-    canvas.drawRRect(
-      pillRect,
-      Paint()
-        ..color = isSelected ? Colors.white : const Color(0xFFE53935)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6,
-    );
-
-    // 6. Pill Typography ("Gate 12")
+    // Jumbo Bold Typography (30px)
     final textPainter = TextPainter(
       text: TextSpan(
-        text: label,
+        text: label.toUpperCase(),
         style: TextStyle(
-          color: isSelected ? Colors.white : textColor,
-          fontSize: 13.5,
-          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
-          letterSpacing: 0.3,
+          fontSize: 30.0,
+          fontWeight: FontWeight.w900,
+          color: isSelected ? Colors.white : const Color(0xFF1E293B),
+          letterSpacing: 1.2,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -1225,13 +1453,17 @@ class _EntrancePinCenteredPainter extends CustomPainter {
 
     textPainter.paint(
       canvas,
-      Offset(cx - textPainter.width / 2, 4.0 + (pillH - textPainter.height) / 2),
+      Offset(-textPainter.width / 2, -191.0 - textPainter.height / 2),
     );
+
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _EntrancePinCenteredPainter oldDelegate) =>
-      oldDelegate.label != label || oldDelegate.isSelected != isSelected;
+      oldDelegate.label != label ||
+      oldDelegate.isSelected != isSelected ||
+      oldDelegate.mapRotationRadians != mapRotationRadians;
 }
 
 /// Highlights the actively selected stall on the interactive vector map

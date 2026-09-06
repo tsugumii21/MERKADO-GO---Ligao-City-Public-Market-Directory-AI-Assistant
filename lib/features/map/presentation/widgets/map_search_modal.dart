@@ -227,13 +227,21 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                 Expanded(
                   child: Container(
                     height: 46,
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFFE2E8F0),
-                        width: 1,
+                        color: const Color(0xFFCBD5E1),
+                        width: 1.2,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: TextField(
                       controller: _searchController,
@@ -270,8 +278,7 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                                 },
                               )
                             : null,
-                        filled: true,
-                        fillColor: Colors.white,
+                        filled: false,
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,

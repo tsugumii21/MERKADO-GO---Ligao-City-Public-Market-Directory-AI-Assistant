@@ -461,15 +461,22 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
               // Search filter field
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-
                 height: 44,
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFFE2E8F0),
-                    width: 1.0,
+                    color: const Color(0xFFCBD5E1),
+                    width: 1.2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -498,8 +505,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                             onPressed: () => _searchController.clear(),
                           )
                         : null,
-                    filled: true,
-                    fillColor: Colors.white,
+                    filled: false,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,

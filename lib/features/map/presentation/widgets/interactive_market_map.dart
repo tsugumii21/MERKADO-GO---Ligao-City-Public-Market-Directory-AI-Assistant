@@ -680,7 +680,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
               transformationController: _transformController,
               minScale: _minScale,
               maxScale: _maxScale,
-              boundaryMargin: const EdgeInsets.all(1190),
+              boundaryMargin: const EdgeInsets.all(800),
               constrained: false,
               onInteractionUpdate: (_) => _clampScale(),
               onInteractionEnd: (_) => _clampScale(),

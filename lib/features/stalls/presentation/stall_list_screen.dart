@@ -292,7 +292,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 ),
                 prefixIcon: const Icon(
                   Icons.search_rounded,
-                  color: Color(0xFF1B5E20),
+                  color: Color(0xFF64748B),
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(

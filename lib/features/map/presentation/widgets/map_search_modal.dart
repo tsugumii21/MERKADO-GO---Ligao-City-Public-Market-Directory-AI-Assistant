@@ -228,7 +228,7 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                   child: Container(
                     height: 46,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: const Color(0xFFE2E8F0),
@@ -254,7 +254,7 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                         ),
                         prefixIcon: const Icon(
                           Icons.search_rounded,
-                          color: Color(0xFF1B5E20),
+                          color: Color(0xFF64748B),
                           size: 20,
                         ),
                         suffixIcon: _searchController.text.isNotEmpty

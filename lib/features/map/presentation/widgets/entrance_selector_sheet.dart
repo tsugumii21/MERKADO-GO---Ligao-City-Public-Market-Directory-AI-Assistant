@@ -464,7 +464,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
 
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: const Color(0xFFE2E8F0),
@@ -487,7 +487,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                     ),
                     prefixIcon: const Icon(
                       Icons.search_rounded,
-                      color: AppColors.primary,
+                      color: Color(0xFF64748B),
                       size: 19,
                     ),
                     suffixIcon: _searchQuery.isNotEmpty

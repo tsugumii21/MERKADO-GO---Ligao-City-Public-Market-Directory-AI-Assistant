@@ -498,7 +498,12 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                             onPressed: () => _searchController.clear(),
                           )
                         : null,
+                    filled: true,
+                    fillColor: Colors.white,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 11,

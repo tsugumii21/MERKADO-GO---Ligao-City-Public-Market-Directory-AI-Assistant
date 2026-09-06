@@ -270,7 +270,12 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                                 },
                               )
                             : null,
+                        filled: true,
+                        fillColor: Colors.white,
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
                           vertical: 12,
                         ),

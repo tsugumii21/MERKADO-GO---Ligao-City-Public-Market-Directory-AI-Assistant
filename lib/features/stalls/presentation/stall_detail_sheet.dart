@@ -135,10 +135,11 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
         : (stall.primaryPhotoUrl.isNotEmpty ? [stall.primaryPhotoUrl] : <String>[]);
     final hasPhotos = photoList.isNotEmpty;
 
+    final screenHeight = MediaQuery.of(context).size.height;
+    final fixedSheetHeight = screenHeight * 0.74;
+
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.90,
-      ),
+      height: fixedSheetHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -153,7 +154,6 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
       child: SafeArea(
         top: false,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 1. Drag Handle
@@ -199,17 +199,17 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
             ),
 
             // Scrollable Content
-            Flexible(
+            Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 2. Compact Photo / Category Banner (140px Height)
+                    // 2. Photo / Category Banner (180px Height)
                     Stack(
                       children: [
                         Container(
-                          height: 140,
+                          height: 180,
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: categoryVisuals.bg,
@@ -244,14 +244,14 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                                               MarketCategoryIcon(
                                                 category: stall.category,
                                                 fallbackIcon: categoryVisuals.icon,
-                                                size: 40,
+                                                size: 48,
                                                 color: categoryVisuals.color,
                                               ),
-                                              const SizedBox(height: 6),
+                                              const SizedBox(height: 8),
                                               Text(
                                                 'No photo available',
                                                 style: GoogleFonts.poppins(
-                                                  fontSize: 12,
+                                                  fontSize: 13,
                                                   color: const Color(0xFF6B7280),
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -269,14 +269,14 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                                         MarketCategoryIcon(
                                           category: stall.category,
                                           fallbackIcon: categoryVisuals.icon,
-                                          size: 40,
+                                          size: 48,
                                           color: categoryVisuals.color,
                                         ),
-                                        const SizedBox(height: 6),
+                                        const SizedBox(height: 8),
                                         Text(
                                           'No photo available',
                                           style: GoogleFonts.poppins(
-                                            fontSize: 12,
+                                            fontSize: 13,
                                             color: const Color(0xFF6B7280),
                                             fontWeight: FontWeight.w500,
                                           ),

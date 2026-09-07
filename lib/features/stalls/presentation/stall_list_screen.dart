@@ -995,37 +995,38 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                   ],
                 ),
 
-                // 2. Physical Section / Address Row (if available)
+                // 2. Physical Section / Address Row (Full multi-line view)
                 if ((stall.section?.isNotEmpty ?? false) || stall.address.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFF1F5F9)),
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: Color(0xFF64748B),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            (stall.section?.isNotEmpty ?? false)
-                                ? (stall.address.isNotEmpty && stall.address != stall.section
-                                    ? '${stall.section} • ${stall.address}'
-                                    : (stall.section ?? ''))
-                                : stall.address,
+                            StallUtils.formatLocation(stall.section, stall.address),
                             style: GoogleFonts.poppins(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w500,
                               color: const Color(0xFF475569),
+                              height: 1.35,
                             ),
-                            maxLines: 1,
+                            maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -1102,119 +1103,94 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                   ),
                 ],
 
-                // 4. Products & Inventory Chips
+                // 4. Products / Tags 1-Line Summary Badge (Tap card for full details)
                 if (stall.products.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 5,
-                    children: [
-                      ...stall.products.take(5).map(
-                            (product) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                  width: 0.8,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.shopping_bag_outlined,
-                                    size: 11,
-                                    color: Color(0xFF1B5E20),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    product,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF334155),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      if (stall.products.length > 5)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.inventory_2_outlined,
+                          size: 13,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
                           child: Text(
-                            '+${stall.products.length - 5} more',
+                            StallUtils.formatProductsSummary(stall.products),
                             style: GoogleFonts.poppins(
-                              fontSize: 10.5,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
-                              color: const Color(0xFF64748B),
+                              color: const Color(0xFF334155),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                    ],
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 14,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ],
+                    ),
                   ),
                 ] else if (stall.tags.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 5,
-                    children: [
-                      ...stall.tags.take(4).map(
-                            (tag) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                  width: 0.8,
-                                ),
-                              ),
-                              child: Text(
-                                StallUtils.getTagLabel(tag),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF64748B),
-                                ),
-                              ),
-                            ),
-                          ),
-                      if (stall.tags.length > 4)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.local_offer_outlined,
+                          size: 12.5,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
                           child: Text(
-                            '+${stall.tags.length - 4} more',
+                            StallUtils.formatTagsSummary(stall.tags),
                             style: GoogleFonts.poppins(
-                              fontSize: 10.5,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
-                              color: const Color(0xFF64748B),
+                              color: const Color(0xFF475569),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                    ],
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 14,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ],

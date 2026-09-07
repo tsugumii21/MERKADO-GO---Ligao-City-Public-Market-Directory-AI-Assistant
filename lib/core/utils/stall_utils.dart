@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../models/stall_model.dart';
 
@@ -485,5 +485,45 @@ class StallUtils {
     }
 
     return parts.join(', ');
+  }
+
+  /// Formats physical location cleanly by de-duplicating section if already contained in address.
+  static String formatLocation(
+    String? section,
+    String address, {
+    String fallback = 'Ligao City Public Market',
+  }) {
+    final sec = section?.trim() ?? '';
+    final addr = address.trim();
+    if (sec.isEmpty && addr.isEmpty) return fallback;
+    if (sec.isEmpty) return addr;
+    if (addr.isEmpty) return 'Section $sec, Ligao Public Market';
+    if (addr.toLowerCase().contains(sec.toLowerCase())) {
+      return addr;
+    }
+    return '$sec • $addr';
+  }
+
+  /// Formats products into a clean 1-line summary (e.g. "Item 1, Item 2 • +3 more").
+  static String formatProductsSummary(List<String> products, {int maxPreview = 2}) {
+    if (products.isEmpty) return '';
+    if (products.length <= maxPreview) {
+      return products.join(', ');
+    }
+    final preview = products.take(maxPreview).join(', ');
+    final remaining = products.length - maxPreview;
+    return '$preview • +$remaining more';
+  }
+
+  /// Formats tags into a clean 1-line summary (e.g. "Tag 1, Tag 2 • +2 more").
+  static String formatTagsSummary(List<String> tags, {int maxPreview = 2}) {
+    if (tags.isEmpty) return '';
+    final formatted = tags.map(getTagLabel).toList();
+    if (formatted.length <= maxPreview) {
+      return formatted.join(', ');
+    }
+    final preview = formatted.take(maxPreview).join(', ');
+    final remaining = formatted.length - maxPreview;
+    return '$preview • +$remaining more';
   }
 }

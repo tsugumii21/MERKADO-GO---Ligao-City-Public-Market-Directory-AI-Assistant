@@ -113,8 +113,6 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       return;
                     }
 
-                    // Select starting stall in header & pulse on map
-                    ref.read(selectedOriginStallProvider.notifier).state = stall;
                     unawaited(HapticFeedback.selectionClick());
 
                     // Pop up StallDetailSheet so user can review details and tap confirm
@@ -562,7 +560,6 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                 targetStallName: targetStall.name,
                               );
                               if (stall == null || !mounted) return;
-                              ref.read(selectedOriginStallProvider.notifier).state = stall;
                               setState(() => _selectedStall = stall);
                               await StallDetailSheet.show(context, stall);
                             },
@@ -762,7 +759,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                     },
                     borderRadius: BorderRadius.circular(10),
                     child: Container(
-                      height: 38,
+                      height: 42,
                       alignment: Alignment.center,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -772,11 +769,11 @@ class MapScreenState extends ConsumerState<MapScreen> {
                             color: Colors.white,
                             size: 17,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Text(
                             'Start Navigation',
                             style: GoogleFonts.poppins(
-                              fontSize: 13,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
                             ),
@@ -876,16 +873,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                               subtitle: 'Choose where you are currently standing',
                             );
                             if (stall == null || !mounted) return;
-                            await NavigationLoadingDialog.show(
+                            setState(() => _selectedStall = stall);
+                            await StallDetailSheet.show(
                               context,
-                              stallName: route.destinationStallName,
-                              originName: stall.name,
+                              stall,
+                              isChangingOrigin: true,
                             );
-                            if (!mounted) return;
-                            await ref.read(activeRouteProvider.notifier).changeOriginStall(
-                                  newOriginStallId: stall.stallId,
-                                  newOriginStallName: stall.name,
-                                );
                           } else {
                             final result = await EntranceSelectorSheet.show(
                               context,

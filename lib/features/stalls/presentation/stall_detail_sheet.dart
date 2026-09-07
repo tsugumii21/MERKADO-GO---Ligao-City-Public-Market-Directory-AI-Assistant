@@ -25,14 +25,20 @@ typedef StallDetailsModal = StallDetailSheet;
 class StallDetailSheet extends ConsumerStatefulWidget {
   final StallModel stall;
   final VoidCallback onClose;
+  final bool isChangingOrigin;
 
   const StallDetailSheet({
     super.key,
     required this.stall,
     required this.onClose,
+    this.isChangingOrigin = false,
   });
 
-  static Future<void> show(BuildContext context, StallModel stall) {
+  static Future<void> show(
+    BuildContext context,
+    StallModel stall, {
+    bool isChangingOrigin = false,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -47,6 +53,7 @@ class StallDetailSheet extends ConsumerStatefulWidget {
       builder: (ctx) => StallDetailSheet(
         stall: stall,
         onClose: () => Navigator.of(ctx).pop(),
+        isChangingOrigin: isChangingOrigin,
       ),
     );
   }
@@ -134,9 +141,16 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     }
   }
 
-  Future<void> _confirmStartAndNavigate({
-    required StallModel targetStall,
-    required StallModel originStall,
+  void _confirmStartingStall(StallModel originStall) {
+    unawaited(HapticFeedback.mediumImpact());
+    ref.read(selectedOriginStallProvider.notifier).state = originStall;
+    widget.onClose();
+    mainShellKey.currentState?.goToTab(0);
+  }
+
+  Future<void> _confirmAndChangeOrigin({
+    required NavigationRoute currentRoute,
+    required StallModel newOriginStall,
   }) async {
     unawaited(HapticFeedback.mediumImpact());
     final activeNotifier = ref.read(activeRouteProvider.notifier);
@@ -146,15 +160,13 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
 
     await NavigationLoadingDialog.show(
       null,
-      stallName: targetStall.name,
-      originName: originStall.name,
+      stallName: currentRoute.destinationStallName,
+      originName: newOriginStall.name,
     );
 
-    await activeNotifier.navigateStallToStall(
-      originStallId: originStall.stallId,
-      destinationStallId: targetStall.stallId,
-      originStallName: originStall.name,
-      destinationStallName: targetStall.name,
+    await activeNotifier.changeOriginStall(
+      newOriginStallId: newOriginStall.stallId,
+      newOriginStallName: newOriginStall.name,
     );
   }
 
@@ -230,31 +242,47 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
         primaryActionPressed = null;
         isActionDisabled = true;
       } else {
-        primaryActionLabel = 'Confirm Start & Navigate';
+        primaryActionLabel = 'Confirm Starting Stall';
         primaryActionSubtitle = null;
-        primaryActionIcon = Icons.play_arrow_rounded;
-        primaryActionPressed = () => _confirmStartAndNavigate(
-              targetStall: pickingOriginTarget,
-              originStall: stall,
-            );
+        primaryActionIcon = Icons.check_circle_outline_rounded;
+        primaryActionPressed = () => _confirmStartingStall(stall);
         isActionDisabled = false;
       }
     } else if (activeRoute != null) {
-      if (stall.stallId == activeRoute.destinationStallId) {
-        primaryActionLabel = 'Current Destination';
-        primaryActionSubtitle = 'You are already navigating to this stall';
-        primaryActionIcon = Icons.check_circle_rounded;
-        primaryActionPressed = null;
-        isActionDisabled = true;
+      if (widget.isChangingOrigin) {
+        if (stall.stallId == activeRoute.destinationStallId) {
+          primaryActionLabel = 'Current Destination';
+          primaryActionSubtitle = 'You are already navigating to this stall';
+          primaryActionIcon = Icons.place_rounded;
+          primaryActionPressed = null;
+          isActionDisabled = true;
+        } else {
+          primaryActionLabel = 'Confirm Starting Stall';
+          primaryActionSubtitle = null;
+          primaryActionIcon = Icons.check_circle_outline_rounded;
+          primaryActionPressed = () => _confirmAndChangeOrigin(
+                currentRoute: activeRoute,
+                newOriginStall: stall,
+              );
+          isActionDisabled = false;
+        }
       } else {
-        primaryActionLabel = 'Confirm & Redirect Here';
-        primaryActionSubtitle = null;
-        primaryActionIcon = Icons.alt_route_rounded;
-        primaryActionPressed = () => _confirmAndRedirect(
-              currentRoute: activeRoute,
-              newDestinationStall: stall,
-            );
-        isActionDisabled = false;
+        if (stall.stallId == activeRoute.destinationStallId) {
+          primaryActionLabel = 'Current Destination';
+          primaryActionSubtitle = 'You are already navigating to this stall';
+          primaryActionIcon = Icons.check_circle_rounded;
+          primaryActionPressed = null;
+          isActionDisabled = true;
+        } else {
+          primaryActionLabel = 'Confirm & Redirect Here';
+          primaryActionSubtitle = null;
+          primaryActionIcon = Icons.alt_route_rounded;
+          primaryActionPressed = () => _confirmAndRedirect(
+                currentRoute: activeRoute,
+                newDestinationStall: stall,
+              );
+          isActionDisabled = false;
+        }
       }
     } else {
       primaryActionLabel = 'Navigate to Stall';

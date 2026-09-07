@@ -625,9 +625,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                 context,
                                 targetStallId: targetStall.stallId,
                                 targetStallName: targetStall.name,
+                                title: 'Change Destination Stall',
+                                subtitle: 'Choose where you want to go',
                               );
                               if (newTarget == null || !mounted) return;
                               ref.read(pickingOriginTargetStallProvider.notifier).state = newTarget;
+                              setState(() => _selectedStall = newTarget);
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
@@ -704,6 +707,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                 final oldOrigin = selectedOriginStall;
                                 ref.read(pickingOriginTargetStallProvider.notifier).state = oldOrigin;
                                 ref.read(selectedOriginStallProvider.notifier).state = oldTarget;
+                                setState(() => _selectedStall = oldOrigin);
                               },
                         borderRadius: BorderRadius.circular(15),
                         child: Container(
@@ -740,8 +744,6 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       await HapticFeedback.mediumImpact();
                       final origin = selectedOriginStall;
                       final target = targetStall;
-                      ref.read(pickingOriginTargetStallProvider.notifier).state = null;
-                      ref.read(selectedOriginStallProvider.notifier).state = null;
 
                       if (!mounted) return;
                       await NavigationLoadingDialog.show(

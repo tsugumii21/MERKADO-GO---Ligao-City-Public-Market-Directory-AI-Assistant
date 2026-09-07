@@ -95,44 +95,43 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
       return;
     }
 
+    final activeNotifier = ref.read(activeRouteProvider.notifier);
+
+    widget.onClose();
+    mainShellKey.currentState?.goToTab(0);
+
     if (originResult is EntranceOriginResult) {
       final chosenEntrance = originResult.entrance;
       // 2. Display 2-second animated road trip loading screen with dynamic wayfinding phrases
       await NavigationLoadingDialog.show(
-        context,
+        null,
         stallName: widget.stall.name,
         entrance: chosenEntrance,
       );
-      if (!mounted) return;
 
       // 3. Compute route starting at chosen entrance
-      await ref.read(activeRouteProvider.notifier).navigateToStall(
-            stallId: widget.stall.stallId,
-            stallName: widget.stall.name,
-            entranceOverride: chosenEntrance,
-          );
+      await activeNotifier.navigateToStall(
+        stallId: widget.stall.stallId,
+        stallName: widget.stall.name,
+        entranceOverride: chosenEntrance,
+      );
     } else if (originResult is StallOriginResult) {
       final originStall = originResult.stall;
       // 2. Display 2-second animated road trip loading screen for stall-to-stall
       await NavigationLoadingDialog.show(
-        context,
+        null,
         stallName: widget.stall.name,
         originName: originStall.name,
       );
-      if (!mounted) return;
 
       // 3. Compute route starting at origin stall
-      await ref.read(activeRouteProvider.notifier).navigateStallToStall(
-            originStallId: originStall.stallId,
-            destinationStallId: widget.stall.stallId,
-            originStallName: originStall.name,
-            destinationStallName: widget.stall.name,
-          );
+      await activeNotifier.navigateStallToStall(
+        originStallId: originStall.stallId,
+        destinationStallId: widget.stall.stallId,
+        originStallName: originStall.name,
+        destinationStallName: widget.stall.name,
+      );
     }
-
-    // 4. Close stall details modal and switch to Map tab
-    widget.onClose();
-    mainShellKey.currentState?.goToTab(0);
   }
 
   Future<void> _confirmStartAndNavigate({
@@ -140,22 +139,23 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     required StallModel originStall,
   }) async {
     unawaited(HapticFeedback.mediumImpact());
+    final activeNotifier = ref.read(activeRouteProvider.notifier);
+
     widget.onClose();
     mainShellKey.currentState?.goToTab(0);
 
     await NavigationLoadingDialog.show(
-      context,
+      null,
       stallName: targetStall.name,
       originName: originStall.name,
     );
-    if (!mounted) return;
 
-    await ref.read(activeRouteProvider.notifier).navigateStallToStall(
-          originStallId: originStall.stallId,
-          destinationStallId: targetStall.stallId,
-          originStallName: originStall.name,
-          destinationStallName: targetStall.name,
-        );
+    await activeNotifier.navigateStallToStall(
+      originStallId: originStall.stallId,
+      destinationStallId: targetStall.stallId,
+      originStallName: originStall.name,
+      destinationStallName: targetStall.name,
+    );
   }
 
   Future<void> _confirmAndRedirect({
@@ -165,21 +165,21 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     unawaited(HapticFeedback.mediumImpact());
     final originName = currentRoute.originStallName ??
         (currentRoute.entrance != null ? 'Gate ${currentRoute.entrance!.entranceId}' : null);
+    final activeNotifier = ref.read(activeRouteProvider.notifier);
 
     widget.onClose();
     mainShellKey.currentState?.goToTab(0);
 
     await NavigationLoadingDialog.show(
-      context,
+      null,
       stallName: newDestinationStall.name,
       originName: originName,
     );
-    if (!mounted) return;
 
-    await ref.read(activeRouteProvider.notifier).redirectToStall(
-          newDestinationStallId: newDestinationStall.stallId,
-          newDestinationStallName: newDestinationStall.name,
-        );
+    await activeNotifier.redirectToStall(
+      newDestinationStallId: newDestinationStall.stallId,
+      newDestinationStallName: newDestinationStall.name,
+    );
   }
 
   ({

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import '../../../../core/widgets/main_shell.dart' show mainShellKey;
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/navigation_models.dart';
 import '../../constants/navigation_phrases.dart';
@@ -24,15 +25,18 @@ class NavigationLoadingDialog extends StatefulWidget {
 
   /// Displays the 2-second navigation loading screen
   static Future<void> show(
-    BuildContext context, {
+    BuildContext? context, {
     required String stallName,
     MarketEntryPoint? entrance,
     String? originName,
   }) async {
+    final effectiveContext = context ?? mainShellKey.currentContext;
+    if (effectiveContext == null) return;
+
     final completer = Completer<void>();
 
     await showGeneralDialog(
-      context: context,
+      context: effectiveContext,
       barrierDismissible: false,
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 300),

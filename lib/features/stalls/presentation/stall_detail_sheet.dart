@@ -141,11 +141,28 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     }
   }
 
-  void _confirmStartingStall(StallModel originStall) {
+  Future<void> _confirmStartingStall({
+    required StallModel targetStall,
+    required StallModel originStall,
+  }) async {
     unawaited(HapticFeedback.mediumImpact());
-    ref.read(selectedOriginStallProvider.notifier).state = originStall;
+    final activeNotifier = ref.read(activeRouteProvider.notifier);
+
     widget.onClose();
     mainShellKey.currentState?.goToTab(0);
+
+    await NavigationLoadingDialog.show(
+      null,
+      stallName: targetStall.name,
+      originName: originStall.name,
+    );
+
+    await activeNotifier.navigateStallToStall(
+      originStallId: originStall.stallId,
+      destinationStallId: targetStall.stallId,
+      originStallName: originStall.name,
+      destinationStallName: targetStall.name,
+    );
   }
 
   Future<void> _confirmAndChangeOrigin({
@@ -244,8 +261,11 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
       } else {
         primaryActionLabel = 'Confirm Starting Stall';
         primaryActionSubtitle = null;
-        primaryActionIcon = Icons.check_circle_outline_rounded;
-        primaryActionPressed = () => _confirmStartingStall(stall);
+        primaryActionIcon = Icons.navigation_rounded;
+        primaryActionPressed = () => _confirmStartingStall(
+              targetStall: pickingOriginTarget,
+              originStall: stall,
+            );
         isActionDisabled = false;
       }
     } else if (activeRoute != null) {

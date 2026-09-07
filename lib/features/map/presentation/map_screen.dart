@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -483,58 +485,58 @@ class MapScreenState extends ConsumerState<MapScreen> {
     StallModel? selectedOriginStall,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Material(
-        elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.16),
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.14),
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Left: Waypoint Track (Green circle -> 24px line -> Red pin)
+                  // Left: Waypoint Track (Green circle -> 20px line -> Red pin)
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 14,
-                        height: 14,
+                        width: 10,
+                        height: 10,
                         decoration: BoxDecoration(
                           color: const Color(0xFF2E7D32),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: Colors.white, width: 1.5),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.20),
-                              blurRadius: 3,
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 2,
                             ),
                           ],
                         ),
                       ),
                       Container(
-                        width: 2,
-                        height: 26,
-                        margin: const EdgeInsets.symmetric(vertical: 3),
+                        width: 1.5,
+                        height: 20,
+                        margin: const EdgeInsets.symmetric(vertical: 2),
                         color: const Color(0xFFCBD5E1),
                       ),
                       const Icon(
                         Icons.location_on_rounded,
                         color: Color(0xFFE53935),
-                        size: 18,
+                        size: 15,
                       ),
                     ],
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
 
                   // Middle: Origin & Destination Inputs
                   Expanded(
@@ -545,7 +547,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                         // Origin Field (Tap to search or pick)
                         Material(
                           color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                           child: InkWell(
                             onTap: () async {
                               await HapticFeedback.selectionClick();
@@ -558,12 +560,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                               if (stall == null || !mounted) return;
                               ref.read(selectedOriginStallProvider.notifier).state = stall;
                             },
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                             child: Container(
-                              constraints: const BoxConstraints(minHeight: 44),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              constraints: const BoxConstraints(minHeight: 38),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: selectedOriginStall != null
                                       ? const Color(0xFF81C784)
@@ -579,7 +581,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                           ? 'From: ${selectedOriginStall.name}'
                                           : 'Tap map or search starting stall...',
                                       style: GoogleFonts.poppins(
-                                        fontSize: 13,
+                                        fontSize: 12.5,
                                         fontWeight: selectedOriginStall != null
                                             ? FontWeight.w600
                                             : FontWeight.w500,
@@ -595,7 +597,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                     selectedOriginStall != null
                                         ? Icons.edit_rounded
                                         : Icons.search_rounded,
-                                    size: 18,
+                                    size: 16,
                                     color: const Color(0xFF1B5E20),
                                   ),
                                 ],
@@ -603,12 +605,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
 
                         // Destination Field (Tappable to redirect)
                         Material(
                           color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                           child: InkWell(
                             onTap: () async {
                               await HapticFeedback.selectionClick();
@@ -621,12 +623,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                               if (newTarget == null || !mounted) return;
                               ref.read(pickingOriginTargetStallProvider.notifier).state = newTarget;
                             },
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                             child: Container(
-                              constraints: const BoxConstraints(minHeight: 44),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              constraints: const BoxConstraints(minHeight: 38),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: const Color(0xFFE2E8F0)),
                               ),
                               child: Row(
@@ -635,7 +637,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                     child: Text(
                                       'To: ${targetStall.name}',
                                       style: GoogleFonts.poppins(
-                                        fontSize: 13.5,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.ink,
                                       ),
@@ -645,7 +647,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                   ),
                                   const Icon(
                                     Icons.edit_location_alt_rounded,
-                                    size: 18,
+                                    size: 16,
                                     color: Color(0xFFE53935),
                                   ),
                                 ],
@@ -656,41 +658,79 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
 
-                  // Close Button [✕] (44x44 touch target)
-                  InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      ref.read(pickingOriginTargetStallProvider.notifier).state = null;
-                      ref.read(selectedOriginStallProvider.notifier).state = null;
-                    },
-                    borderRadius: BorderRadius.circular(22),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF1F5F9),
-                        shape: BoxShape.circle,
+                  // Right Action Column: Close [✕] & Reverse [⇅]
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Close Button [✕]
+                      InkWell(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+                          ref.read(selectedOriginStallProvider.notifier).state = null;
+                        },
+                        borderRadius: BorderRadius.circular(15),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF1F5F9),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF64748B),
+                            size: 16,
+                          ),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.close_rounded,
-                        color: Color(0xFF64748B),
-                        size: 20,
+                      const SizedBox(height: 6),
+
+                      // Reverse Location Button [⇅]
+                      InkWell(
+                        onTap: selectedOriginStall == null
+                            ? null
+                            : () {
+                                HapticFeedback.selectionClick();
+                                final oldTarget = targetStall;
+                                final oldOrigin = selectedOriginStall;
+                                ref.read(pickingOriginTargetStallProvider.notifier).state = oldOrigin;
+                                ref.read(selectedOriginStallProvider.notifier).state = oldTarget;
+                              },
+                        borderRadius: BorderRadius.circular(15),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: selectedOriginStall != null
+                                ? const Color(0xFFE8F5E9)
+                                : const Color(0xFFF1F5F9),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.swap_vert_rounded,
+                            color: selectedOriginStall != null
+                                ? const Color(0xFF1B5E20)
+                                : const Color(0xFFCBD5E1),
+                            size: 17,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
 
-              // Start Navigation button when origin is selected
+              // Start Navigation button when origin is selected (Clean Material button, zero clipping)
               if (selectedOriginStall != null) ...[
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
+                const SizedBox(height: 10),
+                Material(
+                  color: const Color(0xFF1B5E20),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    onTap: () async {
                       await HapticFeedback.mediumImpact();
                       final origin = selectedOriginStall;
                       final target = targetStall;
@@ -712,24 +752,28 @@ class MapScreenState extends ConsumerState<MapScreen> {
                             destinationStallName: target.name,
                           );
                     },
-                    icon: const Icon(
-                      Icons.navigation_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    label: Text(
-                      'Start Navigation',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B5E20),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      height: 38,
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.navigation_rounded,
+                            color: Colors.white,
+                            size: 17,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Start Navigation',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -747,56 +791,59 @@ class MapScreenState extends ConsumerState<MapScreen> {
         ? 'From: ${route.originStallName ?? "Starting Stall"}'
         : 'From Gate ${route.entrance?.entranceId ?? ""}: ${route.entrance?.description ?? ""}';
 
+    final canReverse = route.originType == NavigationOriginType.stall &&
+        route.originStallId != null;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Material(
-        elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.16),
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.14),
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left: Waypoint Track (Green dot -> connector -> Red pin)
+              // Left: Waypoint Track (Green dot -> 20px line -> Red pin)
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 14,
-                    height: 14,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       color: const Color(0xFF2E7D32),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: Colors.white, width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.20),
-                          blurRadius: 3,
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 2,
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    width: 2,
-                    height: 26,
-                    margin: const EdgeInsets.symmetric(vertical: 3),
+                    width: 1.5,
+                    height: 20,
+                    margin: const EdgeInsets.symmetric(vertical: 2),
                     color: const Color(0xFFCBD5E1),
                   ),
                   const Icon(
                     Icons.location_on_rounded,
                     color: Color(0xFFE53935),
-                    size: 18,
+                    size: 15,
                   ),
                 ],
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
 
               // Middle: Origin & Destination fields (Both interactive for redirection!)
               Expanded(
@@ -807,7 +854,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                     // Origin Row (Tap to change starting point)
                     Material(
                       color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       child: InkWell(
                         onTap: () async {
                           await HapticFeedback.selectionClick();
@@ -841,12 +888,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                             }
                           }
                         },
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          constraints: const BoxConstraints(minHeight: 44),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          constraints: const BoxConstraints(minHeight: 38),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Row(
@@ -855,7 +902,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                 child: Text(
                                   originLabel,
                                   style: GoogleFonts.poppins(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.ink,
                                   ),
@@ -865,7 +912,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                               ),
                               const Icon(
                                 Icons.alt_route_rounded,
-                                size: 18,
+                                size: 16,
                                 color: Color(0xFF1B5E20),
                               ),
                             ],
@@ -873,12 +920,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
 
                     // Destination Row (Tap to redirect to another stall, preserving origin!)
                     Material(
                       color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       child: InkWell(
                         onTap: () async {
                           await HapticFeedback.selectionClick();
@@ -905,12 +952,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                 newDestinationStallName: stall.name,
                               );
                         },
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          constraints: const BoxConstraints(minHeight: 44),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          constraints: const BoxConstraints(minHeight: 38),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Row(
@@ -919,7 +966,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                 child: Text(
                                   'To: ${route.destinationStallName}',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 13.5,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.ink,
                                   ),
@@ -929,7 +976,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                               ),
                               const Icon(
                                 Icons.search_rounded,
-                                size: 18,
+                                size: 16,
                                 color: Color(0xFFE53935),
                               ),
                             ],
@@ -940,28 +987,75 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
 
-              // Close Button [✕] (End Navigation)
-              InkWell(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  ref.read(activeRouteProvider.notifier).clearRoute();
-                },
-                borderRadius: BorderRadius.circular(22),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF1F5F9),
-                    shape: BoxShape.circle,
+              // Right Action Column: Close [✕] & Reverse [⇅]
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Close Button [✕] (End Navigation)
+                  InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      ref.read(activeRouteProvider.notifier).clearRoute();
+                    },
+                    borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF1F5F9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Color(0xFF64748B),
+                        size: 16,
+                      ),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.close_rounded,
-                    color: Color(0xFF64748B),
-                    size: 20,
-                  ),
-                ),
+                  if (canReverse) ...[
+                    const SizedBox(height: 6),
+                    // Reverse Location Button [⇅]
+                    InkWell(
+                      onTap: () async {
+                        unawaited(HapticFeedback.selectionClick());
+                        final oldDestId = route.destinationStallId;
+                        final oldDestName = route.destinationStallName;
+                        final oldOriginId = route.originStallId!;
+                        final oldOriginName = route.originStallName;
+
+                        await NavigationLoadingDialog.show(
+                          context,
+                          stallName: oldOriginName ?? 'Stall',
+                          originName: oldDestName,
+                        );
+                        if (!mounted) return;
+
+                        await ref.read(activeRouteProvider.notifier).navigateStallToStall(
+                              originStallId: oldDestId,
+                              destinationStallId: oldOriginId,
+                              originStallName: oldDestName,
+                              destinationStallName: oldOriginName,
+                            );
+                      },
+                      borderRadius: BorderRadius.circular(15),
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFE8F5E9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.swap_vert_rounded,
+                          color: Color(0xFF1B5E20),
+                          size: 17,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -969,6 +1063,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
       ),
     );
   }
+
 
 
   void _showAlingSukiOverlay() {

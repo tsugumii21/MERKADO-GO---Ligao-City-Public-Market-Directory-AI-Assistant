@@ -231,7 +231,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
         isActionDisabled = true;
       } else {
         primaryActionLabel = 'Confirm Start & Navigate';
-        primaryActionSubtitle = 'From ${stall.name} → ${pickingOriginTarget.name}';
+        primaryActionSubtitle = null;
         primaryActionIcon = Icons.play_arrow_rounded;
         primaryActionPressed = () => _confirmStartAndNavigate(
               targetStall: pickingOriginTarget,
@@ -247,10 +247,8 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
         primaryActionPressed = null;
         isActionDisabled = true;
       } else {
-        final originName = activeRoute.originStallName ??
-            (activeRoute.entrance != null ? 'Gate ${activeRoute.entrance!.entranceId}' : 'Starting Point');
         primaryActionLabel = 'Confirm & Redirect Here';
-        primaryActionSubtitle = 'Reroute: $originName → ${stall.name}';
+        primaryActionSubtitle = null;
         primaryActionIcon = Icons.alt_route_rounded;
         primaryActionPressed = () => _confirmAndRedirect(
               currentRoute: activeRoute,
@@ -793,9 +791,10 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                           disabledBackgroundColor: const Color(0xFFE2E8F0),
                           disabledForegroundColor: const Color(0xFF94A3B8),
                           elevation: 0,
+                          minimumSize: const Size.fromHeight(48),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 10,
+                            vertical: 13,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),

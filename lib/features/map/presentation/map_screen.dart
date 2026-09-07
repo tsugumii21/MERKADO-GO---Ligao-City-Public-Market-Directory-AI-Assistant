@@ -554,14 +554,29 @@ class MapScreenState extends ConsumerState<MapScreen> {
                             onTap: () async {
                               unawaited(HapticFeedback.selectionClick());
                               if (!mounted) return;
-                              final stall = await StallOriginPickerSheet.show(
+                              final result = await StallOriginPickerSheet.show(
                                 context,
                                 targetStallId: targetStall.stallId,
                                 targetStallName: targetStall.name,
                               );
-                              if (stall == null || !mounted) return;
-                              setState(() => _selectedStall = stall);
-                              await StallDetailSheet.show(context, stall);
+                              if (!mounted || result == null) return;
+                              if (result == 'pick_on_map') {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Tap any stall on the map to set your starting point.',
+                                      style: GoogleFonts.poppins(fontSize: 12.5),
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                                return;
+                              }
+                              if (result is! StallModel) return;
+                              setState(() => _selectedStall = result);
+                              await StallDetailSheet.show(context, result);
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
@@ -625,7 +640,22 @@ class MapScreenState extends ConsumerState<MapScreen> {
                                 title: 'Change Destination Stall',
                                 subtitle: 'Choose where you want to go',
                               );
-                              if (newTarget == null || !mounted) return;
+                              if (!mounted || newTarget == null) return;
+                              if (newTarget == 'pick_on_map') {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Tap any stall on the map to set destination.',
+                                      style: GoogleFonts.poppins(fontSize: 12.5),
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                                return;
+                              }
+                              if (newTarget is! StallModel) return;
                               ref.read(pickingOriginTargetStallProvider.notifier).state = newTarget;
                               setState(() => _selectedStall = newTarget);
                             },
@@ -865,18 +895,46 @@ class MapScreenState extends ConsumerState<MapScreen> {
                           unawaited(HapticFeedback.selectionClick());
                           if (!mounted) return;
                           if (route.originType == NavigationOriginType.stall) {
-                            final stall = await StallOriginPickerSheet.show(
+                            final result = await StallOriginPickerSheet.show(
                               context,
                               targetStallId: route.destinationStallId,
                               targetStallName: route.destinationStallName,
                               title: 'Change Starting Stall',
                               subtitle: 'Choose where you are currently standing',
                             );
-                            if (stall == null || !mounted) return;
-                            setState(() => _selectedStall = stall);
+                            if (!mounted || result == null) return;
+                            if (result == 'pick_on_map') {
+                              final allStalls = ref.read(allStallsProvider).asData?.value ?? [];
+                              StallModel? destStall;
+                              for (final s in allStalls) {
+                                if (s.stallId == route.destinationStallId) {
+                                  destStall = s;
+                                  break;
+                                }
+                              }
+                              if (destStall != null) {
+                                ref.read(pickingOriginTargetStallProvider.notifier).state = destStall;
+                                ref.read(selectedOriginStallProvider.notifier).state = null;
+                                ref.read(activeRouteProvider.notifier).clearRoute();
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Tap any stall on the map to select starting point.',
+                                    style: GoogleFonts.poppins(fontSize: 12.5),
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: AppColors.primary,
+                                ),
+                              );
+                              return;
+                            }
+                            if (result is! StallModel) return;
+                            setState(() => _selectedStall = result);
                             await StallDetailSheet.show(
                               context,
-                              stall,
+                              result,
                               isChangingOrigin: true,
                             );
                           } else {
@@ -934,18 +992,33 @@ class MapScreenState extends ConsumerState<MapScreen> {
                           unawaited(HapticFeedback.selectionClick());
                           if (!mounted) return;
                           // Pick replacement destination stall
-                          final stall = await StallOriginPickerSheet.show(
+                          final result = await StallOriginPickerSheet.show(
                             context,
                             targetStallId: route.destinationStallId,
                             targetStallName: route.destinationStallName,
                             title: 'Redirect to Stall',
                             subtitle: 'Choose a new destination to navigate to',
                           );
-                          if (stall == null || !mounted) return;
+                          if (!mounted || result == null) return;
+                          if (result == 'pick_on_map') {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Tap any stall on the map to redirect your route.',
+                                  style: GoogleFonts.poppins(fontSize: 12.5),
+                                ),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                            return;
+                          }
+                          if (result is! StallModel) return;
 
                           // Pop up StallDetailSheet so user can review details and tap confirm
-                          setState(() => _selectedStall = stall);
-                          await StallDetailSheet.show(context, stall);
+                          setState(() => _selectedStall = result);
+                          await StallDetailSheet.show(context, result);
                         },
                         borderRadius: BorderRadius.circular(8),
                         child: Container(

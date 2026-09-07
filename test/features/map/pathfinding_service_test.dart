@@ -406,5 +406,25 @@ void main() {
         );
       }
     });
+
+    test('Zone-aware: Traverses Fruit Section open thoroughfare instead of long outer perimeter detour', () {
+      // id_23 (Extension V, North Street) to id_9 (New Camarin, Barlin Street)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_23',
+        destinationStallId: 'id_9',
+        originName: 'ARLES ARMARIO STORE',
+        destinationName: 'ADELFA F. ADONES JEWELRY AND WATCH REPAIR SHOP I',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Verify route uses Fruit Section avenue
+      final hasFruitSectionNodes = route.nodeIds.any((n) => n.startsWith('node_fs'));
+      expect(hasFruitSectionNodes, isTrue, reason: 'Route should take direct Fruit Section avenue');
+
+      // Distance must be direct (~2,000 px), not the outer detour (~4,880 px)
+      expect(route.totalDistance, lessThan(2500.0));
+    });
   });
 }

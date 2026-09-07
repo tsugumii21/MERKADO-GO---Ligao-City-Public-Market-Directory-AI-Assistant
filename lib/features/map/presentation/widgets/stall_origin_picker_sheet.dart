@@ -23,15 +23,15 @@ class StallOriginPickerSheet extends ConsumerStatefulWidget {
     this.subtitle,
   });
 
-  /// Displays the modal sheet and returns the chosen origin [StallModel], or null if dismissed
-  static Future<StallModel?> show(
+  /// Displays the modal sheet and returns the chosen origin [StallModel], 'pick_on_map', or null if dismissed
+  static Future<dynamic> show(
     BuildContext context, {
     String? targetStallId,
     String? targetStallName,
     String? title,
     String? subtitle,
   }) {
-    return showModalBottomSheet<StallModel>(
+    return showModalBottomSheet<dynamic>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -240,7 +240,55 @@ class _StallOriginPickerSheetState
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+
+          // Pick on Map Action Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Material(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pop('pick_on_map');
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF86EFAC),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.map_outlined,
+                        size: 17,
+                        color: Color(0xFF1B5E20),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pick on Map',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1B5E20),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
           const Divider(color: AppColors.border, height: 1),
 
           // List of Stalls

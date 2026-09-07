@@ -320,9 +320,23 @@ class PathfindingService {
     return parts.length > 1 ? parts[1] : 'unknown';
   }
 
+  /// Known open market thoroughfares (e.g. North-South Fruit Section avenue between Rice and Dry Market)
+  static const Set<String> _openMarketCorridors = {
+    'node_dm_w1',
+    'node_dm_t3',
+    'node_dm_t4',
+  };
+
+  /// Whether a node is an open public thoroughfare (perimeter street or open market avenue)
+  static bool isOpenThoroughfare(String nodeId) {
+    final zone = getNodeZone(nodeId);
+    return zone == 'ex' || zone == 'fs' || _openMarketCorridors.contains(nodeId);
+  }
+
   /// Calculate contextual traversal edge cost between adjacent nodes:
-  /// - Enforces the street network ('ex') when travelling between outdoor points
-  /// - Stays on the street until reaching the building entrance doorway closest to indoor destination
+  /// - Strictly prohibits cutting through enclosed wet market building ('wm') when travelling outside
+  /// - Allows open public thoroughfares (streets and Fruit Section avenue) for outdoor routing
+  /// - Stays on open thoroughfares until reaching the building entrance doorway closest to indoor destination
   /// - Prevents shortcuts through unrelated interior market buildings
   double _calculateContextualEdgeCost({
     required GraphNode currentNode,
@@ -335,27 +349,24 @@ class PathfindingService {
 
     double cost = baseDistance;
 
-    // 1. Unrelated interior building shortcut penalty:
-    // If an interior building zone is neither start_zone nor goal_zone (and not 'ex' street),
-    // heavily penalize entering it so paths do not cut through unrelated market buildings.
-    if (neighborZone != 'ex' && neighborZone != startZone && neighborZone != goalZone) {
+    // 1. Enclosed wet market building penalty:
+    // If neither start nor goal is inside the Wet Market ('wm'),
+    // prohibit cutting through enclosed meat/fish stalls and counter corridors.
+    if (neighborZone == 'wm' && startZone != 'wm' && goalZone != 'wm') {
+      cost += 10000.0;
+    }
+
+    // 2. Unrelated interior building shortcut penalty:
+    // Avoid routing through unrelated closed sections (e.g. eateries)
+    // while keeping open public thoroughfares (streets and Fruit Section avenue) accessible.
+    if (!isOpenThoroughfare(neighborNode.id) &&
+        neighborZone != startZone &&
+        neighborZone != goalZone) {
       cost += 5000.0;
     }
 
-    // 2. Outdoor to Outdoor rule:
-    // When both origin and destination are outside on the street network ('ex'),
-    // strictly keep navigation on the street network.
-    if (startZone == 'ex' && goalZone == 'ex') {
-      if (neighborZone != 'ex') {
-        cost += 10000.0;
-      }
-    }
-
-    // 3. Prefer wide street over crowded interior corridors when approaching a building:
-    // Street movement ('ex') is cleaner and faster than narrow interior aisles.
-    // Mild multiplier (1.35x) on interior corridors ensures the route stays
-    // on the street until the entrance doorway closest to the target section before going inside.
-    if (neighborZone != 'ex') {
+    // 3. Prefer wide open streets and main thoroughfares over crowded interior aisles:
+    if (!isOpenThoroughfare(neighborNode.id)) {
       cost *= 1.35;
     }
 

@@ -493,69 +493,74 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Category Pill & Location Subtitle
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 3.5,
+                    // Category Tag Pill
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: categoryVisuals.bg,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: categoryVisuals.color.withValues(alpha: 0.35),
+                            width: 0.8,
                           ),
-                          decoration: BoxDecoration(
-                            color: categoryVisuals.bg,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: categoryVisuals.color.withValues(alpha: 0.35),
-                              width: 0.8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            MarketCategoryIcon(
+                              category: stall.category,
+                              fallbackIcon: categoryVisuals.icon,
+                              size: 13,
+                              color: categoryVisuals.color,
                             ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              MarketCategoryIcon(
-                                category: stall.category,
-                                fallbackIcon: categoryVisuals.icon,
-                                size: 13,
-                                color: categoryVisuals.color,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
                                 StallUtils.getCategoryLabel(stall.category),
                                 style: GoogleFonts.poppins(
-                                  fontSize: 11,
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
                                   color: categoryVisuals.color,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Location / Address Row (Below tag for full width and zero truncation)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 15,
+                          color: Color(0xFF6B7280),
+                        ),
+                        const SizedBox(width: 4),
                         Expanded(
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on_outlined,
-                                size: 14,
-                                color: Color(0xFF6B7280),
-                              ),
-                              const SizedBox(width: 3),
-                              Expanded(
-                                child: Text(
-                                  stall.address.isNotEmpty
-                                      ? stall.address
-                                      : (stall.section != null
-                                          ? 'Section ${stall.section}, Ligao Public Market'
-                                          : 'Ligao City Public Market'),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: const Color(0xFF4B5563),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            stall.address.isNotEmpty
+                                ? stall.address
+                                : (stall.section != null
+                                    ? 'Section ${stall.section}, Ligao Public Market'
+                                    : 'Ligao City Public Market'),
+                            style: GoogleFonts.poppins(
+                              fontSize: 12.5,
+                              color: const Color(0xFF4B5563),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

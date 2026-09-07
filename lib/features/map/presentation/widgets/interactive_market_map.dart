@@ -787,8 +787,9 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                         widget.selectedEntrance != null)
                       ..._effectiveEntryPoints.where((entrance) {
                         if (widget.activeRoute != null) {
+                          if (widget.activeRoute!.entrance == null) return false;
                           return entrance.entranceId ==
-                              widget.activeRoute!.entrance.entranceId;
+                              widget.activeRoute!.entrance!.entranceId;
                         }
                         if (widget.showEntrancePins) {
                           return true;
@@ -807,7 +808,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                         node.y + _nodeOffsetY,
                       );
                       final isSelected = (widget.activeRoute != null &&
-                              widget.activeRoute!.entrance.entranceId ==
+                              widget.activeRoute!.entrance?.entranceId ==
                                   entrance.entranceId) ||
                           (widget.selectedEntrance?.entranceId ==
                               entrance.entranceId);
@@ -1200,7 +1201,11 @@ class RouteOverlayPainter extends CustomPainter {
       // 5. FLOATING TURN ANNOUNCEMENT SPEECH BUBBLE HUD (MD §5, §13.9)
       final String announcementText;
       if (walkProgress < 0.12) {
-        announcementText = '1. Enter via Gate ${route.entrance.entranceId}';
+        if (route.originType == NavigationOriginType.stall) {
+          announcementText = '1. Start from ${route.originStallName ?? "Stall"}';
+        } else {
+          announcementText = '1. Enter via Gate ${route.entrance?.entranceId ?? ""}';
+        }
       } else if (walkProgress >= 0.95) {
         announcementText = '🏁 Arrived!';
       } else {

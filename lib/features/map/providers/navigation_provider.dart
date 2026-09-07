@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../models/stall_model.dart';
 import '../domain/navigation_models.dart';
 import '../services/pathfinding_service.dart';
 
@@ -70,6 +71,29 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     _ref.read(currentStepIndexProvider.notifier).state = 0;
   }
 
+  /// Calculate route directly from origin stall to destination stall
+  Future<void> navigateStallToStall({
+    required String originStallId,
+    required String destinationStallId,
+    String? originStallName,
+    String? destinationStallName,
+  }) async {
+    final service = _ref.read(pathfindingServiceProvider);
+    if (!service.isInitialized) {
+      await service.initialize();
+    }
+
+    final route = service.findStallToStallRoute(
+      originStallId: originStallId,
+      destinationStallId: destinationStallId,
+      originName: originStallName,
+      destinationName: destinationStallName,
+    );
+
+    state = route;
+    _ref.read(currentStepIndexProvider.notifier).state = 0;
+  }
+
   /// Clear current navigation route
   void clearRoute() {
     state = null;
@@ -87,4 +111,7 @@ final currentStepIndexProvider = StateProvider<int>((ref) => 0);
 
 /// Trigger counter to replay the walking traversal animation on the map
 final routeTraversalTriggerProvider = StateProvider<int>((ref) => 0);
+
+/// Target destination stall when the user is picking a starting stall on the map
+final pickingOriginTargetStallProvider = StateProvider<StallModel?>((ref) => null);
 

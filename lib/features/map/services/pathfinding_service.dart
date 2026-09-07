@@ -206,6 +206,114 @@ class PathfindingService {
     );
   }
 
+  /// Find complete navigation route directly from origin stall to destination stall
+  NavigationRoute? findStallToStallRoute({
+    required String originStallId,
+    required String destinationStallId,
+    String? originName,
+    String? destinationName,
+  }) {
+    if (!_isInitialized) {
+      throw StateError('PathfindingService must be initialized before finding routes.');
+    }
+
+    final originCandidateNodes = getCandidateNodesForStall(originStallId);
+    final destinationCandidateNodes = getCandidateNodesForStall(destinationStallId);
+
+    if (originCandidateNodes.isEmpty || destinationCandidateNodes.isEmpty) {
+      return null;
+    }
+
+    final startStallName = originName ?? originStallId;
+    final endStallName = destinationName ?? destinationStallId;
+
+    // Special case: origin and destination are the exact same stall
+    if (originStallId == destinationStallId) {
+      final primaryNodeId = getPrimaryNodeForStall(originStallId);
+      final primaryNode = primaryNodeId != null ? _nodes[primaryNodeId] : null;
+      if (primaryNode == null) return null;
+
+      return NavigationRoute(
+        nodeIds: [primaryNode.id],
+        nodes: [primaryNode],
+        points: [primaryNode.offset],
+        steps: [
+          NavigationStep(
+            stepNumber: 1,
+            instruction: 'You are already at $endStallName',
+            distance: 0.0,
+            direction: TurnDirection.arrive,
+            nodeId: primaryNode.id,
+          ),
+        ],
+        totalDistance: 0.0,
+        entrance: null,
+        originType: NavigationOriginType.stall,
+        originStallId: originStallId,
+        originStallName: startStallName,
+        destinationStallId: destinationStallId,
+        destinationStallName: endStallName,
+      );
+    }
+
+    // Evaluate all pairs of origin candidate nodes × destination candidate nodes
+    List<String> bestPathNodeIds = const [];
+    double bestDistance = double.infinity;
+
+    for (final startNodeId in originCandidateNodes) {
+      if (!_nodes.containsKey(startNodeId)) continue;
+      for (final goalNodeId in destinationCandidateNodes) {
+        if (!_nodes.containsKey(goalNodeId)) continue;
+
+        final path = aStarPath(
+          startNodeId: startNodeId,
+          goalNodeId: goalNodeId,
+        );
+
+        if (path.isNotEmpty) {
+          double dist = 0.0;
+          for (int i = 0; i < path.length - 1; i++) {
+            dist += _nodes[path[i]]!.distanceTo(_nodes[path[i + 1]]!);
+          }
+          if (dist < bestDistance) {
+            bestDistance = dist;
+            bestPathNodeIds = path;
+          }
+        }
+      }
+    }
+
+    if (bestPathNodeIds.isEmpty) return null;
+
+    final pathNodes = bestPathNodeIds.map((id) => _nodes[id]!).toList();
+    final points = pathNodes.map((n) => n.offset).toList();
+
+    double totalDistance = 0.0;
+    for (int i = 0; i < pathNodes.length - 1; i++) {
+      totalDistance += pathNodes[i].distanceTo(pathNodes[i + 1]);
+    }
+
+    final steps = generateStallToStallTurnInstructions(
+      pathNodeIds: bestPathNodeIds,
+      originStallName: startStallName,
+      destinationName: endStallName,
+    );
+
+    return NavigationRoute(
+      nodeIds: bestPathNodeIds,
+      nodes: pathNodes,
+      points: points,
+      steps: steps,
+      totalDistance: totalDistance,
+      entrance: null,
+      originType: NavigationOriginType.stall,
+      originStallId: originStallId,
+      originStallName: startStallName,
+      destinationStallId: destinationStallId,
+      destinationStallName: endStallName,
+    );
+  }
+
   /// Core A* Pathfinding Algorithm
   List<String> aStarPath({
     required String startNodeId,
@@ -321,6 +429,113 @@ class PathfindingService {
     steps.add(NavigationStep(
       stepNumber: 1,
       instruction: 'Enter via ${entrance.description} and head into the aisle',
+      distance: initialDist,
+      direction: TurnDirection.start,
+      nodeId: pathNodes[0].id,
+      fromNodeId: pathNodes[0].id,
+      toNodeId: pathNodes[1].id,
+    ));
+
+    // For triplets (A, B, C), calculate signed bearing delta at B
+    double accumulatedStraightDist = 0.0;
+
+    for (int i = 0; i < pathNodes.length - 2; i++) {
+      final nodeA = pathNodes[i];
+      final nodeB = pathNodes[i + 1];
+      final nodeC = pathNodes[i + 2];
+
+      final segDist = nodeB.distanceTo(nodeC);
+
+      // Bearings in degrees
+      final bearingAB = _calculateBearing(nodeA, nodeB);
+      final bearingBC = _calculateBearing(nodeB, nodeC);
+
+      final delta = _normalizeAngleDelta(bearingBC - bearingAB);
+      final direction = _classifyTurnDirection(delta);
+
+      if (direction == TurnDirection.straight) {
+        accumulatedStraightDist += segDist;
+      } else {
+        // Flush accumulated straight distance if significant (> 50 units)
+        if (accumulatedStraightDist > 50.0) {
+          steps.add(NavigationStep(
+            stepNumber: steps.length + 1,
+            instruction: 'Continue straight along the corridor',
+            distance: accumulatedStraightDist,
+            direction: TurnDirection.straight,
+            nodeId: nodeA.id,
+          ));
+        }
+        accumulatedStraightDist = 0.0;
+
+        final zoneName = _getZoneDescription(nodeB.id);
+        final turnText = '${direction.label} at the intersection towards $zoneName';
+
+        steps.add(NavigationStep(
+          stepNumber: steps.length + 1,
+          instruction: turnText,
+          distance: segDist,
+          direction: direction,
+          nodeId: nodeB.id,
+          fromNodeId: nodeA.id,
+          toNodeId: nodeC.id,
+        ));
+      }
+    }
+
+    // Flush remaining straight distance before arrival
+    if (accumulatedStraightDist > 50.0 && pathNodes.length >= 2) {
+      steps.add(NavigationStep(
+        stepNumber: steps.length + 1,
+        instruction: 'Continue straight towards your destination',
+        distance: accumulatedStraightDist,
+        direction: TurnDirection.straight,
+        nodeId: pathNodes[pathNodes.length - 2].id,
+      ));
+    }
+
+    // Final Step: Arrive at destination
+    final lastNode = pathNodes.last;
+    steps.add(NavigationStep(
+      stepNumber: steps.length + 1,
+      instruction: 'Arrive at $destinationName on your pathway',
+      distance: 0.0,
+      direction: TurnDirection.arrive,
+      nodeId: lastNode.id,
+    ));
+
+    return steps;
+  }
+
+  /// Pre-compute human-readable turn-by-turn navigation instructions for stall-to-stall routes
+  List<NavigationStep> generateStallToStallTurnInstructions({
+    required List<String> pathNodeIds,
+    required String originStallName,
+    required String destinationName,
+  }) {
+    if (pathNodeIds.isEmpty) return const [];
+
+    final steps = <NavigationStep>[];
+
+    // Single-node path
+    if (pathNodeIds.length == 1) {
+      steps.add(NavigationStep(
+        stepNumber: 1,
+        instruction: 'You are right next to $destinationName',
+        distance: 0.0,
+        direction: TurnDirection.arrive,
+        nodeId: pathNodeIds.first,
+      ));
+      return steps;
+    }
+
+    final pathNodes = pathNodeIds.map((id) => _nodes[id]!).toList();
+
+    // Step 1: Start at origin stall corridor waypoint
+    final initialDist = pathNodes[0].distanceTo(pathNodes[1]);
+    steps.add(NavigationStep(
+      stepNumber: 1,
+      instruction: 'Start from $originStallName and head into the aisle',
       distance: initialDist,
       direction: TurnDirection.start,
       nodeId: pathNodes[0].id,

@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Single node in the pathway graph from `map_nodes.json`
@@ -162,14 +162,26 @@ class NavigationStep {
   String toString() => 'Step $stepNumber: $instruction ($distanceFormatted)';
 }
 
-/// Resolved complete navigation route from entrance to destination stall
+/// Type of origin point for a navigation route
+enum NavigationOriginType {
+  entrance,
+  stall;
+
+  bool get isEntrance => this == NavigationOriginType.entrance;
+  bool get isStall => this == NavigationOriginType.stall;
+}
+
+/// Resolved complete navigation route from entrance or stall to destination stall
 class NavigationRoute {
   final List<String> nodeIds;
   final List<GraphNode> nodes;
   final List<Offset> points;
   final List<NavigationStep> steps;
   final double totalDistance;
-  final MarketEntryPoint entrance;
+  final MarketEntryPoint? entrance;
+  final NavigationOriginType originType;
+  final String? originStallId;
+  final String? originStallName;
   final String destinationStallId;
   final String destinationStallName;
 
@@ -179,7 +191,10 @@ class NavigationRoute {
     required this.points,
     required this.steps,
     required this.totalDistance,
-    required this.entrance,
+    this.entrance,
+    this.originType = NavigationOriginType.entrance,
+    this.originStallId,
+    this.originStallName,
     required this.destinationStallId,
     required this.destinationStallName,
   });

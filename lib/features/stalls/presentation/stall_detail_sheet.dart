@@ -12,8 +12,8 @@ import '../../../core/constants/market_categories.dart';
 import '../../../core/widgets/market_category_icon.dart';
 
 import '../../map/providers/navigation_provider.dart';
-import '../../map/presentation/widgets/entrance_selector_sheet.dart';
 import '../../map/presentation/widgets/navigation_loading_dialog.dart';
+import '../../map/presentation/widgets/navigation_origin_sheet.dart';
 
 /// Alias for naming compatibility
 typedef StallDetailsModal = StallDetailSheet;
@@ -76,28 +76,56 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
   Future<void> _navigateToStallOnMap() async {
     // ignore: unawaited_futures
     HapticFeedback.mediumImpact();
-    // 1. Prompt user to choose starting entry point before directing them to map
-    final chosenEntrance = await EntranceSelectorSheet.show(
+    // 1. Prompt user to choose starting origin (Gate or Stall)
+    final originResult = await NavigationOriginSheet.show(
       context,
       targetStallId: widget.stall.stallId,
       targetStallName: widget.stall.name,
     );
-    if (chosenEntrance == null || !mounted) return;
+    if (originResult == null || !mounted) return;
 
-    // 2. Display 2-second animated road trip loading screen with dynamic wayfinding phrases
-    await NavigationLoadingDialog.show(
-      context,
-      stallName: widget.stall.name,
-      entrance: chosenEntrance,
-    );
-    if (!mounted) return;
+    if (originResult is PickStallOnMapOriginResult) {
+      // Switch directly to map in picking mode
+      ref.read(pickingOriginTargetStallProvider.notifier).state = widget.stall;
+      widget.onClose();
+      mainShellKey.currentState?.goToTab(0);
+      return;
+    }
 
-    // 3. Compute route starting at chosen entrance
-    await ref.read(activeRouteProvider.notifier).navigateToStall(
-          stallId: widget.stall.stallId,
-          stallName: widget.stall.name,
-          entranceOverride: chosenEntrance,
-        );
+    if (originResult is EntranceOriginResult) {
+      final chosenEntrance = originResult.entrance;
+      // 2. Display 2-second animated road trip loading screen with dynamic wayfinding phrases
+      await NavigationLoadingDialog.show(
+        context,
+        stallName: widget.stall.name,
+        entrance: chosenEntrance,
+      );
+      if (!mounted) return;
+
+      // 3. Compute route starting at chosen entrance
+      await ref.read(activeRouteProvider.notifier).navigateToStall(
+            stallId: widget.stall.stallId,
+            stallName: widget.stall.name,
+            entranceOverride: chosenEntrance,
+          );
+    } else if (originResult is StallOriginResult) {
+      final originStall = originResult.stall;
+      // 2. Display 2-second animated road trip loading screen for stall-to-stall
+      await NavigationLoadingDialog.show(
+        context,
+        stallName: widget.stall.name,
+        originName: originStall.name,
+      );
+      if (!mounted) return;
+
+      // 3. Compute route starting at origin stall
+      await ref.read(activeRouteProvider.notifier).navigateStallToStall(
+            originStallId: originStall.stallId,
+            destinationStallId: widget.stall.stallId,
+            originStallName: originStall.name,
+            destinationStallName: widget.stall.name,
+          );
+    }
 
     // 4. Close stall details modal and switch to Map tab
     widget.onClose();

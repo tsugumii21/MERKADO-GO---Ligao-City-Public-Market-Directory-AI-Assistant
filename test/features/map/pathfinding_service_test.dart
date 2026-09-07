@@ -269,5 +269,45 @@ void main() {
       expect(route!.nodeIds.first, 'node_ex_6');
       expect(route.steps.last.direction, TurnDirection.arrive);
     });
+
+    test('Computes stall-to-stall route between two distinct stalls (id_1 to id_80)', () {
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_1',
+        destinationStallId: 'id_80',
+        originName: "2 CEE'S STORE",
+        destinationName: 'FRANCISCO CARINDERIA I',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.isNotEmpty, true);
+      expect(route.originType, NavigationOriginType.stall);
+      expect(route.entrance, isNull);
+      expect(route.originStallId, 'id_1');
+      expect(route.destinationStallId, 'id_80');
+      expect(route.totalDistance, greaterThan(0));
+
+      // Steps verification
+      expect(route.steps.first.direction, TurnDirection.start);
+      expect(route.steps.first.instruction, contains("2 CEE'S STORE"));
+      expect(route.steps.last.direction, TurnDirection.arrive);
+      expect(route.steps.last.instruction, contains('FRANCISCO CARINDERIA I'));
+    });
+
+    test('Computes stall-to-stall route when origin equals destination', () {
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_1',
+        destinationStallId: 'id_1',
+        originName: "2 CEE'S STORE",
+        destinationName: "2 CEE'S STORE",
+      );
+
+      expect(route, isNotNull);
+      expect(route!.originType, NavigationOriginType.stall);
+      expect(route.entrance, isNull);
+      expect(route.totalDistance, 0.0);
+      expect(route.steps.length, 1);
+      expect(route.steps.first.direction, TurnDirection.arrive);
+      expect(route.steps.first.instruction, contains("already at 2 CEE'S STORE"));
+    });
   });
 }

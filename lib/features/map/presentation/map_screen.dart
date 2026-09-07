@@ -10,12 +10,16 @@ import '../../../providers/chat_provider.dart';
 import '../../../providers/stall_provider.dart';
 import '../../chat/presentation/aling_suki_chat_screen.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
+import '../domain/navigation_models.dart';
 import '../providers/navigation_provider.dart';
 import '../providers/search_provider.dart';
 import 'widgets/entrance_selector_sheet.dart';
 import 'widgets/interactive_market_map.dart';
 import 'widgets/map_search_modal.dart';
+import 'widgets/navigation_loading_dialog.dart';
+import 'widgets/navigation_origin_sheet.dart';
 import 'widgets/route_navigation_card.dart';
+import 'widgets/stall_origin_picker_sheet.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -40,8 +44,8 @@ class MapScreenState extends ConsumerState<MapScreen> {
   void resetUI() {
     if (!mounted) return;
     _isPickingEntranceOnMap = false;
+    ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     if (_isChatOpen) {
-
       setState(() => _isChatOpen = false);
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
@@ -56,12 +60,17 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final selectedEntrance = ref.watch(selectedEntranceProvider);
     final entryPoints = ref.watch(entryPointsProvider);
     final traversalTrigger = ref.watch(routeTraversalTriggerProvider);
+    final pickingOriginTargetStall = ref.watch(pickingOriginTargetStallProvider);
 
     return PopScope(
-      canPop: !_isPickingEntranceOnMap,
+      canPop: !_isPickingEntranceOnMap && pickingOriginTargetStall == null,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _isPickingEntranceOnMap) {
-          setState(() => _isPickingEntranceOnMap = false);
+        if (!didPop) {
+          if (pickingOriginTargetStall != null) {
+            ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+          } else if (_isPickingEntranceOnMap) {
+            setState(() => _isPickingEntranceOnMap = false);
+          }
         }
       },
       child: Scaffold(
@@ -72,16 +81,52 @@ class MapScreenState extends ConsumerState<MapScreen> {
             stallsAsync.when(
               data: (stalls) => InteractiveMarketMap(
                 stalls: stalls,
-                selectedStall: _selectedStall,
+                selectedStall: pickingOriginTargetStall ?? _selectedStall,
                 activeRoute: activeRoute,
                 entryPoints: entryPoints,
                 selectedEntrance: selectedEntrance,
                 showEntrancePins: _isPickingEntranceOnMap,
                 traversalTrigger: traversalTrigger,
-                onStallSelected: (stall) {
+                onStallSelected: (stall) async {
                   if (_isPickingEntranceOnMap) return;
+
+                  if (pickingOriginTargetStall != null) {
+                    if (stall.stallId == pickingOriginTargetStall.stallId) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'You are already at ${stall.name}. Choose a different starting stall.',
+                            style: GoogleFonts.poppins(fontSize: 12.5),
+                          ),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: AppColors.ink,
+                        ),
+                      );
+                      return;
+                    }
+
+                    final target = pickingOriginTargetStall;
+                    ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+
+                    await NavigationLoadingDialog.show(
+                      context,
+                      stallName: target.name,
+                      originName: stall.name,
+                    );
+                    if (!mounted) return;
+
+                    await ref.read(activeRouteProvider.notifier).navigateStallToStall(
+                          originStallId: stall.stallId,
+                          destinationStallId: target.stallId,
+                          originStallName: stall.name,
+                          destinationStallName: target.name,
+                        );
+                    return;
+                  }
+
                   setState(() => _selectedStall = stall);
-                  StallDetailSheet.show(context, stall);
+                  await StallDetailSheet.show(context, stall);
                 },
                 onEntranceTapped: (entrance) {
                   final current = ref.read(selectedEntranceProvider);
@@ -119,6 +164,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 },
                 onMapTapped: () {
                   if (_isPickingEntranceOnMap) return;
+                  if (pickingOriginTargetStall != null) return;
                   if (_selectedStall != null) {
                     setState(() => _selectedStall = null);
                   }
@@ -162,9 +208,11 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   alignment: Alignment.topCenter,
                   child: Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.sm),
-                    child: _isPickingEntranceOnMap
-                        ? _buildPickingEntranceBanner()
-                        : _buildTopSearchAndEntranceBar(selectedEntrance),
+                    child: pickingOriginTargetStall != null
+                        ? _buildPickingStallOriginHeader(pickingOriginTargetStall)
+                        : (_isPickingEntranceOnMap
+                            ? _buildPickingEntranceBanner()
+                            : _buildTopSearchAndEntranceBar(selectedEntrance)),
                   ),
                 ),
               ),
@@ -178,8 +226,32 @@ class MapScreenState extends ConsumerState<MapScreen> {
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     child: RouteNavigationCard(
                       route: activeRoute,
-                      onChangeEntrance: () =>
-                          EntranceSelectorSheet.show(context),
+                      onChangeEntrance: () async {
+                        if (activeRoute.originType == NavigationOriginType.stall) {
+                          final originResult = await NavigationOriginSheet.show(
+                            context,
+                            targetStallId: activeRoute.destinationStallId,
+                            targetStallName: activeRoute.destinationStallName,
+                          );
+                          if (originResult == null || !mounted) return;
+                          if (originResult is EntranceOriginResult) {
+                            await ref.read(activeRouteProvider.notifier).navigateToStall(
+                                  stallId: activeRoute.destinationStallId,
+                                  stallName: activeRoute.destinationStallName,
+                                  entranceOverride: originResult.entrance,
+                                );
+                          } else if (originResult is StallOriginResult) {
+                            await ref.read(activeRouteProvider.notifier).navigateStallToStall(
+                                  originStallId: originResult.stall.stallId,
+                                  destinationStallId: activeRoute.destinationStallId,
+                                  originStallName: originResult.stall.name,
+                                  destinationStallName: activeRoute.destinationStallName,
+                                );
+                          }
+                        } else {
+                          await EntranceSelectorSheet.show(context);
+                        }
+                      },
                       onRepeatRoute: () {
                         ref.read(routeTraversalTriggerProvider.notifier).state++;
                       },
@@ -192,7 +264,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
               ),
 
             // 4. Floating Aling Suki Avatar Button (Hidden during active navigation or picking mode)
-            if (activeRoute == null && !_isPickingEntranceOnMap)
+            if (activeRoute == null && !_isPickingEntranceOnMap && pickingOriginTargetStall == null)
 
             Positioned(
               left: 16,
@@ -429,6 +501,167 @@ class MapScreenState extends ConsumerState<MapScreen> {
                     Icons.close_rounded,
                     color: Colors.white,
                     size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPickingStallOriginHeader(StallModel targetStall) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Material(
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.20),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Left: Google Maps Waypoint track (Green circle -> line -> Red pin)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2E7D32),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 1.5,
+                    height: 16,
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    color: const Color(0xFFCBD5E1),
+                  ),
+                  const Icon(
+                    Icons.location_on_rounded,
+                    color: Color(0xFFE53935),
+                    size: 15,
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+
+              // Middle: Origin input & Destination label
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Origin row: Tap on map hint or tap to open search
+                    Material(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                      child: InkWell(
+                        onTap: () async {
+                          await HapticFeedback.selectionClick();
+                          if (!mounted) return;
+                          final stall = await StallOriginPickerSheet.show(
+                            context,
+                            targetStallId: targetStall.stallId,
+                            targetStallName: targetStall.name,
+                          );
+                          if (stall == null || !mounted) return;
+                          ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+                          await NavigationLoadingDialog.show(
+                            context,
+                            stallName: targetStall.name,
+                            originName: stall.name,
+                          );
+                          if (!mounted) return;
+                          await ref.read(activeRouteProvider.notifier).navigateStallToStall(
+                                originStallId: stall.stallId,
+                                destinationStallId: targetStall.stallId,
+                                originStallName: stall.name,
+                                destinationStallName: targetStall.name,
+                              );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Tap map or search starting stall...',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.search_rounded,
+                                size: 16,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Destination row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(
+                        'To: ${targetStall.name}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Cancel button [✕]
+              InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Color(0xFF64748B),
+                    size: 18,
                   ),
                 ),
               ),

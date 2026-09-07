@@ -10,13 +10,15 @@ import '../../constants/navigation_phrases.dart';
 /// Full-screen overlay dialog with road_trip Lottie animation and dynamic phrases
 class NavigationLoadingDialog extends StatefulWidget {
   final String stallName;
-  final MarketEntryPoint entrance;
+  final MarketEntryPoint? entrance;
+  final String? originName;
   final VoidCallback onCompleted;
 
   const NavigationLoadingDialog({
     super.key,
     required this.stallName,
-    required this.entrance,
+    this.entrance,
+    this.originName,
     required this.onCompleted,
   });
 
@@ -24,7 +26,8 @@ class NavigationLoadingDialog extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     required String stallName,
-    required MarketEntryPoint entrance,
+    MarketEntryPoint? entrance,
+    String? originName,
   }) async {
     final completer = Completer<void>();
 
@@ -37,6 +40,7 @@ class NavigationLoadingDialog extends StatefulWidget {
         return NavigationLoadingDialog(
           stallName: stallName,
           entrance: entrance,
+          originName: originName,
           onCompleted: () {
             if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
               Navigator.of(dialogContext, rootNavigator: true).pop();
@@ -69,6 +73,16 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog>
   Timer? _completionTimer;
   late String _currentPhrase;
 
+  String _getOriginLabel() {
+    if (widget.entrance != null) {
+      return 'Gate ${widget.entrance!.entranceId}';
+    }
+    if (widget.originName != null && widget.originName!.trim().isNotEmpty) {
+      return widget.originName!.trim();
+    }
+    return 'Starting Point';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -76,7 +90,7 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog>
 
     _currentPhrase = NavigationPhrases.getRandomPhrase(
       stallName: widget.stallName,
-      entranceName: 'Gate ${widget.entrance.entranceId}',
+      entranceName: _getOriginLabel(),
     );
 
     // Rotate phrase halfway through 2-second transition
@@ -85,7 +99,7 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog>
         setState(() {
           _currentPhrase = NavigationPhrases.getRandomPhrase(
             stallName: widget.stallName,
-            entranceName: 'Gate ${widget.entrance.entranceId}',
+            entranceName: _getOriginLabel(),
           );
         });
       }
@@ -179,9 +193,11 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog>
                     ),
                     const SizedBox(height: 6),
 
-                    // Gate to Stall Route Tag
+                    // Route Origin to Destination Tag
                     Text(
-                      'Gate ${widget.entrance.entranceId}  →  ${widget.stallName}',
+                      widget.entrance != null
+                          ? 'Gate ${widget.entrance!.entranceId}  →  ${widget.stallName}'
+                          : '${widget.originName ?? "Origin"}  →  ${widget.stallName}',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

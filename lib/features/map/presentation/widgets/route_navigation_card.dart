@@ -98,7 +98,9 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                '${widget.route.steps.length} Steps • Gate ${widget.route.entrance.entranceId}',
+                widget.route.originType == NavigationOriginType.stall
+                    ? '${widget.route.steps.length} Steps • From ${widget.route.originStallName ?? "Stall"}'
+                    : '${widget.route.steps.length} Steps • Gate ${widget.route.entrance?.entranceId ?? ""}',
                 style: AppTextStyles.captionSmall.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,
@@ -143,7 +145,9 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
           onPressed: widget.onChangeEntrance,
           icon: const Icon(Icons.alt_route_rounded, size: 20),
           color: AppColors.inkMuted,
-          tooltip: 'Change Entrance Gate',
+          tooltip: widget.route.originType == NavigationOriginType.stall
+              ? 'Change Starting Point'
+              : 'Change Entrance Gate',
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.all(4),
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -201,7 +205,9 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                       children: [
                         Flexible(
                           child: Text(
-                            'From Gate ${widget.route.entrance.entranceId}: ${widget.route.entrance.description}',
+                            widget.route.originType == NavigationOriginType.stall
+                                ? 'From: ${widget.route.originStallName ?? "Starting Stall"}'
+                                : 'From Gate ${widget.route.entrance?.entranceId ?? ""}: ${widget.route.entrance?.description ?? ""}',
                             style: AppTextStyles.captionSmall.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.w600,

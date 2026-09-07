@@ -90,7 +90,7 @@ void main() {
         MarketEntryPoint? selectedEntrance,
       }) {
         if (activeRoute != null) {
-          return entrance.entranceId == activeRoute.entrance.entranceId;
+          return entrance.entranceId == activeRoute.entrance?.entranceId;
         }
         if (showEntrancePins) {
           return true;

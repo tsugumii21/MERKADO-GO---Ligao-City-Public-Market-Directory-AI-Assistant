@@ -334,10 +334,12 @@ class PathfindingService {
   }
 
   /// Calculate contextual traversal edge cost between adjacent nodes:
-  /// - Strictly prohibits cutting through enclosed wet market building ('wm') when travelling outside
-  /// - Allows open public thoroughfares (streets and Fruit Section avenue) for outdoor routing
-  /// - Stays on open thoroughfares until reaching the building entrance doorway closest to indoor destination
-  /// - Prevents shortcuts through unrelated interior market buildings
+  /// - Strictly prohibits cutting through unrelated interior buildings (+10,000 cost)
+  /// - Outdoor-to-outdoor routes strictly stay on perimeter streets and open thoroughfares
+  /// - Outdoor-to-indoor routes stay on wide outdoor streets until the entrance doorway
+  ///   closest to destination before entering interior aisles
+  /// - Indoor-to-outdoor routes immediately exit to the nearest street doorway
+  /// - Indoor-to-indoor routes in the same building traverse interior aisles
   double _calculateContextualEdgeCost({
     required GraphNode currentNode,
     required GraphNode neighborNode,
@@ -349,25 +351,21 @@ class PathfindingService {
 
     double cost = baseDistance;
 
-    // 1. Enclosed wet market building penalty:
-    // If neither start nor goal is inside the Wet Market ('wm'),
-    // prohibit cutting through enclosed meat/fish stalls and counter corridors.
-    if (neighborZone == 'wm' && startZone != 'wm' && goalZone != 'wm') {
-      cost += 10000.0;
-    }
-
-    // 2. Unrelated interior building shortcut penalty:
-    // Avoid routing through unrelated closed sections (e.g. eateries)
-    // while keeping open public thoroughfares (streets and Fruit Section avenue) accessible.
+    // 1. Prohibit cutting through unrelated interior buildings:
+    // If neighbor node is an interior building node (not an open thoroughfare),
+    // and its zone does not match startZone or goalZone, apply heavy building penalty.
     if (!isOpenThoroughfare(neighborNode.id) &&
         neighborZone != startZone &&
         neighborZone != goalZone) {
-      cost += 5000.0;
+      cost += 10000.0;
     }
 
-    // 3. Prefer wide open streets and main thoroughfares over crowded interior aisles:
+    // 2. Street-First Navigation Rule:
+    // When navigating outside or to/from an indoor section, heavily prefer wide
+    // open perimeter streets and public thoroughfares over crowded interior aisles.
+    // Guarantees pedestrians stay on the street until the closest entrance doorway.
     if (!isOpenThoroughfare(neighborNode.id)) {
-      cost *= 1.35;
+      cost *= 4.0;
     }
 
     return cost;

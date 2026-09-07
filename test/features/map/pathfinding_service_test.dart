@@ -426,5 +426,47 @@ void main() {
       // Distance must be direct (~2,000 px), not the outer detour (~4,880 px)
       expect(route.totalDistance, lessThan(2500.0));
     });
+
+    test('Zone-aware: Outdoor stall to perimeter stall stays on street without cutting through Wet Market / Fish Section', () {
+      // id_23 (North Street) to id_189 (Building I, South Street perimeter)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_23',
+        destinationStallId: 'id_189',
+        originName: 'ARLES ARMARIO STORE',
+        destinationName: 'PAYOYO-LOPEZ STORE',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Must remain 100% on exterior streets without entering Wet Market / Fish Section stalls
+      final hasWetMarketNodes = route.nodeIds.any((n) => n.startsWith('node_wm'));
+      expect(hasWetMarketNodes, isFalse, reason: 'Route should stay on street, not cut through wet market');
+
+      for (final nodeId in route.nodeIds) {
+        expect(PathfindingService.getNodeZone(nodeId), 'ex');
+      }
+    });
+
+    test('Zone-aware: Outdoor stall to indoor Fish Section stall stays on street until closest entrance doorway', () {
+      // id_23 (North Street) to id_10 (ADVZ FISH RETAILING inside Fish Section)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_23',
+        destinationStallId: 'id_10',
+        originName: 'ARLES ARMARIO STORE',
+        destinationName: 'ADVZ FISH RETAILING',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+      expect(route.nodeIds.first, 'node_ex_n2');
+      expect(PathfindingService.getNodeZone(route.nodeIds.first), 'ex');
+      expect(PathfindingService.getNodeZone(route.nodeIds.last), 'wm');
+
+      // Verify that it stays on the street for the majority of the path,
+      // and enters through the doorway closest to the stall rather than cutting through counters.
+      final streetPortion = route.nodeIds.takeWhile((n) => PathfindingService.isOpenThoroughfare(n)).toList();
+      expect(streetPortion.length, greaterThanOrEqualTo(5), reason: 'Must stay on street until doorway');
+    });
   });
 }

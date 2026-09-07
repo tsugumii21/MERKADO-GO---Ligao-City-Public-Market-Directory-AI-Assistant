@@ -592,7 +592,6 @@
     "y": 488,
     "neighbors": [
       "node_wm_t23",
-      "node_wm_x35",
       "node_wm_x37"
     ]
   },
@@ -601,8 +600,7 @@
     "y": 488,
     "neighbors": [
       "node_ex_t12",
-      "node_wm_x30",
-      "node_wm_x38"
+      "node_wm_x30"
     ]
   },
   "node_wm_t26": {
@@ -646,8 +644,7 @@
     "y": 772,
     "neighbors": [
       "node_wm_t4",
-      "node_wm_t6",
-      "node_wm_x10"
+      "node_wm_t6"
     ]
   },
   "node_wm_t6": {
@@ -700,8 +697,6 @@
     "x": -3396,
     "y": 772,
     "neighbors": [
-      "node_wm_t5",
-      "node_wm_x11",
       "node_wm_x18",
       "node_wm_x5"
     ]
@@ -710,8 +705,6 @@
     "x": -3508,
     "y": 772,
     "neighbors": [
-      "node_wm_x10",
-      "node_wm_x12",
       "node_wm_x19",
       "node_wm_x6"
     ]
@@ -720,9 +713,7 @@
     "x": -3620,
     "y": 772,
     "neighbors": [
-      "node_wm_x11",
       "node_wm_x13",
-      "node_wm_x20",
       "node_wm_x7"
     ]
   },
@@ -809,10 +800,8 @@
     "x": -3620,
     "y": 702,
     "neighbors": [
-      "node_wm_x12",
       "node_wm_x19",
-      "node_wm_x21",
-      "node_wm_x25"
+      "node_wm_x21"
     ]
   },
   "node_wm_x21": {
@@ -857,9 +846,7 @@
     "x": -3620,
     "y": 632,
     "neighbors": [
-      "node_wm_x20",
       "node_wm_x24",
-      "node_wm_x26",
       "node_wm_x33"
     ]
   },
@@ -868,9 +855,7 @@
     "y": 632,
     "neighbors": [
       "node_wm_x21",
-      "node_wm_x25",
-      "node_wm_x27",
-      "node_wm_x34"
+      "node_wm_x27"
     ]
   },
   "node_wm_x27": {
@@ -879,8 +864,7 @@
     "neighbors": [
       "node_wm_x22",
       "node_wm_x26",
-      "node_wm_x28",
-      "node_wm_x35"
+      "node_wm_x28"
     ]
   },
   "node_wm_x28": {
@@ -889,8 +873,7 @@
     "neighbors": [
       "node_wm_t19",
       "node_wm_x27",
-      "node_wm_x29",
-      "node_wm_x36"
+      "node_wm_x29"
     ]
   },
   "node_wm_x29": {
@@ -898,9 +881,7 @@
     "y": 632,
     "neighbors": [
       "node_wm_x16",
-      "node_wm_x28",
-      "node_wm_x30",
-      "node_wm_x38"
+      "node_wm_x28"
     ]
   },
   "node_wm_x3": {
@@ -919,8 +900,7 @@
     "neighbors": [
       "node_ex_t11",
       "node_wm_t25",
-      "node_wm_x17",
-      "node_wm_x29"
+      "node_wm_x17"
     ]
   },
   "node_wm_x31": {
@@ -955,18 +935,13 @@
     "x": -3732,
     "y": 565,
     "neighbors": [
-      "node_wm_x26",
-      "node_wm_x33",
-      "node_wm_x35"
+      "node_wm_x33"
     ]
   },
   "node_wm_x35": {
     "x": -3844,
     "y": 565,
     "neighbors": [
-      "node_wm_t24",
-      "node_wm_x27",
-      "node_wm_x34",
       "node_wm_x36"
     ]
   },
@@ -974,7 +949,6 @@
     "x": -3965,
     "y": 565,
     "neighbors": [
-      "node_wm_x28",
       "node_wm_x35",
       "node_wm_x37"
     ]
@@ -985,7 +959,6 @@
     "neighbors": [
       "node_wm_t24",
       "node_wm_x36",
-      "node_wm_x38",
       "node_wm_x39"
     ]
   },
@@ -993,10 +966,7 @@
     "x": -4233,
     "y": 488,
     "neighbors": [
-      "node_wm_t25",
-      "node_wm_t27",
-      "node_wm_x29",
-      "node_wm_x37"
+      "node_wm_t27"
     ]
   },
   "node_wm_x39": {

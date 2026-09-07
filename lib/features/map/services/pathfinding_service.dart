@@ -314,7 +314,55 @@ class PathfindingService {
     );
   }
 
-  /// Core A* Pathfinding Algorithm
+  /// Extract zone prefix from node ID (e.g. 'node_ex_1' -> 'ex', 'node_wm_x36' -> 'wm')
+  static String getNodeZone(String nodeId) {
+    final parts = nodeId.split('_');
+    return parts.length > 1 ? parts[1] : 'unknown';
+  }
+
+  /// Calculate contextual traversal edge cost between adjacent nodes:
+  /// - Enforces the street network ('ex') when travelling between outdoor points
+  /// - Stays on the street until reaching the building entrance doorway closest to indoor destination
+  /// - Prevents shortcuts through unrelated interior market buildings
+  double _calculateContextualEdgeCost({
+    required GraphNode currentNode,
+    required GraphNode neighborNode,
+    required String startZone,
+    required String goalZone,
+  }) {
+    final double baseDistance = currentNode.distanceTo(neighborNode);
+    final neighborZone = getNodeZone(neighborNode.id);
+
+    double cost = baseDistance;
+
+    // 1. Unrelated interior building shortcut penalty:
+    // If an interior building zone is neither start_zone nor goal_zone (and not 'ex' street),
+    // heavily penalize entering it so paths do not cut through unrelated market buildings.
+    if (neighborZone != 'ex' && neighborZone != startZone && neighborZone != goalZone) {
+      cost += 5000.0;
+    }
+
+    // 2. Outdoor to Outdoor rule:
+    // When both origin and destination are outside on the street network ('ex'),
+    // strictly keep navigation on the street network.
+    if (startZone == 'ex' && goalZone == 'ex') {
+      if (neighborZone != 'ex') {
+        cost += 10000.0;
+      }
+    }
+
+    // 3. Prefer wide street over crowded interior corridors when approaching a building:
+    // Street movement ('ex') is cleaner and faster than narrow interior aisles.
+    // Mild multiplier (1.35x) on interior corridors ensures the route stays
+    // on the street until the entrance doorway closest to the target section before going inside.
+    if (neighborZone != 'ex') {
+      cost *= 1.35;
+    }
+
+    return cost;
+  }
+
+  /// Core A* Pathfinding Algorithm (Zone-aware)
   List<String> aStarPath({
     required String startNodeId,
     required String goalNodeId,
@@ -329,6 +377,9 @@ class PathfindingService {
     if (startNodeId == goalNodeId) {
       return [startNodeId];
     }
+
+    final startZone = getNodeZone(startNodeId);
+    final goalZone = getNodeZone(goalNodeId);
 
     // gScore[nodeId] = cost of cheapest path from start to nodeId
     final Map<String, double> gScore = {startNodeId: 0.0};
@@ -372,8 +423,14 @@ class PathfindingService {
         final neighborNode = _nodes[neighborId];
         if (neighborNode == null) continue;
 
-        final tentativeGScore = (gScore[currentId] ?? double.infinity) +
-            currentNode.distanceTo(neighborNode);
+        final edgeCost = _calculateContextualEdgeCost(
+          currentNode: currentNode,
+          neighborNode: neighborNode,
+          startZone: startZone,
+          goalZone: goalZone,
+        );
+
+        final tentativeGScore = (gScore[currentId] ?? double.infinity) + edgeCost;
 
         if (tentativeGScore < (gScore[neighborId] ?? double.infinity)) {
           cameFrom[neighborId] = currentId;

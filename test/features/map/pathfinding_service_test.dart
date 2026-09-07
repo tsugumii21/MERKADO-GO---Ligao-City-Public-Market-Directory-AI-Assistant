@@ -232,8 +232,8 @@ void main() {
       );
     });
 
-    test('Real graph has 136 nodes and 14 entry points', () {
-      expect(service.nodes.length, 136);
+    test('Real graph has 144 nodes and 14 entry points', () {
+      expect(service.nodes.length, 144);
       expect(service.entryPoints.length, 14);
       expect(service.stallToNodes.length, 231); // 134 assigned + 97 vacant slots
     });
@@ -337,6 +337,74 @@ void main() {
       expect(redirectedRoute.destinationStallName, 'FRANCISCO CARINDERIA II');
       expect(redirectedRoute.steps.first.instruction, contains("2 CEE'S STORE"));
       expect(redirectedRoute.steps.last.instruction, contains('FRANCISCO CARINDERIA II'));
+    });
+
+    test('Zone-aware: Outdoor stall to outdoor stall stays on the street without entering buildings', () {
+      // id_202 to id_126: Both in Extension V on North Street
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_202',
+        destinationStallId: 'id_126',
+        originName: 'R. LLOBIT RICE GRINDING SERVICES',
+        destinationName: 'LEANNE AND MARIA SARI SARI STORE',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+      // All nodes in this outdoor route must be street nodes ('node_ex_*')
+      for (final nodeId in route.nodeIds) {
+        expect(
+          PathfindingService.getNodeZone(nodeId),
+          'ex',
+          reason: 'Node $nodeId should be on outdoor street network (ex), not inside building',
+        );
+      }
+      expect(route.nodeIds.first, 'node_ex_n4');
+      expect(route.nodeIds.last, 'node_ex_n1');
+    });
+
+    test('Zone-aware: Gate to indoor Meat Section stall stays on street then enters building doorway', () {
+      // Gate 1 (node_ex_1) to id_3 (Meat Section)
+      final route = service.findRoute(
+        entranceNodeId: 'node_ex_1',
+        destinationStallId: 'id_3',
+        destinationName: "4E'S LLOBET MEATSHOP CORPORATION",
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+      expect(route.nodeIds.first, 'node_ex_1');
+      expect(PathfindingService.getNodeZone(route.nodeIds.first), 'ex');
+      expect(PathfindingService.getNodeZone(route.nodeIds.last), 'wm');
+
+      // The path must only consist of outdoor street ('ex') and target building ('wm')
+      for (final nodeId in route.nodeIds) {
+        final zone = PathfindingService.getNodeZone(nodeId);
+        expect(
+          zone == 'ex' || zone == 'wm',
+          isTrue,
+          reason: 'Node $nodeId should be in ex or wm zone, not cutting through other buildings',
+        );
+      }
+    });
+
+    test('Zone-aware: Indoor to indoor stall in same building stays inside building corridors', () {
+      // id_3 (Meat Section) to id_10 (Fish Section) - both in Wet Market (wm)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_3',
+        destinationStallId: 'id_10',
+        originName: "4E'S LLOBET MEATSHOP CORPORATION",
+        destinationName: 'ADVZ FISH RETAILING',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+      for (final nodeId in route.nodeIds) {
+        expect(
+          PathfindingService.getNodeZone(nodeId),
+          'wm',
+          reason: 'Node $nodeId should remain within the Wet Market interior corridors',
+        );
+      }
     });
   });
 }

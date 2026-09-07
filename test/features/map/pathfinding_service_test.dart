@@ -309,5 +309,34 @@ void main() {
       expect(route.steps.first.direction, TurnDirection.arrive);
       expect(route.steps.first.instruction, contains("already at 2 CEE'S STORE"));
     });
+
+    test('Redirection preserves previous origin stall (Stall A -> B redirected to Stall A -> C)', () {
+      // 1. Initial route: Stall A (id_1) to Stall B (id_80)
+      final initialRoute = service.findStallToStallRoute(
+        originStallId: 'id_1',
+        destinationStallId: 'id_80',
+        originName: "2 CEE'S STORE",
+        destinationName: 'FRANCISCO CARINDERIA I',
+      );
+      expect(initialRoute, isNotNull);
+      expect(initialRoute!.originStallId, 'id_1');
+      expect(initialRoute.destinationStallId, 'id_80');
+
+      // 2. Redirection: Keep origin A (id_1) from previous route, change to destination C (id_81)
+      final redirectedRoute = service.findStallToStallRoute(
+        originStallId: initialRoute.originStallId!,
+        destinationStallId: 'id_81',
+        originName: initialRoute.originStallName,
+        destinationName: 'FRANCISCO CARINDERIA II',
+      );
+
+      expect(redirectedRoute, isNotNull);
+      expect(redirectedRoute!.originStallId, 'id_1');
+      expect(redirectedRoute.originStallName, "2 CEE'S STORE");
+      expect(redirectedRoute.destinationStallId, 'id_81');
+      expect(redirectedRoute.destinationStallName, 'FRANCISCO CARINDERIA II');
+      expect(redirectedRoute.steps.first.instruction, contains("2 CEE'S STORE"));
+      expect(redirectedRoute.steps.last.instruction, contains('FRANCISCO CARINDERIA II'));
+    });
   });
 }

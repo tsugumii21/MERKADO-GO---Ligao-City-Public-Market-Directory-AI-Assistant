@@ -78,6 +78,7 @@ const List<MarketZoneArea> kMarketZoneAreas = [
 class InteractiveMarketMap extends StatefulWidget {
   final List<StallModel> stalls;
   final StallModel? selectedStall;
+  final StallModel? selectedOriginStall;
   final NavigationRoute? activeRoute;
   final List<MarketEntryPoint> entryPoints;
   final MarketEntryPoint? selectedEntrance;
@@ -92,6 +93,7 @@ class InteractiveMarketMap extends StatefulWidget {
     super.key,
     this.stalls = const [],
     this.selectedStall,
+    this.selectedOriginStall,
     this.activeRoute,
     this.entryPoints = const [],
     this.selectedEntrance,
@@ -739,7 +741,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                           fit: BoxFit.fill,
                         ),
 
-                      // Layer 1.5: Selected Stall Accent Highlight & Pulse
+                      // Layer 1.5: Selected Stall Accent Highlight & Pulse (Destination)
                       if (widget.selectedStall != null &&
                           _stallBoundsCache.containsKey(widget.selectedStall!.stallId))
                         AnimatedBuilder(
@@ -750,6 +752,26 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                               painter: _SelectedStallHighlightPainter(
                                 rect: _stallBoundsCache[widget.selectedStall!.stallId]!,
                                 pulseScale: _pulseAnimation.value,
+                                color: widget.selectedOriginStall != null
+                                    ? const Color(0xFFE53935)
+                                    : AppColors.primary,
+                              ),
+                            );
+                          },
+                        ),
+
+                      // Layer 1.6: Origin Stall Accent Highlight & Pulse (Green origin)
+                      if (widget.selectedOriginStall != null &&
+                          _stallBoundsCache.containsKey(widget.selectedOriginStall!.stallId))
+                        AnimatedBuilder(
+                          animation: _pulseAnimation,
+                          builder: (context, _) {
+                            return CustomPaint(
+                              size: const Size(_svgWidth, _svgHeight),
+                              painter: _SelectedStallHighlightPainter(
+                                rect: _stallBoundsCache[widget.selectedOriginStall!.stallId]!,
+                                pulseScale: _pulseAnimation.value,
+                                color: const Color(0xFF2E7D32),
                               ),
                             );
                           },
@@ -1475,10 +1497,12 @@ class _EntrancePinCenteredPainter extends CustomPainter {
 class _SelectedStallHighlightPainter extends CustomPainter {
   final Rect rect;
   final double pulseScale;
+  final Color color;
 
   const _SelectedStallHighlightPainter({
     required this.rect,
     required this.pulseScale,
+    this.color = AppColors.primary,
   });
 
   @override
@@ -1490,7 +1514,7 @@ class _SelectedStallHighlightPainter extends CustomPainter {
 
     // 1. Soft glowing outer pulse
     final glowPaint = Paint()
-      ..color = AppColors.primary.withValues(alpha: 0.35 * pulseScale)
+      ..color = color.withValues(alpha: 0.35 * pulseScale)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 10.0 * pulseScale
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
@@ -1498,7 +1522,7 @@ class _SelectedStallHighlightPainter extends CustomPainter {
 
     // 2. High-contrast crisp border
     final borderPaint = Paint()
-      ..color = AppColors.primary
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.0;
     canvas.drawRRect(rrect, borderPaint);
@@ -1506,7 +1530,9 @@ class _SelectedStallHighlightPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SelectedStallHighlightPainter oldDelegate) {
-    return oldDelegate.rect != rect || oldDelegate.pulseScale != pulseScale;
+    return oldDelegate.rect != rect ||
+        oldDelegate.pulseScale != pulseScale ||
+        oldDelegate.color != color;
   }
 }
 

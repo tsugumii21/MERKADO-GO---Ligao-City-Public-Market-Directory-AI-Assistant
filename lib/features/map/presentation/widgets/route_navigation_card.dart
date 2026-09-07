@@ -9,14 +9,14 @@ import '../../providers/navigation_provider.dart';
 /// Floating two-state turn-by-turn navigation card displayed over the interactive map
 class RouteNavigationCard extends ConsumerStatefulWidget {
   final NavigationRoute route;
-  final VoidCallback onChangeEntrance;
+  final VoidCallback? onChangeEntrance;
   final VoidCallback onClose;
   final VoidCallback? onRepeatRoute;
 
   const RouteNavigationCard({
     super.key,
     required this.route,
-    required this.onChangeEntrance,
+    this.onChangeEntrance,
     required this.onClose,
     this.onRepeatRoute,
   });
@@ -131,27 +131,6 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
             padding: const EdgeInsets.symmetric(horizontal: 6),
           ),
         ),
-        if (widget.onRepeatRoute != null)
-          IconButton(
-            onPressed: widget.onRepeatRoute,
-            icon: const Icon(Icons.replay_rounded, size: 20),
-            color: AppColors.primary,
-            tooltip: 'Repeat Map Redirection',
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-        IconButton(
-          onPressed: widget.onChangeEntrance,
-          icon: const Icon(Icons.alt_route_rounded, size: 20),
-          color: AppColors.inkMuted,
-          tooltip: widget.route.originType == NavigationOriginType.stall
-              ? 'Change Starting Point'
-              : 'Change Entrance Gate',
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.all(4),
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        ),
         IconButton(
           onPressed: widget.onClose,
           icon: const Icon(Icons.close_rounded, size: 20),
@@ -197,46 +176,20 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  InkWell(
-                    onTap: widget.onChangeEntrance,
-                    borderRadius: BorderRadius.circular(AppSpacing.xs),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            widget.route.originType == NavigationOriginType.stall
-                                ? 'From: ${widget.route.originStallName ?? "Starting Stall"}'
-                                : 'From Gate ${widget.route.entrance?.entranceId ?? ""}: ${widget.route.entrance?.description ?? ""}',
-                            style: AppTextStyles.captionSmall.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Icon(
-                          Icons.arrow_drop_down_rounded,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      ],
+                  Text(
+                    widget.route.originType == NavigationOriginType.stall
+                        ? 'From: ${widget.route.originStallName ?? "Starting Stall"}'
+                        : 'From Gate ${widget.route.entrance?.entranceId ?? ""}: ${widget.route.entrance?.description ?? ""}',
+                    style: AppTextStyles.captionSmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            if (widget.onRepeatRoute != null)
-              IconButton(
-                onPressed: widget.onRepeatRoute,
-                icon: const Icon(Icons.replay_rounded, size: 20),
-                color: AppColors.primary,
-                tooltip: 'Repeat Map Redirection',
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
             IconButton(
               onPressed: () => setState(() => _isMinimized = true),
               icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 22),

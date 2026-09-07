@@ -94,6 +94,47 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     _ref.read(currentStepIndexProvider.notifier).state = 0;
   }
 
+  /// Redirect active route to a new destination stall while preserving the previous origin
+  Future<void> redirectToStall({
+    required String newDestinationStallId,
+    String? newDestinationStallName,
+  }) async {
+    final current = state;
+    if (current == null) return;
+
+    if (current.originType == NavigationOriginType.stall &&
+        current.originStallId != null) {
+      await navigateStallToStall(
+        originStallId: current.originStallId!,
+        destinationStallId: newDestinationStallId,
+        originStallName: current.originStallName,
+        destinationStallName: newDestinationStallName,
+      );
+    } else if (current.entrance != null) {
+      await navigateToStall(
+        stallId: newDestinationStallId,
+        stallName: newDestinationStallName,
+        entranceOverride: current.entrance,
+      );
+    }
+  }
+
+  /// Change active route's origin stall while preserving current destination
+  Future<void> changeOriginStall({
+    required String newOriginStallId,
+    String? newOriginStallName,
+  }) async {
+    final current = state;
+    if (current == null) return;
+
+    await navigateStallToStall(
+      originStallId: newOriginStallId,
+      destinationStallId: current.destinationStallId,
+      originStallName: newOriginStallName,
+      destinationStallName: current.destinationStallName,
+    );
+  }
+
   /// Clear current navigation route
   void clearRoute() {
     state = null;
@@ -114,4 +155,7 @@ final routeTraversalTriggerProvider = StateProvider<int>((ref) => 0);
 
 /// Target destination stall when the user is picking a starting stall on the map
 final pickingOriginTargetStallProvider = StateProvider<StallModel?>((ref) => null);
+
+/// Currently picked origin stall in map-picking mode (before starting navigation)
+final selectedOriginStallProvider = StateProvider<StallModel?>((ref) => null);
 

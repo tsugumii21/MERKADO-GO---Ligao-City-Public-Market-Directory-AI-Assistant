@@ -12,11 +12,15 @@ import '../../../../providers/stall_provider.dart';
 class StallOriginPickerSheet extends ConsumerStatefulWidget {
   final String? targetStallId;
   final String? targetStallName;
+  final String? title;
+  final String? subtitle;
 
   const StallOriginPickerSheet({
     super.key,
     this.targetStallId,
     this.targetStallName,
+    this.title,
+    this.subtitle,
   });
 
   /// Displays the modal sheet and returns the chosen origin [StallModel], or null if dismissed
@@ -24,6 +28,8 @@ class StallOriginPickerSheet extends ConsumerStatefulWidget {
     BuildContext context, {
     String? targetStallId,
     String? targetStallName,
+    String? title,
+    String? subtitle,
   }) {
     return showModalBottomSheet<StallModel>(
       context: context,
@@ -39,6 +45,8 @@ class StallOriginPickerSheet extends ConsumerStatefulWidget {
       builder: (context) => StallOriginPickerSheet(
         targetStallId: targetStallId,
         targetStallName: targetStallName,
+        title: title,
+        subtitle: subtitle,
       ),
     );
   }
@@ -97,7 +105,7 @@ class _StallOriginPickerSheetState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Select Starting Stall',
+                        widget.title ?? 'Select Starting Stall',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -106,7 +114,7 @@ class _StallOriginPickerSheetState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Choose where you are currently standing',
+                        widget.subtitle ?? 'Choose where you are currently standing',
                         style: GoogleFonts.poppins(
                           fontSize: 12.5,
                           color: AppColors.inkMuted,

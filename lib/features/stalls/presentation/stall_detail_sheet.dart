@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import '../../../core/widgets/main_shell.dart';
 import '../../../core/constants/market_categories.dart';
 import '../../../core/widgets/market_category_icon.dart';
 
+import '../../map/domain/navigation_models.dart';
 import '../../map/providers/navigation_provider.dart';
 import '../../map/presentation/widgets/navigation_loading_dialog.dart';
 import '../../map/presentation/widgets/navigation_origin_sheet.dart';
@@ -132,6 +135,53 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     mainShellKey.currentState?.goToTab(0);
   }
 
+  Future<void> _confirmStartAndNavigate({
+    required StallModel targetStall,
+    required StallModel originStall,
+  }) async {
+    unawaited(HapticFeedback.mediumImpact());
+    widget.onClose();
+    mainShellKey.currentState?.goToTab(0);
+
+    await NavigationLoadingDialog.show(
+      context,
+      stallName: targetStall.name,
+      originName: originStall.name,
+    );
+    if (!mounted) return;
+
+    await ref.read(activeRouteProvider.notifier).navigateStallToStall(
+          originStallId: originStall.stallId,
+          destinationStallId: targetStall.stallId,
+          originStallName: originStall.name,
+          destinationStallName: targetStall.name,
+        );
+  }
+
+  Future<void> _confirmAndRedirect({
+    required NavigationRoute currentRoute,
+    required StallModel newDestinationStall,
+  }) async {
+    unawaited(HapticFeedback.mediumImpact());
+    final originName = currentRoute.originStallName ??
+        (currentRoute.entrance != null ? 'Gate ${currentRoute.entrance!.entranceId}' : null);
+
+    widget.onClose();
+    mainShellKey.currentState?.goToTab(0);
+
+    await NavigationLoadingDialog.show(
+      context,
+      stallName: newDestinationStall.name,
+      originName: originName,
+    );
+    if (!mounted) return;
+
+    await ref.read(activeRouteProvider.notifier).redirectToStall(
+          newDestinationStallId: newDestinationStall.stallId,
+          newDestinationStallName: newDestinationStall.name,
+        );
+  }
+
   ({
     IconData icon,
     Color color,
@@ -162,6 +212,59 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
         ? stall.photoUrls
         : (stall.primaryPhotoUrl.isNotEmpty ? [stall.primaryPhotoUrl] : <String>[]);
     final hasPhotos = photoList.isNotEmpty;
+
+    final activeRoute = ref.watch(activeRouteProvider);
+    final pickingOriginTarget = ref.watch(pickingOriginTargetStallProvider);
+
+    final VoidCallback? primaryActionPressed;
+    final String primaryActionLabel;
+    final String? primaryActionSubtitle;
+    final IconData primaryActionIcon;
+    final bool isActionDisabled;
+
+    if (pickingOriginTarget != null) {
+      if (stall.stallId == pickingOriginTarget.stallId) {
+        primaryActionLabel = 'Target Destination';
+        primaryActionSubtitle = 'Choose a different stall as your starting point';
+        primaryActionIcon = Icons.place_rounded;
+        primaryActionPressed = null;
+        isActionDisabled = true;
+      } else {
+        primaryActionLabel = 'Confirm Start & Navigate';
+        primaryActionSubtitle = 'From ${stall.name} → ${pickingOriginTarget.name}';
+        primaryActionIcon = Icons.play_arrow_rounded;
+        primaryActionPressed = () => _confirmStartAndNavigate(
+              targetStall: pickingOriginTarget,
+              originStall: stall,
+            );
+        isActionDisabled = false;
+      }
+    } else if (activeRoute != null) {
+      if (stall.stallId == activeRoute.destinationStallId) {
+        primaryActionLabel = 'Current Destination';
+        primaryActionSubtitle = 'You are already navigating to this stall';
+        primaryActionIcon = Icons.check_circle_rounded;
+        primaryActionPressed = null;
+        isActionDisabled = true;
+      } else {
+        final originName = activeRoute.originStallName ??
+            (activeRoute.entrance != null ? 'Gate ${activeRoute.entrance!.entranceId}' : 'Starting Point');
+        primaryActionLabel = 'Confirm & Redirect Here';
+        primaryActionSubtitle = 'Reroute: $originName → ${stall.name}';
+        primaryActionIcon = Icons.alt_route_rounded;
+        primaryActionPressed = () => _confirmAndRedirect(
+              currentRoute: activeRoute,
+              newDestinationStall: stall,
+            );
+        isActionDisabled = false;
+      }
+    } else {
+      primaryActionLabel = 'Navigate to Stall';
+      primaryActionSubtitle = null;
+      primaryActionIcon = Icons.near_me_rounded;
+      primaryActionPressed = _navigateToStallOnMap;
+      isActionDisabled = false;
+    }
 
     final screenHeight = MediaQuery.of(context).size.height;
     final fixedSheetHeight = screenHeight * 0.74;
@@ -674,34 +777,72 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
 
                     const SizedBox(height: 24),
 
-                    // 6. Primary Action: Navigate to Stall
+                    // 6. Context-Aware Primary Action: Navigate, Confirm Start, or Redirect
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: _navigateToStallOnMap,
-                        icon: const Icon(
-                          Icons.near_me_rounded,
-                          size: 19,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          'Navigate to Stall',
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            height: 1.2,
-                          ),
-                        ),
+                      child: ElevatedButton(
+                        onPressed: isActionDisabled ? null : primaryActionPressed,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1B5E20),
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFFE2E8F0),
+                          disabledForegroundColor: const Color(0xFF94A3B8),
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  primaryActionIcon,
+                                  size: 19,
+                                  color: isActionDisabled
+                                      ? const Color(0xFF94A3B8)
+                                      : Colors.white,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    primaryActionLabel,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: isActionDisabled
+                                          ? const Color(0xFF94A3B8)
+                                          : Colors.white,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (primaryActionSubtitle != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                primaryActionSubtitle,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w400,
+                                  color: isActionDisabled
+                                      ? const Color(0xFF94A3B8)
+                                      : Colors.white.withValues(alpha: 0.90),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ),

@@ -113,9 +113,13 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       return;
                     }
 
-                    // Select starting stall without starting immediately (allows review and re-selection)
+                    // Select starting stall in header & pulse on map
                     ref.read(selectedOriginStallProvider.notifier).state = stall;
-                    await HapticFeedback.selectionClick();
+                    unawaited(HapticFeedback.selectionClick());
+
+                    // Pop up StallDetailSheet so user can review details and tap confirm
+                    setState(() => _selectedStall = stall);
+                    await StallDetailSheet.show(context, stall);
                     return;
                   }
 
@@ -550,7 +554,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                           borderRadius: BorderRadius.circular(8),
                           child: InkWell(
                             onTap: () async {
-                              await HapticFeedback.selectionClick();
+                              unawaited(HapticFeedback.selectionClick());
                               if (!mounted) return;
                               final stall = await StallOriginPickerSheet.show(
                                 context,
@@ -559,6 +563,8 @@ class MapScreenState extends ConsumerState<MapScreen> {
                               );
                               if (stall == null || !mounted) return;
                               ref.read(selectedOriginStallProvider.notifier).state = stall;
+                              setState(() => _selectedStall = stall);
+                              await StallDetailSheet.show(context, stall);
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
@@ -857,13 +863,15 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       borderRadius: BorderRadius.circular(8),
                       child: InkWell(
                         onTap: () async {
-                          await HapticFeedback.selectionClick();
+                          unawaited(HapticFeedback.selectionClick());
                           if (!mounted) return;
                           if (route.originType == NavigationOriginType.stall) {
                             final stall = await StallOriginPickerSheet.show(
                               context,
                               targetStallId: route.destinationStallId,
                               targetStallName: route.destinationStallName,
+                              title: 'Change Starting Stall',
+                              subtitle: 'Choose where you are currently standing',
                             );
                             if (stall == null || !mounted) return;
                             await NavigationLoadingDialog.show(
@@ -928,29 +936,21 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       borderRadius: BorderRadius.circular(8),
                       child: InkWell(
                         onTap: () async {
-                          await HapticFeedback.selectionClick();
+                          unawaited(HapticFeedback.selectionClick());
                           if (!mounted) return;
                           // Pick replacement destination stall
                           final stall = await StallOriginPickerSheet.show(
                             context,
                             targetStallId: route.destinationStallId,
                             targetStallName: route.destinationStallName,
+                            title: 'Redirect to Stall',
+                            subtitle: 'Choose a new destination to navigate to',
                           );
                           if (stall == null || !mounted) return;
 
-                          // Retain previous origin and route to newly selected stall
-                          await NavigationLoadingDialog.show(
-                            context,
-                            stallName: stall.name,
-                            originName: route.originStallName ??
-                                (route.entrance != null ? 'Gate ${route.entrance!.entranceId}' : null),
-                          );
-                          if (!mounted) return;
-
-                          await ref.read(activeRouteProvider.notifier).redirectToStall(
-                                newDestinationStallId: stall.stallId,
-                                newDestinationStallName: stall.name,
-                              );
+                          // Pop up StallDetailSheet so user can review details and tap confirm
+                          setState(() => _selectedStall = stall);
+                          await StallDetailSheet.show(context, stall);
                         },
                         borderRadius: BorderRadius.circular(8),
                         child: Container(

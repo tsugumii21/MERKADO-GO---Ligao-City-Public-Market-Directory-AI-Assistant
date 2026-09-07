@@ -69,6 +69,8 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
 
     state = route;
     _ref.read(currentStepIndexProvider.notifier).state = 0;
+    _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+    _ref.read(selectedOriginStallProvider.notifier).state = null;
   }
 
   /// Calculate route directly from origin stall to destination stall
@@ -92,6 +94,8 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
 
     state = route;
     _ref.read(currentStepIndexProvider.notifier).state = 0;
+    _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+    _ref.read(selectedOriginStallProvider.notifier).state = null;
   }
 
   /// Redirect active route to a new destination stall while preserving the previous origin
@@ -101,6 +105,10 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
   }) async {
     final current = state;
     if (current == null) return;
+
+    // Clear picking providers to eliminate any state conflicts
+    _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+    _ref.read(selectedOriginStallProvider.notifier).state = null;
 
     if (current.originType == NavigationOriginType.stall &&
         current.originStallId != null) {
@@ -116,6 +124,11 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
         stallName: newDestinationStallName,
         entranceOverride: current.entrance,
       );
+    } else {
+      await navigateToStall(
+        stallId: newDestinationStallId,
+        stallName: newDestinationStallName,
+      );
     }
   }
 
@@ -126,6 +139,9 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
   }) async {
     final current = state;
     if (current == null) return;
+
+    _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+    _ref.read(selectedOriginStallProvider.notifier).state = null;
 
     await navigateStallToStall(
       originStallId: newOriginStallId,
@@ -139,6 +155,8 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
   void clearRoute() {
     state = null;
     _ref.read(currentStepIndexProvider.notifier).state = 0;
+    _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+    _ref.read(selectedOriginStallProvider.notifier).state = null;
   }
 }
 

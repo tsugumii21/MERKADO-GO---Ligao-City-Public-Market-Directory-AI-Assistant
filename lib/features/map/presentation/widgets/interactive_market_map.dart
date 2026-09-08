@@ -405,6 +405,9 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
           _isLoadingSvg = false;
         });
         _applyCategoryColors();
+        if (widget.activeRoute != null && widget.activeRoute!.nodes.isNotEmpty) {
+          _recomputeCachedRoute();
+        }
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _centerOnMarket(animate: false);
@@ -419,6 +422,26 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
         });
       }
     }
+  }
+
+  Offset? _getStallCenter(String? stallId) {
+    if (stallId == null) return null;
+    if (_stallCenterCache.containsKey(stallId)) return _stallCenterCache[stallId];
+    final normalized = stallId.startsWith('id_') ? stallId : 'id_$stallId';
+    if (_stallCenterCache.containsKey(normalized)) return _stallCenterCache[normalized];
+    final unPrefixed = stallId.replaceFirst('id_', '');
+    if (_stallCenterCache.containsKey(unPrefixed)) return _stallCenterCache[unPrefixed];
+    return null;
+  }
+
+  Rect? _getStallBounds(String? stallId) {
+    if (stallId == null) return null;
+    if (_stallBoundsCache.containsKey(stallId)) return _stallBoundsCache[stallId];
+    final normalized = stallId.startsWith('id_') ? stallId : 'id_$stallId';
+    if (_stallBoundsCache.containsKey(normalized)) return _stallBoundsCache[normalized];
+    final unPrefixed = stallId.replaceFirst('id_', '');
+    if (_stallBoundsCache.containsKey(unPrefixed)) return _stallBoundsCache[unPrefixed];
+    return null;
   }
 
   /// Detects user tap on the interactive map canvas, matches touched stall, and triggers selection
@@ -560,7 +583,18 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     final points = widget.activeRoute!.nodes.map((node) {
       return Offset(node.x + _nodeOffsetX, node.y + _nodeOffsetY);
     }).toList();
-    final destCenter = _stallCenterCache[widget.activeRoute!.destinationStallId];
+
+    // Prepend origin stall center (stall-to-stall route)
+    final originStallId = widget.activeRoute!.originStallId ??
+        widget.selectedOriginStall?.stallId;
+    final originCenter = _getStallCenter(originStallId);
+    if (originCenter != null) {
+      points.insert(0, originCenter);
+    }
+
+    // Append destination stall center
+    final destStallId = widget.activeRoute!.destinationStallId;
+    final destCenter = _getStallCenter(destStallId);
     if (destCenter != null) {
       points.add(destCenter);
     }
@@ -702,6 +736,14 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       );
     }
 
+    final effectiveDestStallId =
+        widget.activeRoute?.destinationStallId ?? widget.selectedStall?.stallId;
+    final destBounds = _getStallBounds(effectiveDestStallId);
+
+    final effectiveOriginStallId =
+        widget.activeRoute?.originStallId ?? widget.selectedOriginStall?.stallId;
+    final originBounds = _getStallBounds(effectiveOriginStallId);
+
     return Container(
       color: Colors.white,
       child: Stack(
@@ -741,18 +783,19 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                           fit: BoxFit.fill,
                         ),
 
-                      // Layer 1.5: Selected Stall Accent Highlight & Pulse (Destination)
-                      if (widget.selectedStall != null &&
-                          _stallBoundsCache.containsKey(widget.selectedStall!.stallId))
+                      // Layer 1.5: Selected/Destination Stall Radiant Neon Glow
+                      if (destBounds != null)
                         AnimatedBuilder(
                           animation: _pulseAnimation,
                           builder: (context, _) {
+                            final isNavigating = widget.activeRoute != null;
+                            final hasOrigin = effectiveOriginStallId != null;
                             return CustomPaint(
                               size: const Size(_svgWidth, _svgHeight),
                               painter: _SelectedStallHighlightPainter(
-                                rect: _stallBoundsCache[widget.selectedStall!.stallId]!,
+                                rect: destBounds,
                                 pulseScale: _pulseAnimation.value,
-                                color: widget.selectedOriginStall != null
+                                color: (isNavigating || hasOrigin)
                                     ? const Color(0xFFE53935)
                                     : AppColors.primary,
                               ),
@@ -760,16 +803,16 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                           },
                         ),
 
-                      // Layer 1.6: Origin Stall Accent Highlight & Pulse (Green origin)
-                      if (widget.selectedOriginStall != null &&
-                          _stallBoundsCache.containsKey(widget.selectedOriginStall!.stallId))
+                      // Layer 1.6: Origin Stall Radiant Neon Glow (Emerald)
+                      if (originBounds != null &&
+                          effectiveOriginStallId != effectiveDestStallId)
                         AnimatedBuilder(
                           animation: _pulseAnimation,
                           builder: (context, _) {
                             return CustomPaint(
                               size: const Size(_svgWidth, _svgHeight),
                               painter: _SelectedStallHighlightPainter(
-                                rect: _stallBoundsCache[widget.selectedOriginStall!.stallId]!,
+                                rect: originBounds,
                                 pulseScale: _pulseAnimation.value,
                                 color: const Color(0xFF2E7D32),
                               ),
@@ -790,8 +833,8 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                               nodeOffsetX: _nodeOffsetX,
                               nodeOffsetY: _nodeOffsetY,
                               pulseScale: _pulseAnimation.value,
-                              destinationStallCenter: _stallCenterCache[
-                                  widget.activeRoute!.destinationStallId],
+                              originStallCenter: _getStallCenter(effectiveOriginStallId),
+                              destinationStallCenter: _getStallCenter(effectiveDestStallId),
                               walkProgress: _walkController.value,
                               isWalking: _isWalking,
                               cachedPath: _cachedRoutePath,
@@ -993,6 +1036,7 @@ class RouteOverlayPainter extends CustomPainter {
   final double nodeOffsetX;
   final double nodeOffsetY;
   final double pulseScale;
+  final Offset? originStallCenter;
   final Offset? destinationStallCenter;
   final double walkProgress;
   final bool isWalking;
@@ -1006,6 +1050,7 @@ class RouteOverlayPainter extends CustomPainter {
     required this.nodeOffsetX,
     required this.nodeOffsetY,
     required this.pulseScale,
+    this.originStallCenter,
     this.destinationStallCenter,
     this.walkProgress = 1.0,
     this.isWalking = false,
@@ -1025,10 +1070,11 @@ class RouteOverlayPainter extends CustomPainter {
 
     if (cachedPath != null) {
       fullPath = cachedPath!;
-      startPt = Offset(
-        route.nodes.first.x + nodeOffsetX,
-        route.nodes.first.y + nodeOffsetY,
-      );
+      startPt = originStallCenter ??
+          Offset(
+            route.nodes.first.x + nodeOffsetX,
+            route.nodes.first.y + nodeOffsetY,
+          );
       endPt = destinationStallCenter ??
           Offset(
             route.nodes.last.x + nodeOffsetX,
@@ -1039,6 +1085,9 @@ class RouteOverlayPainter extends CustomPainter {
         return Offset(node.x + nodeOffsetX, node.y + nodeOffsetY);
       }).toList();
 
+      if (originStallCenter != null) {
+        canvasPoints.insert(0, originStallCenter!);
+      }
       if (destinationStallCenter != null) {
         canvasPoints.add(destinationStallCenter!);
       }
@@ -1321,6 +1370,7 @@ class RouteOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant RouteOverlayPainter oldDelegate) {
     return oldDelegate.route != route ||
         oldDelegate.pulseScale != pulseScale ||
+        oldDelegate.originStallCenter != originStallCenter ||
         oldDelegate.destinationStallCenter != destinationStallCenter ||
         oldDelegate.walkProgress != walkProgress ||
         oldDelegate.isWalking != isWalking ||
@@ -1493,7 +1543,7 @@ class _EntrancePinCenteredPainter extends CustomPainter {
       oldDelegate.mapRotationRadians != mapRotationRadians;
 }
 
-/// Highlights the actively selected stall on the interactive vector map
+/// Highlights the actively selected or navigating stall with a radiant multi-layer neon glow
 class _SelectedStallHighlightPainter extends CustomPainter {
   final Rect rect;
   final double pulseScale;
@@ -1507,25 +1557,54 @@ class _SelectedStallHighlightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(
-      rect.inflate(4.0),
+    final innerRRect = RRect.fromRectAndRadius(
+      rect,
+      const Radius.circular(4.0),
+    );
+    final midRRect = RRect.fromRectAndRadius(
+      rect.inflate(3.0),
       const Radius.circular(6.0),
     );
+    final outerAuraRRect = RRect.fromRectAndRadius(
+      rect.inflate(3.0 + 4.0 * pulseScale),
+      const Radius.circular(8.0),
+    );
 
-    // 1. Soft glowing outer pulse
-    final glowPaint = Paint()
-      ..color = color.withValues(alpha: 0.35 * pulseScale)
+    // 1. Luminous interior floor wash
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: (0.18 * pulseScale).clamp(0.10, 0.28))
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(innerRRect, fillPaint);
+
+    // 2. Wide ambient neon bloom (outer aura)
+    final wideGlowPaint = Paint()
+      ..color = color.withValues(alpha: (0.32 * pulseScale).clamp(0.18, 0.45))
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 10.0 * pulseScale
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-    canvas.drawRRect(rrect, glowPaint);
+      ..strokeWidth = 16.0 * pulseScale
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+    canvas.drawRRect(outerAuraRRect, wideGlowPaint);
 
-    // 2. High-contrast crisp border
+    // 3. High-intensity near-field corona
+    final coronaPaint = Paint()
+      ..color = color.withValues(alpha: (0.50 * pulseScale).clamp(0.30, 0.65))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8.0 * pulseScale
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawRRect(midRRect, coronaPaint);
+
+    // 4. Crisp architectural boundary stroke
     final borderPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0;
-    canvas.drawRRect(rrect, borderPaint);
+      ..strokeWidth = 3.5;
+    canvas.drawRRect(midRRect, borderPaint);
+
+    // 5. Specular highlight rim for high-definition polish
+    final highlightPaint = Paint()
+      ..color = Colors.white.withValues(alpha: (0.45 * pulseScale).clamp(0.20, 0.60))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawRRect(midRRect.deflate(1.5), highlightPaint);
   }
 
   @override

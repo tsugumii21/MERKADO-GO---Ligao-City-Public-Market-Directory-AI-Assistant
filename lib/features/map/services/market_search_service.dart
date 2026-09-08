@@ -1,5 +1,6 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/services.dart';
+import '../../../core/utils/stall_utils.dart';
 import '../../../../models/stall_model.dart';
 
 enum StallMatchType {
@@ -129,17 +130,26 @@ class MarketSearchService {
     required String query,
     required List<StallModel> allStalls,
     String? categoryFilter,
+    String? subcategoryFilter,
   }) {
     final cleanQuery = _normalize(query);
     final results = <SearchResultItem>[];
 
-    // Filter stalls by category first if specified
-    final candidateStalls = categoryFilter != null && categoryFilter.isNotEmpty
+    // Filter stalls by category and subcategory first if specified
+    final candidateStalls = (categoryFilter != null &&
+            categoryFilter.isNotEmpty &&
+            categoryFilter != 'All' &&
+            categoryFilter != 'Favorites')
         ? allStalls
-            .where((s) =>
-                s.category.toLowerCase() == categoryFilter.toLowerCase())
+            .where((s) => StallUtils.matchesCategory(
+                s, categoryFilter, subcategoryFilter))
             .toList()
-        : allStalls;
+        : (subcategoryFilter != null && subcategoryFilter.isNotEmpty
+            ? allStalls
+                .where((s) =>
+                    StallUtils.matchesCategory(s, 'All', subcategoryFilter))
+                .toList()
+            : allStalls);
 
     if (cleanQuery.isEmpty) {
       // If query is empty but filter is present, return all in category

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../constants/market_categories.dart';
 import '../../../models/stall_model.dart';
 
 /// Utility class for stall-related calculations
@@ -525,5 +526,61 @@ class StallUtils {
     final preview = formatted.take(maxPreview).join(', ');
     final remaining = formatted.length - maxPreview;
     return '$preview • +$remaining more';
+  }
+
+  /// Determines if a [stall] matches a given [category] and optional [subcategory].
+  /// Matches against primary category, id, aliases, keywords, and subcategories.
+  static bool matchesCategory(
+    StallModel stall,
+    String category, [
+    String? subcategory,
+  ]) {
+    if (category == 'All') return true;
+
+    final targetItem = MarketCategories.findCategory(category);
+    final stallItem = MarketCategories.findCategory(stall.category);
+
+    bool categoryMatched = false;
+    if (targetItem != null && stallItem != null) {
+      if (targetItem.id == stallItem.id) {
+        categoryMatched = true;
+      }
+    }
+
+    if (!categoryMatched) {
+      final stallCat = stall.category.toLowerCase();
+      final targetCat = category.toLowerCase();
+      if (stallCat.contains(targetCat) || targetCat.contains(stallCat)) {
+        categoryMatched = true;
+      }
+    }
+
+    if (!categoryMatched && targetItem != null) {
+      final stallCat = stall.category.toLowerCase();
+      final allWords = [
+        ...targetItem.keywords,
+        ...targetItem.subcategories,
+        targetItem.shortName.toLowerCase(),
+        targetItem.displayName.toLowerCase(),
+      ];
+      categoryMatched = allWords.any((w) =>
+          stallCat.contains(w.toLowerCase()) ||
+          stall.products.any((p) => p.toLowerCase().contains(w.toLowerCase())));
+    }
+
+    if (!categoryMatched) return false;
+
+    // If subcategory is selected, filter strictly by subcategory
+    if (subcategory != null && subcategory.isNotEmpty) {
+      final subNorm = subcategory.toLowerCase();
+      final inProducts = stall.products.any((p) =>
+          p.toLowerCase().contains(subNorm) || subNorm.contains(p.toLowerCase()));
+      final inTags = stall.tags.any((t) =>
+          t.toLowerCase().contains(subNorm) || subNorm.contains(t.toLowerCase()));
+      final inName = stall.name.toLowerCase().contains(subNorm);
+      return inProducts || inTags || inName;
+    }
+
+    return true;
   }
 }

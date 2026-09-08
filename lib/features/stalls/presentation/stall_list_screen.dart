@@ -12,6 +12,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/market_categories.dart';
 import '../../../core/widgets/market_category_icon.dart';
 import 'stall_detail_sheet.dart';
+import 'widgets/category_filter_chips_bar.dart';
+import 'widgets/stall_filter_sort_bar.dart';
+import 'widgets/inline_filter_drawer.dart';
 
 /// Alias for DirectoryScreen to ensure seamless naming compatibility
 typedef DirectoryScreen = StallListScreen;
@@ -40,8 +43,17 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   String? selectedDay; // 'Monday' | 'Tuesday' | ... | null
   bool showOpenOnDay = true;
   bool _filterOpenOnly = false; // Open now only toggle
+  bool _isFilterDrawerOpen = false; // Inline expandable filter panel
 
-  List<String> get _categories => MarketCategories.directoryFilterNames;
+  bool get hasAdvancedFilters =>
+      selectedDay != null || filterOpenTime != null || filterCloseTime != null;
+
+  bool get hasAnyActiveFilter =>
+      _selectedCategory != 'All' ||
+      _selectedSubcategory != null ||
+      sortAlpha != null ||
+      _filterOpenOnly ||
+      hasAdvancedFilters;
 
   @override
   void initState() {
@@ -97,13 +109,15 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   void resetAllFilters() {
     setState(() {
+      _selectedCategory = 'All';
+      _selectedSubcategory = null;
       sortAlpha = null;
       filterOpenTime = null;
       filterCloseTime = null;
       selectedDay = null;
       showOpenOnDay = true;
       _filterOpenOnly = false;
-      _selectedSubcategory = null;
+      _isFilterDrawerOpen = false;
     });
   }
 
@@ -122,53 +136,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   // Category and subcategory matching helper
   bool _matchesCategory(StallModel stall, String category, [String? subcategory]) {
-    if (category == 'All') return true;
-
-    final targetItem = MarketCategories.findCategory(category);
-    final stallItem = MarketCategories.findCategory(stall.category);
-
-    bool categoryMatched = false;
-    if (targetItem != null && stallItem != null) {
-      if (targetItem.id == stallItem.id) {
-        categoryMatched = true;
-      }
-    }
-
-    if (!categoryMatched) {
-      final stallCat = stall.category.toLowerCase();
-      final targetCat = category.toLowerCase();
-      if (stallCat.contains(targetCat) || targetCat.contains(stallCat)) {
-        categoryMatched = true;
-      }
-    }
-
-    if (!categoryMatched && targetItem != null) {
-      final stallCat = stall.category.toLowerCase();
-      final allWords = [
-        ...targetItem.keywords,
-        ...targetItem.subcategories,
-        targetItem.shortName.toLowerCase(),
-        targetItem.displayName.toLowerCase(),
-      ];
-      categoryMatched = allWords.any((w) =>
-          stallCat.contains(w.toLowerCase()) ||
-          stall.products.any((p) => p.toLowerCase().contains(w.toLowerCase())));
-    }
-
-    if (!categoryMatched) return false;
-
-    // If subcategory is selected, filter strictly by subcategory
-    if (subcategory != null && subcategory.isNotEmpty) {
-      final subNorm = subcategory.toLowerCase();
-      final inProducts = stall.products.any((p) =>
-          p.toLowerCase().contains(subNorm) || subNorm.contains(p.toLowerCase()));
-      final inTags = stall.tags.any((t) =>
-          t.toLowerCase().contains(subNorm) || subNorm.contains(t.toLowerCase()));
-      final inName = stall.name.toLowerCase().contains(subNorm);
-      return inProducts || inTags || inName;
-    }
-
-    return true;
+    return StallUtils.matchesCategory(stall, category, subcategory);
   }
 
   // Get visual metadata for a stall category
@@ -196,33 +164,6 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     } catch (_) {
       return null;
     }
-  }
-
-  void _showSortFilterModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _FilterBottomSheet(
-        currentSortAlpha: sortAlpha,
-        currentFilterOpenTime: filterOpenTime,
-        currentFilterCloseTime: filterCloseTime,
-        currentSelectedDay: selectedDay,
-        currentShowOpenOnDay: showOpenOnDay,
-        currentFilterOpenOnly: _filterOpenOnly,
-        onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen, newOpenOnly) {
-          setState(() {
-            sortAlpha = newSortAlpha;
-            filterOpenTime = newOpenTime;
-            filterCloseTime = newCloseTime;
-            selectedDay = newDay;
-            showOpenOnDay = newShowOpen;
-            _filterOpenOnly = newOpenOnly;
-          });
-        },
-        onReset: resetAllFilters,
-      ),
-    );
   }
 
   @override
@@ -332,194 +273,21 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
             ),
           ),
 
-          // 3. Category Filter Chips
-          SizedBox(
-            height: 38,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final category = _categories[index];
-                final isSelected = category == _selectedCategory;
-
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _selectedCategory = category;
-                    _selectedSubcategory = null;
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isSelected ? const Color(0xFF1B5E20) : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF1B5E20)
-                            : const Color(0xFFE5E7EB),
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF1B5E20)
-                                    .withValues(alpha: 0.2),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: Row(
-                      children: [
-                        if (category == 'Favorites') ...[
-                          Icon(
-                            Icons.favorite_rounded,
-                            size: 14,
-                            color: isSelected ? Colors.white : Colors.redAccent,
-                          ),
-                          const SizedBox(width: 4),
-                        ] else if (category != 'All') ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.white
-                                  : MarketCategories.getVisuals(category).color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Text(
-                          category,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.w500,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF374151),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+          // 3. Category Filter Chips & Subcategories Bar
+          CategoryFilterChipsBar(
+            selectedCategory: _selectedCategory,
+            selectedSubcategory: _selectedSubcategory,
+            onCategorySelected: (cat) => setState(() {
+              _selectedCategory = cat;
+              _selectedSubcategory = null;
+            }),
+            onSubcategorySelected: (sub) => setState(() {
+              _selectedSubcategory = sub;
+            }),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
           ),
 
-          // 3.5. Subcategory Chips (shown when selected category has subcategories)
-          Builder(
-            builder: (context) {
-              final activeItem =
-                  MarketCategories.findCategory(_selectedCategory);
-              if (activeItem == null || activeItem.subcategories.isEmpty) {
-                return const SizedBox.shrink();
-              }
-
-              final subcategories = activeItem.subcategories;
-              return Container(
-                margin: const EdgeInsets.only(top: 8),
-                height: 32,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: subcategories.length + 1,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      final isAllSelected = _selectedSubcategory == null;
-                      return GestureDetector(
-                        onTap: () =>
-                            setState(() => _selectedSubcategory = null),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isAllSelected
-                                ? activeItem.colorSet.fill
-                                : activeItem.colorSet.accent
-                                    .withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isAllSelected
-                                  ? activeItem.colorSet.fill
-                                  : activeItem.colorSet.outline
-                                      .withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Text(
-                            'All ${activeItem.shortName}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              fontWeight: isAllSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: isAllSelected
-                                  ? Colors.white
-                                  : activeItem.colorSet.outline,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    final sub = subcategories[index - 1];
-                    final isSubSelected = _selectedSubcategory == sub;
-
-                    return GestureDetector(
-                      onTap: () => setState(() {
-                        _selectedSubcategory = isSubSelected ? null : sub;
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSubSelected
-                              ? activeItem.colorSet.fill
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isSubSelected
-                                ? activeItem.colorSet.fill
-                                : const Color(0xFFE5E7EB),
-                          ),
-                        ),
-                        child: Text(
-                          sub,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11.5,
-                            fontWeight: isSubSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: isSubSelected
-                                ? Colors.white
-                                : const Color(0xFF4B5563),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // 4. Stalls List Section Header & Filter Button
           stallsAsync.when(
@@ -607,64 +375,57 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                     b.name.toLowerCase().compareTo(a.name.toLowerCase()));
               }
 
-              final activeFilters = getActiveFilterCount();
-
               return Expanded(
                 child: Column(
                   children: [
-                    // Section Title & Filter Trigger
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'All Stalls (${filtered.length})',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1F2937),
-                            ),
-                          ),
-                          InkWell(
-                            onTap: _showSortFilterModal,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.tune_rounded,
-                                    size: 16,
-                                    color: activeFilters > 0
-                                        ? const Color(0xFF1B5E20)
-                                        : const Color(0xFF4B5563),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    activeFilters > 0
-                                        ? 'Filter ($activeFilters)'
-                                        : 'Filter',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      color: activeFilters > 0
-                                          ? const Color(0xFF1B5E20)
-                                          : const Color(0xFF4B5563),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    // Section Title, 1-Tap Quick Filters & Inline Sort
+                    StallFilterSortBar(
+                      title: _selectedCategory == 'All'
+                          ? 'All Stalls'
+                          : _selectedCategory,
+                      count: filtered.length,
+                      sortAlpha: sortAlpha,
+                      filterOpenOnly: _filterOpenOnly,
+                      isDrawerOpen: _isFilterDrawerOpen,
+                      hasAdvancedFilters: hasAdvancedFilters,
+                      hasAnyActiveFilter: hasAnyActiveFilter,
+                      onSortAlphaChanged: (val) =>
+                          setState(() => sortAlpha = val),
+                      onFilterOpenOnlyChanged: (val) =>
+                          setState(() => _filterOpenOnly = val),
+                      onToggleDrawer: () => setState(
+                          () => _isFilterDrawerOpen = !_isFilterDrawerOpen),
+                      onResetAll: resetAllFilters,
+                    ),
+
+                    // Smooth Inline Expandable Filter Drawer (No Modal!)
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      child: _isFilterDrawerOpen
+                          ? InlineFilterDrawer(
+                              selectedDay: selectedDay,
+                              showOpenOnDay: showOpenOnDay,
+                              openTime: filterOpenTime,
+                              closeTime: filterCloseTime,
+                              onDaySelected: (day) =>
+                                  setState(() => selectedDay = day),
+                              onShowOpenChanged: (val) =>
+                                  setState(() => showOpenOnDay = val),
+                              onTimeRangeChanged: (open, close) => setState(() {
+                                filterOpenTime = open;
+                                filterCloseTime = close;
+                              }),
+                              onClear: () => setState(() {
+                                selectedDay = null;
+                                showOpenOnDay = true;
+                                filterOpenTime = null;
+                                filterCloseTime = null;
+                              }),
+                              onClose: () =>
+                                  setState(() => _isFilterDrawerOpen = false),
+                            )
+                          : const SizedBox.shrink(),
                     ),
 
                     // Stalls List
@@ -1204,7 +965,7 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 }
 
 /// The 4-Section Sort & Filter Bottom Sheet
-class _FilterBottomSheet extends StatefulWidget {
+class FilterBottomSheet extends StatefulWidget {
   final String? currentSortAlpha;
   final TimeOfDay? currentFilterOpenTime;
   final TimeOfDay? currentFilterCloseTime;
@@ -1221,7 +982,8 @@ class _FilterBottomSheet extends StatefulWidget {
   ) onApply;
   final VoidCallback onReset;
 
-  const _FilterBottomSheet({
+  const FilterBottomSheet({
+    super.key,
     required this.currentSortAlpha,
     required this.currentFilterOpenTime,
     required this.currentFilterCloseTime,
@@ -1233,10 +995,10 @@ class _FilterBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+  State<FilterBottomSheet> createState() => _FilterBottomSheetState();
 }
 
-class _FilterBottomSheetState extends State<_FilterBottomSheet> {
+class _FilterBottomSheetState extends State<FilterBottomSheet> {
   late String? _tempSortAlpha;
   late TimeOfDay? _tempFilterOpenTime;
   late TimeOfDay? _tempFilterCloseTime;
@@ -1309,7 +1071,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   Widget build(BuildContext context) {
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxHeight:
+            (MediaQuery.of(context).size.height * 0.60).clamp(0.0, 560.0),
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1336,19 +1099,23 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Sort & Filter',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1F2937),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Sort & Filter',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1F2937),
+                            ),
+                          ),
                         ),
-                      ),
-                      if (getActiveFilterCount() > 0) ...[
-                        const SizedBox(width: 8),
-                        Container(
+                        if (getActiveFilterCount() > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 2,
@@ -1369,6 +1136,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       ],
                     ],
                   ),
+                ),
                   TextButton(
                     onPressed: () {
                       setState(() {

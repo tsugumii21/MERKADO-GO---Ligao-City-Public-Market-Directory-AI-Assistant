@@ -173,8 +173,7 @@
     "x": -5724,
     "y": 35,
     "neighbors": [
-      "node_ex_t18",
-      "node_ex_w4"
+      "node_ex_t18"
     ]
   },
   "node_ex_6": {
@@ -1188,13 +1187,6 @@
     "neighbors": [
       "node_ea_m1",
       "node_ea_t3"
-    ]
-  },
-  "node_ex_w4": {
-    "x": -5541,
-    "y": -316,
-    "neighbors": [
-      "node_ex_5"
     ]
   },
   "node_ex_n1": {

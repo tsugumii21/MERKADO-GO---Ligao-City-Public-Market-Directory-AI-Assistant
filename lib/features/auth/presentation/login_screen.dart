@@ -172,150 +172,171 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final topPadding = mediaQuery.padding.top;
+    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0;
+
+    // Smoothly collapse hero header and elevate card when typing
+    // Expands available card height from ~250px to ~500px so title, inputs, and button all fit without scrolling
+    final heroHeight = isKeyboardOpen ? (topPadding + 54.0) : (screenHeight * 0.38);
+    final cardTop = isKeyboardOpen ? (topPadding + 44.0) : (screenHeight * 0.33);
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // 1. Top Hero Illustration Header Layer (Top 38% of screen)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: screenHeight * 0.38,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  'assets/images/public_market.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Image.asset(
-                    'assets/images/market_scene.jpg',
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Stack(
+          children: [
+            // 1. Top Hero Illustration Header Layer (collapses smoothly when keyboard opens)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              top: 0,
+              left: 0,
+              right: 0,
+              height: heroHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    'assets/images/public_market.png',
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: const Color(0xFF1B5E20),
-                      child: const Center(
-                        child: Icon(Icons.storefront_rounded, size: 80, color: Colors.white24),
+                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                      'assets/images/market_scene.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: const Color(0xFF1B5E20),
+                        child: const Center(
+                          child: Icon(Icons.storefront_rounded, size: 80, color: Colors.white24),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Soft gradient scrim for top back button readability
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 110,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.black.withValues(alpha: 0.40), Colors.transparent],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+                  // Soft gradient scrim for top back button readability
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 110,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.black.withValues(alpha: 0.40), Colors.transparent],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Top-left Back button inside a frosted circular container
-                SafeArea(
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Material(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        shape: const CircleBorder(),
-                        elevation: 3,
-                        shadowColor: Colors.black26,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () {
-                            if (context.canPop()) {
-                              context.pop();
-                            } else {
-                              context.go(RouteNames.getStarted);
-                            }
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.all(10),
-                            child: Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              size: 18,
-                              color: Color(0xFF1B5E20),
+                  // Top-left Back button inside a frosted circular container
+                  SafeArea(
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Material(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          shape: const CircleBorder(),
+                          elevation: 3,
+                          shadowColor: Colors.black26,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () {
+                              if (context.canPop()) {
+                                context.pop();
+                              } else {
+                                context.go(RouteNames.getStarted);
+                              }
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 18,
+                                color: Color(0xFF1B5E20),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 2. Floating Bottom Sheet Card Layer (Overlaps hero header)
-          Positioned(
-            top: screenHeight * 0.33,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 20,
-                    offset: Offset(0, -6),
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Subtle Drag-Handle Pill
-                        Center(
-                          child: Container(
-                            width: 44,
-                            height: 4,
-                            margin: const EdgeInsets.only(bottom: 22),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(2),
+            ),
+
+            // 2. Floating Bottom Sheet Card Layer (Smoothly glides up when keyboard opens)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              top: cardTop,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 20,
+                      offset: Offset(0, -6),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      isKeyboardOpen ? 16 : 12,
+                      24,
+                      isKeyboardOpen ? 16 : 32,
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Subtle Drag-Handle Pill (tighter when typing)
+                          Center(
+                            child: Container(
+                              width: 44,
+                              height: 4,
+                              margin: EdgeInsets.only(bottom: isKeyboardOpen ? 12 : 22),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
                           ),
-                        ),
 
-                        // Title: "Login to Access Your Ligao Market Guide"
-                        Text(
-                          'Login to Access Your',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1E293B),
-                            letterSpacing: -0.5,
+                          // Title: "Login to Access Your Ligao Market Guide"
+                          Text(
+                            'Login to Access Your',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: isKeyboardOpen ? 19 : 22,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1E293B),
+                              letterSpacing: -0.5,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Ligao Market Guide',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1B5E20), // Ligao Green
-                            letterSpacing: -0.5,
+                          Text(
+                            'Ligao Market Guide',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: isKeyboardOpen ? 19 : 22,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1B5E20), // Ligao Green
+                              letterSpacing: -0.5,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 26),
+                          SizedBox(height: isKeyboardOpen ? 14 : 26),
 
                         // Error Banner
                         if (_errorMessage != null) ...[
@@ -515,8 +536,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   InputDecoration _buildInputDecoration({
     required String hint,

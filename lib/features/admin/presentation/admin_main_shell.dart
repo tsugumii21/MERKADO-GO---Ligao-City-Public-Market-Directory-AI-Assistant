@@ -1,10 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/exit_confirmation_dialog.dart';
 
 /// Admin Main Shell with modern flat responsive navigation (Dashboard, Map, Stalls)
 class AdminMainShell extends StatelessWidget {
@@ -89,53 +91,67 @@ class AdminMainShell extends StatelessWidget {
     final isDesktop = AppBreakpoints.isDesktop(context);
     final isWideOrTablet = MediaQuery.sizeOf(context).width >= AppBreakpoints.mobile;
 
-    if (isWideOrTablet) {
-      return Scaffold(
-        backgroundColor: AppColors.canvas,
-        body: Row(
-          children: [
-            _buildDesktopSidebar(context, isDesktop),
-            Expanded(child: navigationShell),
-          ],
-        ),
-      );
-    }
+    final shellContent = isWideOrTablet
+        ? Scaffold(
+            backgroundColor: AppColors.canvas,
+            body: Row(
+              children: [
+                _buildDesktopSidebar(context, isDesktop),
+                Expanded(child: navigationShell),
+              ],
+            ),
+          )
+        : Scaffold(
+            backgroundColor: AppColors.surface,
+            body: navigationShell,
+            bottomNavigationBar: Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+              ),
+              child: NavigationBar(
+                selectedIndex: navigationShell.currentIndex,
+                onDestinationSelected: _onTap,
+                height: 56,
+                elevation: 0,
+                backgroundColor: AppColors.surface,
+                indicatorColor: AppColors.primaryLight,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.dashboard_outlined, size: 24, color: AppColors.inkMuted),
+                    selectedIcon: Icon(Icons.dashboard_rounded, size: 24, color: AppColors.primary),
+                    label: '',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.map_outlined, size: 24, color: AppColors.inkMuted),
+                    selectedIcon: Icon(Icons.map_rounded, size: 24, color: AppColors.primary),
+                    label: '',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.storefront_outlined, size: 24, color: AppColors.inkMuted),
+                    selectedIcon: Icon(Icons.storefront_rounded, size: 24, color: AppColors.primary),
+                    label: '',
+                  ),
+                ],
+              ),
+            ),
+          );
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: navigationShell,
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
-        ),
-        child: NavigationBar(
-          selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: _onTap,
-          height: 56,
-          elevation: 0,
-          backgroundColor: AppColors.surface,
-          indicatorColor: AppColors.primaryLight,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined, size: 24, color: AppColors.inkMuted),
-              selectedIcon: Icon(Icons.dashboard_rounded, size: 24, color: AppColors.primary),
-              label: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.map_outlined, size: 24, color: AppColors.inkMuted),
-              selectedIcon: Icon(Icons.map_rounded, size: 24, color: AppColors.primary),
-              label: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.storefront_outlined, size: 24, color: AppColors.inkMuted),
-              selectedIcon: Icon(Icons.storefront_rounded, size: 24, color: AppColors.primary),
-              label: '',
-            ),
-          ],
-        ),
-      ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (navigationShell.currentIndex != 0) {
+          navigationShell.goBranch(0, initialLocation: false);
+          return;
+        }
+        final shouldExit = await showExitConfirmationDialog(context);
+        if (shouldExit == true) {
+          await SystemNavigator.pop();
+        }
+      },
+      child: shellContent,
     );
   }
 

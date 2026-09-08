@@ -7,6 +7,10 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/stall_utils.dart';
 import '../../../../core/widgets/market_category_icon.dart';
 import '../../../stalls/presentation/stall_detail_sheet.dart';
+import '../../../stalls/presentation/widgets/category_filter_chips_bar.dart';
+import '../../../stalls/presentation/widgets/stall_filter_sort_bar.dart';
+import '../../../stalls/presentation/widgets/inline_filter_drawer.dart';
+import '../../../../providers/favorite_provider.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/search_provider.dart';
 import 'navigation_loading_dialog.dart';
@@ -21,6 +25,13 @@ class MapSearchModal extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 280),
+        curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+        reverseDuration: const Duration(milliseconds: 200),
+        reverseCurve: Curves.easeInCubic,
+      ),
       builder: (context) => const MapSearchModal(),
     );
   }
@@ -40,6 +51,10 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
   String? _selectedDay;
   bool _showOpenOnDay = true;
   bool _filterOpenOnly = false;
+  bool _isFilterDrawerOpen = false;
+
+  bool get _hasAdvancedFilters =>
+      _selectedDay != null || _filterOpenTime != null || _filterCloseTime != null;
 
   @override
   void initState() {
@@ -59,15 +74,6 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
     super.dispose();
   }
 
-  int _getActiveFilterCount() {
-    int count = 0;
-    if (_sortAlpha != null) count++;
-    if (_filterOpenTime != null || _filterCloseTime != null) count++;
-    if (_selectedDay != null) count++;
-    if (_filterOpenOnly) count++;
-    return count;
-  }
-
   void _resetAllFilters() {
     setState(() {
       _sortAlpha = null;
@@ -76,7 +82,10 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
       _selectedDay = null;
       _showOpenOnDay = true;
       _filterOpenOnly = false;
+      _isFilterDrawerOpen = false;
     });
+    ref.read(selectedCategoryFilterProvider.notifier).state = null;
+    ref.read(selectedSubcategoryFilterProvider.notifier).state = null;
   }
 
   TimeOfDay? _parseTimeOfDay(String timeStr) {
@@ -100,33 +109,6 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
     }
   }
 
-  void _showSortFilterModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _SearchFilterBottomSheet(
-        currentSortAlpha: _sortAlpha,
-        currentFilterOpenTime: _filterOpenTime,
-        currentFilterCloseTime: _filterCloseTime,
-        currentSelectedDay: _selectedDay,
-        currentShowOpenOnDay: _showOpenOnDay,
-        currentFilterOpenOnly: _filterOpenOnly,
-        onApply: (newSortAlpha, newOpenTime, newCloseTime, newDay, newShowOpen, newOpenOnly) {
-          setState(() {
-            _sortAlpha = newSortAlpha;
-            _filterOpenTime = newOpenTime;
-            _filterCloseTime = newCloseTime;
-            _selectedDay = newDay;
-            _showOpenOnDay = newShowOpen;
-            _filterOpenOnly = newOpenOnly;
-          });
-        },
-        onReset: _resetAllFilters,
-      ),
-    );
-  }
-
   ({IconData icon, Color color}) _getCategoryVisuals(String category) {
     final v = MarketCategories.getVisuals(category);
     return (icon: v.icon, color: v.outline);
@@ -136,11 +118,18 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
   Widget build(BuildContext context) {
     final rawSearchResults = ref.watch(searchResultsProvider);
     final selectedCategory = ref.watch(selectedCategoryFilterProvider);
+    final selectedSubcategory = ref.watch(selectedSubcategoryFilterProvider);
     final query = ref.watch(mapSearchQueryProvider);
+    final favState = ref.watch(favoriteProvider);
 
     // Apply Filter & Sort Logic
     var filteredResults = rawSearchResults.where((item) {
       final stall = item.stall;
+
+      // 0. Favorites Filter
+      if (selectedCategory == 'Favorites') {
+        if (!favState.isFavorite(stall.stallId)) return false;
+      }
 
       // 1. Open Now Only Filter
       if (_filterOpenOnly) {
@@ -194,18 +183,33 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
           b.stall.name.toLowerCase().compareTo(a.stall.name.toLowerCase()));
     }
 
-    final activeFilterCount = _getActiveFilterCount();
+    final hasAnyActiveFilter = _filterOpenOnly ||
+        _sortAlpha != null ||
+        _hasAdvancedFilters ||
+        (selectedCategory != null && selectedCategory != 'All') ||
+        (selectedSubcategory != null && selectedSubcategory.isNotEmpty);
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.88,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final keyboardHeight = mediaQuery.viewInsets.bottom;
+    final availableHeight =
+        (screenHeight - keyboardHeight).clamp(240.0, screenHeight);
+    final targetHeight = (screenHeight * 0.68).clamp(240.0, availableHeight);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboardHeight),
+      child: Container(
+        height: targetHeight,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
         ),
-      ),
-      child: Column(
-        children: [
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
           // 1. Drag Handle
           Center(
             child: Container(
@@ -309,174 +313,73 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
             ),
           ),
 
-          // 3. Category Filter Chips (Horizontal Scroll)
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemCount: MarketCategories.items.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  final isAll = selectedCategory == null;
-                  return ChoiceChip(
-                    label: Text(
-                      'All',
-                      style: GoogleFonts.poppins(
-                        color: isAll ? Colors.white : const Color(0xFF334155),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                    selected: isAll,
-                    selectedColor: const Color(0xFF1B5E20),
-                    backgroundColor: const Color(0xFFF8FAFC),
-                    side: BorderSide(
-                      color: isAll ? const Color(0xFF1B5E20) : const Color(0xFFE2E8F0),
-                      width: 1,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    showCheckmark: false,
-                    onSelected: (_) {
-                      ref.read(selectedCategoryFilterProvider.notifier).state = null;
-                    },
-                  );
-                }
-
-                final catItem = MarketCategories.items[index - 1];
-                final isSelected = selectedCategory == catItem.shortName ||
-                    selectedCategory == catItem.displayName;
-                final catColor = catItem.colorSet.outline;
-
-                return ChoiceChip(
-                  avatar: CircleAvatar(
-                    backgroundColor: catColor,
-                    radius: 4.5,
-                  ),
-                  label: Text(
-                    catItem.shortName,
-                    style: GoogleFonts.poppins(
-                      color: isSelected ? Colors.white : const Color(0xFF334155),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                  selected: isSelected,
-                  selectedColor: catColor,
-                  backgroundColor: const Color(0xFFF8FAFC),
-                  side: BorderSide(
-                    color: isSelected ? catColor : const Color(0xFFE2E8F0),
-                    width: 1,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  showCheckmark: false,
-                  onSelected: (val) {
-                    ref.read(selectedCategoryFilterProvider.notifier).state =
-                        val ? catItem.shortName : null;
-                  },
-                );
-              },
-            ),
+          // 3. Category Filter Chips & Subcategories Bar
+          CategoryFilterChipsBar(
+            selectedCategory: selectedCategory ?? 'All',
+            selectedSubcategory: selectedSubcategory,
+            onCategorySelected: (cat) {
+              ref.read(selectedCategoryFilterProvider.notifier).state =
+                  cat == 'All' ? null : cat;
+              ref.read(selectedSubcategoryFilterProvider.notifier).state = null;
+            },
+            onSubcategorySelected: (sub) {
+              ref.read(selectedSubcategoryFilterProvider.notifier).state = sub;
+            },
+            padding: const EdgeInsets.symmetric(horizontal: 16),
           ),
 
-          // 4. Result Count & Sort/Filter Button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  query.isEmpty
-                      ? (selectedCategory != null
-                          ? '$selectedCategory (${filteredResults.length})'
-                          : 'All Stalls (${filteredResults.length})')
-                      : 'Search Results (${filteredResults.length})',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF475569),
-                  ),
-                ),
-                Row(
-                  children: [
-                    if (query.isNotEmpty || selectedCategory != null || activeFilterCount > 0)
-                      GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          ref.read(mapSearchQueryProvider.notifier).state = '';
-                          ref.read(selectedCategoryFilterProvider.notifier).state = null;
-                          _resetAllFilters();
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Text(
-                            'Reset',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFEF4444),
-                            ),
-                          ),
-                        ),
-                      ),
-                    InkWell(
-                      onTap: _showSortFilterModal,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 4.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: activeFilterCount > 0
-                              ? const Color(0xFFE8F5E9)
-                              : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: activeFilterCount > 0
-                                ? const Color(0xFF1B5E20)
-                                : const Color(0xFFCBD5E1),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.tune_rounded,
-                              size: 13.5,
-                              color: activeFilterCount > 0
-                                  ? const Color(0xFF1B5E20)
-                                  : const Color(0xFF475569),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              activeFilterCount > 0
-                                  ? 'Sort ($activeFilterCount)'
-                                  : 'Sort & Filter',
-                              style: GoogleFonts.poppins(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: activeFilterCount > 0
-                                    ? const Color(0xFF1B5E20)
-                                    : const Color(0xFF475569),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          const SizedBox(height: 6),
+
+          // 4. Section Title, 1-Tap Quick Filters & Inline Sort
+          StallFilterSortBar(
+            title: query.isEmpty
+                ? (selectedCategory ?? 'All Stalls')
+                : 'Search Results',
+            count: filteredResults.length,
+            sortAlpha: _sortAlpha,
+            filterOpenOnly: _filterOpenOnly,
+            isDrawerOpen: _isFilterDrawerOpen,
+            hasAdvancedFilters: _hasAdvancedFilters,
+            hasAnyActiveFilter: hasAnyActiveFilter,
+            onSortAlphaChanged: (val) => setState(() => _sortAlpha = val),
+            onFilterOpenOnlyChanged: (val) =>
+                setState(() => _filterOpenOnly = val),
+            onToggleDrawer: () =>
+                setState(() => _isFilterDrawerOpen = !_isFilterDrawerOpen),
+            onResetAll: () {
+              _searchController.clear();
+              ref.read(mapSearchQueryProvider.notifier).state = '';
+              _resetAllFilters();
+            },
+          ),
+
+          // Smooth Inline Expandable Filter Drawer (No Modal!)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            child: _isFilterDrawerOpen
+                ? InlineFilterDrawer(
+                    selectedDay: _selectedDay,
+                    showOpenOnDay: _showOpenOnDay,
+                    openTime: _filterOpenTime,
+                    closeTime: _filterCloseTime,
+                    onDaySelected: (day) => setState(() => _selectedDay = day),
+                    onShowOpenChanged: (val) =>
+                        setState(() => _showOpenOnDay = val),
+                    onTimeRangeChanged: (open, close) => setState(() {
+                      _filterOpenTime = open;
+                      _filterCloseTime = close;
+                    }),
+                    onClear: () => setState(() {
+                      _selectedDay = null;
+                      _showOpenOnDay = true;
+                      _filterOpenTime = null;
+                      _filterCloseTime = null;
+                    }),
+                    onClose: () =>
+                        setState(() => _isFilterDrawerOpen = false),
+                  )
+                : const SizedBox.shrink(),
           ),
 
           const Divider(color: Color(0xFFF1F5F9), height: 1),
@@ -752,8 +655,10 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildEmptyState() {
     return Center(
@@ -907,7 +812,8 @@ class _SearchFilterBottomSheetState extends State<_SearchFilterBottomSheet> {
   Widget build(BuildContext context) {
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxHeight:
+            (MediaQuery.of(context).size.height * 0.60).clamp(0.0, 560.0),
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -934,38 +840,43 @@ class _SearchFilterBottomSheetState extends State<_SearchFilterBottomSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Sort & Filter',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1F2937),
-                        ),
-                      ),
-                      if (getActiveFilterCount() > 0) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1B5E20),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
                           child: Text(
-                            '${getActiveFilterCount()}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                            'Sort & Filter',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1F2937),
                             ),
                           ),
                         ),
+                        if (getActiveFilterCount() > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1B5E20),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${getActiveFilterCount()}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   TextButton(
                     onPressed: () {

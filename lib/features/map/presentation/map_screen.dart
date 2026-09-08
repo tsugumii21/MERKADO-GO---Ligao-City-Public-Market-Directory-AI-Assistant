@@ -55,6 +55,33 @@ class MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
+  /// Handles hardware/system back button presses on the Map tab.
+  /// Returns `true` if an internal state was cancelled/handled (preventing app exit).
+  bool handleBackPressed() {
+    if (!mounted) return false;
+
+    // 1. Cancel active stall-to-stall origin picker
+    if (ref.read(pickingOriginTargetStallProvider) != null) {
+      ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+      ref.read(selectedOriginStallProvider.notifier).state = null;
+      return true;
+    }
+
+    // 2. Clear active navigation route
+    if (ref.read(activeRouteProvider) != null) {
+      ref.read(activeRouteProvider.notifier).clearRoute();
+      return true;
+    }
+
+    // 3. Exit gate/entrance picking mode on map
+    if (_isPickingEntranceOnMap) {
+      setState(() => _isPickingEntranceOnMap = false);
+      return true;
+    }
+
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final stallsAsync = ref.watch(allStallsProvider);
@@ -65,21 +92,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final pickingOriginTargetStall = ref.watch(pickingOriginTargetStallProvider);
     final selectedOriginStall = ref.watch(selectedOriginStallProvider);
 
-    return PopScope(
-      canPop: !_isPickingEntranceOnMap && pickingOriginTargetStall == null && activeRoute == null,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          if (pickingOriginTargetStall != null) {
-            ref.read(pickingOriginTargetStallProvider.notifier).state = null;
-            ref.read(selectedOriginStallProvider.notifier).state = null;
-          } else if (activeRoute != null) {
-            ref.read(activeRouteProvider.notifier).clearRoute();
-          } else if (_isPickingEntranceOnMap) {
-            setState(() => _isPickingEntranceOnMap = false);
-          }
-        }
-      },
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: Colors.white,
         body: Stack(
           children: [
@@ -304,9 +317,8 @@ class MapScreenState extends ConsumerState<MapScreen> {
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
 
   Widget _buildTopSearchAndEntranceBar(selectedEntrance) {

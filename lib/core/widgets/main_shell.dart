@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,7 @@ import '../responsive/responsive_breakpoints.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/stalls/presentation/stall_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import 'exit_confirmation_dialog.dart';
 
 // GlobalKeys for accessing each page's State (for resetUI)
 final GlobalKey<MainShellState> mainShellKey = GlobalKey<MainShellState>();
@@ -28,6 +30,43 @@ class MainShell extends ConsumerStatefulWidget {
 
 class MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
+  bool _isExitDialogOpen = false;
+
+  /// Intercepts system back navigation on the root shell:
+  /// 1. Delegates to active Map screen if it has an internal state to cancel (e.g. route or origin picker).
+  /// 2. Returns to the primary Map tab if on a secondary tab (Stalls or Profile).
+  /// 3. Prompts the [ExitConfirmationDialog] when already resting on the home Map tab.
+  Future<void> _handlePopScope(bool didPop) async {
+    if (didPop) return;
+
+    // 1. Check if Map tab has an active navigation route or picker to cancel
+    if (widget.navigationShell.currentIndex == 0) {
+      final handledByMap = mapPageKey.currentState?.handleBackPressed() ?? false;
+      if (handledByMap) {
+        return;
+      }
+    }
+
+    // 2. If on secondary tab (Stalls or Profile), smoothly return to Map tab (0)
+    if (widget.navigationShell.currentIndex != 0) {
+      _onTabSelected(0);
+      return;
+    }
+
+    // 3. Resting on Home Map -> show exit confirmation dialog
+    if (_isExitDialogOpen) return;
+    _isExitDialogOpen = true;
+    try {
+      final shouldExit = await showExitConfirmationDialog(context);
+      if (shouldExit == true) {
+        await SystemNavigator.pop();
+      }
+    } finally {
+      if (mounted) {
+        _isExitDialogOpen = false;
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -117,53 +156,59 @@ class MainShellState extends ConsumerState<MainShell> {
     final isDesktop = AppBreakpoints.isDesktop(context);
     final isWideOrTablet = MediaQuery.sizeOf(context).width >= AppBreakpoints.mobile;
 
-    if (isWideOrTablet) {
-      return Scaffold(
-        backgroundColor: AppColors.canvas,
-        body: Row(
-          children: [
-            _buildDesktopSidebar(context, isDesktop),
-            Expanded(child: widget.navigationShell),
-          ],
-        ),
-      );
-    }
+    final shellContent = isWideOrTablet
+        ? Scaffold(
+            backgroundColor: AppColors.canvas,
+            body: Row(
+              children: [
+                _buildDesktopSidebar(context, isDesktop),
+                Expanded(child: widget.navigationShell),
+              ],
+            ),
+          )
+        : Scaffold(
+            backgroundColor: AppColors.surface,
+            body: widget.navigationShell,
+            bottomNavigationBar: Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+              ),
+              child: NavigationBar(
+                selectedIndex: widget.navigationShell.currentIndex,
+                onDestinationSelected: _onTabSelected,
+                height: 56,
+                elevation: 0,
+                backgroundColor: AppColors.surface,
+                indicatorColor: AppColors.primaryLight,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.map_outlined, size: 24, color: AppColors.inkMuted),
+                    selectedIcon: Icon(Icons.map_rounded, size: 24, color: AppColors.primary),
+                    label: '',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.storefront_outlined, size: 24, color: AppColors.inkMuted),
+                    selectedIcon: Icon(Icons.storefront_rounded, size: 24, color: AppColors.primary),
+                    label: '',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.person_outline_rounded, size: 24, color: AppColors.inkMuted),
+                    selectedIcon: Icon(Icons.person_rounded, size: 24, color: AppColors.primary),
+                    label: '',
+                  ),
+                ],
+              ),
+            ),
+          );
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: widget.navigationShell,
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
-        ),
-        child: NavigationBar(
-          selectedIndex: widget.navigationShell.currentIndex,
-          onDestinationSelected: _onTabSelected,
-          height: 56,
-          elevation: 0,
-          backgroundColor: AppColors.surface,
-          indicatorColor: AppColors.primaryLight,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.map_outlined, size: 24, color: AppColors.inkMuted),
-              selectedIcon: Icon(Icons.map_rounded, size: 24, color: AppColors.primary),
-              label: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.storefront_outlined, size: 24, color: AppColors.inkMuted),
-              selectedIcon: Icon(Icons.storefront_rounded, size: 24, color: AppColors.primary),
-              label: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded, size: 24, color: AppColors.inkMuted),
-              selectedIcon: Icon(Icons.person_rounded, size: 24, color: AppColors.primary),
-              label: '',
-            ),
-          ],
-        ),
-      ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        _handlePopScope(didPop);
+      },
+      child: shellContent,
     );
   }
 

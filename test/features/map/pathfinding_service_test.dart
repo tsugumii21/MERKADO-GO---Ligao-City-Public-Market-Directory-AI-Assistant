@@ -232,8 +232,8 @@ void main() {
       );
     });
 
-    test('Real graph has 144 nodes and 14 entry points', () {
-      expect(service.nodes.length, 144);
+    test('Real graph has 143 nodes and 14 entry points', () {
+      expect(service.nodes.length, 143);
       expect(service.entryPoints.length, 14);
       expect(service.stallToNodes.length, 231); // 134 assigned + 97 vacant slots
     });
@@ -467,6 +467,34 @@ void main() {
       // and enters through the doorway closest to the stall rather than cutting through counters.
       final streetPortion = route.nodeIds.takeWhile((n) => PathfindingService.isOpenThoroughfare(n)).toList();
       expect(streetPortion.length, greaterThanOrEqualTo(5), reason: 'Must stay on street until doorway');
+    });
+
+    test('Zone-aware: Route from Rice Section to Rosco Building stays strictly on Mercado Street without cutting through stalls or blank stalls', () {
+      // id_154 (MARILOU M GUANZON STORE, Rice Section) to id_248 (TOY AND ME STORE I, Rosco Building)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_154',
+        destinationStallId: 'id_248',
+        originName: 'MARILOU M GUANZON STORE',
+        destinationName: 'TOY AND ME STORE I',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Must terminate at node_ex_w2 (Mercado Street directly facing id_248)
+      expect(route.nodeIds.last, 'node_ex_w2');
+
+      // Must stay 100% on exterior streets / Mercado Street
+      for (final nodeId in route.nodeIds) {
+        expect(PathfindingService.getNodeZone(nodeId), 'ex');
+      }
+
+      // Must not use rogue node or cut through Rosco building
+      expect(route.nodeIds.contains('node_ex_5'), isFalse);
+      expect(route.nodeIds.contains('node_ex_w4'), isFalse);
+
+      // Expected clean path along the street: node_ex_t16 -> node_ex_t17 -> node_ex_t18 -> node_ex_w3 -> node_ex_w2
+      expect(route.nodeIds, ['node_ex_t16', 'node_ex_t17', 'node_ex_t18', 'node_ex_w3', 'node_ex_w2']);
     });
   });
 }

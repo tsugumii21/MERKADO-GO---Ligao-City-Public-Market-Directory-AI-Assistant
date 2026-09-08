@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/widgets/exit_confirmation_dialog.dart';
 
 /// Alias for WelcomeLandingScreen to maintain naming compatibility
 typedef WelcomeLandingScreen = GetStartedScreen;
@@ -27,7 +29,16 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldExit = await showExitConfirmationDialog(context);
+        if (shouldExit == true) {
+          await SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF0D3310),
       body: Stack(
         children: [
@@ -306,7 +317,8 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 

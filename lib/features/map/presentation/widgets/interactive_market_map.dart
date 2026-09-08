@@ -120,7 +120,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   static const double _svgHeight = 8000.0;
 
   static const double _defaultZoom = 0.25;
-  static const double _minScale = 0.25;
+  static const double _minScale = 0.15;
   static const double _maxScale = 3.5;
   static const Offset _marketCenter = Offset(3850, 3650);
 
@@ -576,6 +576,13 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     _zoomAnimationController.forward(from: 0.0);
   }
 
+  Offset _snapToStallThreshold(Rect stallBounds, Offset adjacentPoint) {
+    return Offset(
+      adjacentPoint.dx.clamp(stallBounds.left, stallBounds.right),
+      adjacentPoint.dy.clamp(stallBounds.top, stallBounds.bottom),
+    );
+  }
+
   List<Offset> _getRouteCanvasPoints() {
     if (widget.activeRoute == null || widget.activeRoute!.nodes.isEmpty) {
       return const [];
@@ -584,19 +591,31 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       return Offset(node.x + _nodeOffsetX, node.y + _nodeOffsetY);
     }).toList();
 
-    // Prepend origin stall center (stall-to-stall route)
+    // Prepend origin stall perimeter threshold (stall-to-stall route)
     final originStallId = widget.activeRoute!.originStallId ??
         widget.selectedOriginStall?.stallId;
-    final originCenter = _getStallCenter(originStallId);
-    if (originCenter != null) {
-      points.insert(0, originCenter);
+    final originBounds = _getStallBounds(originStallId);
+    if (originBounds != null && points.isNotEmpty) {
+      final originThreshold = _snapToStallThreshold(originBounds, points.first);
+      points.insert(0, originThreshold);
+    } else {
+      final originCenter = _getStallCenter(originStallId);
+      if (originCenter != null) {
+        points.insert(0, originCenter);
+      }
     }
 
-    // Append destination stall center
+    // Append destination stall perimeter threshold
     final destStallId = widget.activeRoute!.destinationStallId;
-    final destCenter = _getStallCenter(destStallId);
-    if (destCenter != null) {
-      points.add(destCenter);
+    final destBounds = _getStallBounds(destStallId);
+    if (destBounds != null && points.isNotEmpty) {
+      final destThreshold = _snapToStallThreshold(destBounds, points.last);
+      points.add(destThreshold);
+    } else {
+      final destCenter = _getStallCenter(destStallId);
+      if (destCenter != null) {
+        points.add(destCenter);
+      }
     }
     return points;
   }
@@ -835,6 +854,8 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                               pulseScale: _pulseAnimation.value,
                               originStallCenter: _getStallCenter(effectiveOriginStallId),
                               destinationStallCenter: _getStallCenter(effectiveDestStallId),
+                              originStallBounds: originBounds,
+                              destinationStallBounds: destBounds,
                               walkProgress: _walkController.value,
                               isWalking: _isWalking,
                               cachedPath: _cachedRoutePath,
@@ -1038,6 +1059,8 @@ class RouteOverlayPainter extends CustomPainter {
   final double pulseScale;
   final Offset? originStallCenter;
   final Offset? destinationStallCenter;
+  final Rect? originStallBounds;
+  final Rect? destinationStallBounds;
   final double walkProgress;
   final bool isWalking;
   final Path? cachedPath;
@@ -1052,6 +1075,8 @@ class RouteOverlayPainter extends CustomPainter {
     required this.pulseScale,
     this.originStallCenter,
     this.destinationStallCenter,
+    this.originStallBounds,
+    this.destinationStallBounds,
     this.walkProgress = 1.0,
     this.isWalking = false,
     this.cachedPath,
@@ -1070,25 +1095,53 @@ class RouteOverlayPainter extends CustomPainter {
 
     if (cachedPath != null) {
       fullPath = cachedPath!;
-      startPt = originStallCenter ??
-          Offset(
-            route.nodes.first.x + nodeOffsetX,
-            route.nodes.first.y + nodeOffsetY,
-          );
-      endPt = destinationStallCenter ??
-          Offset(
-            route.nodes.last.x + nodeOffsetX,
-            route.nodes.last.y + nodeOffsetY,
-          );
+      if (cachedMetrics.isNotEmpty && cachedLength > 0) {
+        startPt = cachedMetrics.first.getTangentForOffset(0.0)?.position ??
+            (originStallCenter ??
+                Offset(
+                  route.nodes.first.x + nodeOffsetX,
+                  route.nodes.first.y + nodeOffsetY,
+                ));
+        endPt = cachedMetrics.first.getTangentForOffset(cachedLength)?.position ??
+            (destinationStallCenter ??
+                Offset(
+                  route.nodes.last.x + nodeOffsetX,
+                  route.nodes.last.y + nodeOffsetY,
+                ));
+      } else {
+        startPt = originStallCenter ??
+            Offset(
+              route.nodes.first.x + nodeOffsetX,
+              route.nodes.first.y + nodeOffsetY,
+            );
+        endPt = destinationStallCenter ??
+            Offset(
+              route.nodes.last.x + nodeOffsetX,
+              route.nodes.last.y + nodeOffsetY,
+            );
+      }
     } else {
       final canvasPoints = route.nodes.map((node) {
         return Offset(node.x + nodeOffsetX, node.y + nodeOffsetY);
       }).toList();
 
-      if (originStallCenter != null) {
+      if (originStallBounds != null && canvasPoints.isNotEmpty) {
+        final originThreshold = Offset(
+          canvasPoints.first.dx.clamp(originStallBounds!.left, originStallBounds!.right),
+          canvasPoints.first.dy.clamp(originStallBounds!.top, originStallBounds!.bottom),
+        );
+        canvasPoints.insert(0, originThreshold);
+      } else if (originStallCenter != null) {
         canvasPoints.insert(0, originStallCenter!);
       }
-      if (destinationStallCenter != null) {
+
+      if (destinationStallBounds != null && canvasPoints.isNotEmpty) {
+        final destThreshold = Offset(
+          canvasPoints.last.dx.clamp(destinationStallBounds!.left, destinationStallBounds!.right),
+          canvasPoints.last.dy.clamp(destinationStallBounds!.top, destinationStallBounds!.bottom),
+        );
+        canvasPoints.add(destThreshold);
+      } else if (destinationStallCenter != null) {
         canvasPoints.add(destinationStallCenter!);
       }
 
@@ -1130,7 +1183,7 @@ class RouteOverlayPainter extends CustomPainter {
     }
 
     // 2. TWO-LAYER CORRIDOR RIBBON (MD §3.1)
-    // Layer A: 54px Translucent Buffer Zone (rgba(27, 94, 32, 0.20))
+    // Layer A: 48px Translucent Buffer Zone (rgba(27, 94, 32, 0.20))
     final casingPaint = Paint()
       ..color = MapCalibrationConstants.casingColor
       ..strokeWidth = MapCalibrationConstants.casingStrokeWidth
@@ -1139,7 +1192,7 @@ class RouteOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawPath(revealedPath, casingPaint);
 
-    // Layer B: 28px Authoritative Solid Forest Green Ribbon (#1B5E20)
+    // Layer B: 22px Authoritative Solid Forest Green Ribbon (#1B5E20)
     final ribbonPaint = Paint()
       ..color = MapCalibrationConstants.ribbonColor
       ..strokeWidth = MapCalibrationConstants.ribbonStrokeWidth

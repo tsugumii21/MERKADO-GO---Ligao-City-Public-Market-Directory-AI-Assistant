@@ -28,13 +28,13 @@ void main() {
     debugPrint('Controller scale after load: $scale');
     expect(scale, closeTo(0.25, 0.01));
 
-    // Test clamp when zoomed out below minScale (0.25)
+    // Test clamp when zoomed out below minScale (0.15)
     controller.value = Matrix4.identity()
-      ..scaleByVector3(Vector3(0.10, 0.10, 0.10));
+      ..scaleByVector3(Vector3(0.08, 0.08, 0.08));
     await tester.pump();
     final clampedMinScale = controller.value.getMaxScaleOnAxis();
-    debugPrint('Clamped scale when set to 0.10: $clampedMinScale');
-    expect(clampedMinScale, closeTo(0.25, 0.01));
+    debugPrint('Clamped scale when set to 0.08: $clampedMinScale');
+    expect(clampedMinScale, closeTo(0.15, 0.01));
 
     // Test clamp when zoomed in above maxScale (3.5)
     controller.value = Matrix4.identity()

@@ -1,4 +1,5 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/stall_utils.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
 import '../services/market_search_service.dart';
@@ -23,24 +24,40 @@ final mapSearchQueryProvider = StateProvider<String>((ref) => '');
 /// Active category filter
 final selectedCategoryFilterProvider = StateProvider<String?>((ref) => null);
 
+/// Active subcategory filter
+final selectedSubcategoryFilterProvider = StateProvider<String?>((ref) => null);
+
 /// Computed search results combining query, category filter, and stalls
 final searchResultsProvider = Provider<List<SearchResultItem>>((ref) {
   final service = ref.watch(marketSearchServiceProvider);
   final query = ref.watch(mapSearchQueryProvider);
   final categoryFilter = ref.watch(selectedCategoryFilterProvider);
+  final subcategoryFilter = ref.watch(selectedSubcategoryFilterProvider);
   final allStallsAsync = ref.watch(allStallsProvider);
 
   final allStalls = allStallsAsync.value ?? <StallModel>[];
 
   if (!service.isInitialized) {
     // If not initialized, fallback to naive substring search
-    if (query.trim().isEmpty) return const [];
+    if (query.trim().isEmpty && (categoryFilter == null || categoryFilter.isEmpty)) {
+      return const [];
+    }
     final clean = query.trim().toLowerCase();
     return allStalls
-        .where((s) =>
-            s.name.toLowerCase().contains(clean) ||
-            s.category.toLowerCase().contains(clean) ||
-            s.products.any((p) => p.toLowerCase().contains(clean)))
+        .where((s) {
+          if (categoryFilter != null &&
+              categoryFilter.isNotEmpty &&
+              categoryFilter != 'All' &&
+              categoryFilter != 'Favorites') {
+            if (!StallUtils.matchesCategory(s, categoryFilter, subcategoryFilter)) {
+              return false;
+            }
+          }
+          if (clean.isEmpty) return true;
+          return s.name.toLowerCase().contains(clean) ||
+              s.category.toLowerCase().contains(clean) ||
+              s.products.any((p) => p.toLowerCase().contains(clean));
+        })
         .map((s) => SearchResultItem(
               stall: s,
               matchType: StallMatchType.partialName,
@@ -53,5 +70,6 @@ final searchResultsProvider = Provider<List<SearchResultItem>>((ref) {
     query: query,
     allStalls: allStalls,
     categoryFilter: categoryFilter,
+    subcategoryFilter: subcategoryFilter,
   );
 });

@@ -10,8 +10,8 @@ class MapCalibrationConstants {
   static const Offset marketCenter = Offset(4002.0, 4000.0);
 
   /// Corridor route rendering dimensions
-  static const double casingStrokeWidth = 54.0;
-  static const double ribbonStrokeWidth = 28.0;
+  static const double casingStrokeWidth = 48.0;
+  static const double ribbonStrokeWidth = 22.0;
 
   /// High-contrast civic colors
   static const Color casingColor = Color(0x331B5E20); // rgba(27, 94, 32, 0.20)

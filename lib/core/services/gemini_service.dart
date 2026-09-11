@@ -287,13 +287,26 @@ $stallData
 
 RESPONSE FORMAT RULES:
 - Clean, uncluttered layout optimized for mobile screens.
-- Use bold markdown (**Name**) for stall names.
-- Use bullet points (•) separated by a clean line.
-- Put stall number and section on the same line as the stall name.
-- Keep status and hours on the second line.
-- Never dump a repetitive 10+ item product list on every stall.
+- Always use hyphen bullet: `- `
+- Always bold the stall name: `**Stall Name**`
+- Always insert a blank line between each stall item for clean vertical spacing.
+- Put stall number and section on the title line after the bold name.
+- Put status and hours on the second line (indented by 2 spaces).
+- Never repeat a 10+ item product list under every stall.
 - Maximum response length: 120 words.
 - STRICT RULE: Do NOT include any emojis anywhere in your response.
+
+EXACT FORMAT TEMPLATE EXAMPLE:
+Here are top stalls where you can buy fresh fish:
+
+- **ADVZ Fish Retailing** — Stall #48 • Fish Section
+  Status: Closed • Hours: 5:00 AM – 6:00 PM
+
+- **L. Pimentel Fish Stall** — Stall #20 • Fish Section
+  Status: Closed • Hours: 5:00 AM – 6:00 PM
+
+- **Marilyn Mecayer Martin Fish Vendor** — Stall #44 • Fish Section
+  Status: Closed • Hours: 5:00 AM – 6:00 PM
 ''';
   }
   

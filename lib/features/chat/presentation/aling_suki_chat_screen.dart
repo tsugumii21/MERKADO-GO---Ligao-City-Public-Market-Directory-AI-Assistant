@@ -693,11 +693,42 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
     );
   }
 
+  String _formatMarkdownText(String text) {
+    if (text.isEmpty) return text;
+    var cleaned = text;
+
+    // 1. Normalize bullet forms: convert "*  ", "• ", or "* " at line start into markdown bullet "- "
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'^[ \t]*[\*•][ \t]+', multiLine: true),
+      (match) => '- ',
+    );
+
+    // 2. Bold stall names if not already bolded: "- ADVZ FISH RETAILING (STALL" -> "- **ADVZ FISH RETAILING** (STALL"
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r"^- ([A-Za-z0-9\s'\.\&\-\/]{3,50}?)(?=\s*[—\(\–\:\-])", multiLine: true),
+      (match) {
+        final name = match.group(1)?.trim();
+        if (name != null && !name.startsWith('**') && name.length > 2) {
+          return '- **$name**';
+        }
+        return match.group(0)!;
+      },
+    );
+
+    // 3. Ensure generous spacing between list items by inserting double newline before each stall bullet
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(r'([^\n])\n(- )'),
+      (match) => '${match.group(1)}\n\n${match.group(2)}',
+    );
+
+    return cleaned;
+  }
+
   // Regular Chat Bubble
   Widget _buildMessageBubble(ChatMessage msg, bool isBot) {
     if (isBot) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: 16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -725,7 +756,7 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
             // Message Bubble
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(13),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: const BorderRadius.only(
@@ -769,7 +800,7 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                         ],
                       )
                     : MarkdownBody(
-                        data: msg.content,
+                        data: _formatMarkdownText(msg.content),
                         selectable: true,
                         styleSheet: MarkdownStyleSheet(
                           p: GoogleFonts.poppins(
@@ -792,8 +823,8 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                             fontWeight: FontWeight.bold,
                             color: const Color(0xFF1B5E20),
                           ),
-                          listIndent: 14.0,
-                          blockSpacing: 8.0,
+                          listIndent: 16.0,
+                          blockSpacing: 14.0,
                         ),
                       ),
               ),

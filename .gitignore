@@ -86,8 +86,6 @@ coverage/
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
-# Web (not needed)
-**/web/
 
 # AI Agents Local Rules
 AGENTS.md

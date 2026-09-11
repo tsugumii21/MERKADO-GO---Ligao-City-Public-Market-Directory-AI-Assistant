@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,6 +34,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        if (kIsWeb) return;
         final shouldExit = await showExitConfirmationDialog(context);
         if (shouldExit == true) {
           await SystemNavigator.pop();

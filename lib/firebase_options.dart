@@ -2,7 +2,7 @@
 // ignore_for_file: type=lint
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
+    show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'core/constants/app_secrets.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
@@ -17,13 +17,16 @@ import 'core/constants/app_secrets.dart';
 /// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
+    if (kIsWeb) {
+      return web;
+    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for iOS - '
-          'this app is Android-only.',
+          'this app is Android and Web only.',
         );
       case TargetPlatform.macOS:
         throw UnsupportedError(
@@ -45,6 +48,17 @@ class DefaultFirebaseOptions {
         );
     }
   }
+
+  static FirebaseOptions get web => FirebaseOptions(
+    apiKey: AppSecrets.firebaseWebApiKey.isNotEmpty
+        ? AppSecrets.firebaseWebApiKey
+        : AppSecrets.firebaseAndroidApiKey,
+    appId: '1:25184120050:web:a4fc524db9f7d15b5ef46b',
+    messagingSenderId: '25184120050',
+    projectId: 'merkado-go',
+    authDomain: 'merkado-go.firebaseapp.com',
+    storageBucket: 'merkado-go.firebasestorage.app',
+  );
 
   static FirebaseOptions get android => FirebaseOptions(
     apiKey: AppSecrets.firebaseAndroidApiKey,

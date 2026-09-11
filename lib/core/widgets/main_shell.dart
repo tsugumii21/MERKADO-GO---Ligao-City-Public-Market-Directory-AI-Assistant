@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -53,7 +54,8 @@ class MainShellState extends ConsumerState<MainShell> {
       return;
     }
 
-    // 3. Resting on Home Map -> show exit confirmation dialog
+    // 3. Resting on Home Map -> show exit confirmation dialog (mobile native only)
+    if (kIsWeb) return;
     if (_isExitDialogOpen) return;
     _isExitDialogOpen = true;
     try {

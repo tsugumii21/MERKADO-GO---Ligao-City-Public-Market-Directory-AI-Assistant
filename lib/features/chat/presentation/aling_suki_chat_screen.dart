@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../core/utils/stall_utils.dart';
 import '../../../providers/chat_provider.dart';
 import '../../../providers/stall_provider.dart';
@@ -767,12 +768,32 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                           ),
                         ],
                       )
-                    : Text(
-                        msg.content,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13.5,
-                          color: const Color(0xFF1F2937),
-                          height: 1.45,
+                    : MarkdownBody(
+                        data: msg.content,
+                        selectable: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: GoogleFonts.poppins(
+                            fontSize: 13.5,
+                            color: const Color(0xFF1F2937),
+                            height: 1.5,
+                          ),
+                          strong: GoogleFonts.poppins(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF111827),
+                          ),
+                          em: GoogleFonts.poppins(
+                            fontSize: 13.0,
+                            fontStyle: FontStyle.italic,
+                            color: const Color(0xFF4B5563),
+                          ),
+                          listBullet: GoogleFonts.poppins(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1B5E20),
+                          ),
+                          listIndent: 14.0,
+                          blockSpacing: 8.0,
                         ),
                       ),
               ),

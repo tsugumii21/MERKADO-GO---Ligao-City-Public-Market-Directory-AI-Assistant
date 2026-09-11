@@ -461,6 +461,11 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                               )
                             : null,
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        filled: false,
+                        fillColor: Colors.transparent,
                         contentPadding: const EdgeInsets.symmetric(
                           vertical: 12,
                         ),

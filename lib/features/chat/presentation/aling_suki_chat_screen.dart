@@ -439,23 +439,29 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                   // Pill-shaped TextField (#F9FAFB fill)
                   Expanded(
                     child: Container(
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: const Color(0xFFF9FAFB),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
                           color: const Color(0xFFE5E7EB),
+                          width: 1.2,
                         ),
                       ),
                       child: TextField(
                         controller: _inputController,
                         focusNode: _inputFocusNode,
                         textInputAction: TextInputAction.send,
+                        cursorColor: const Color(0xFF1B5E20),
                         onSubmitted: (_) => _sendMessage(),
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           color: const Color(0xFF1F2937),
                         ),
                         decoration: InputDecoration(
+                          filled: false,
+                          fillColor: Colors.transparent,
+                          isDense: true,
                           hintText: isTagalog
                               ? 'Magtanong kay Aling Suki...'
                               : 'Ask Aling Suki anything...',
@@ -465,9 +471,12 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 18,
-                            vertical: 11,
+                            vertical: 12,
                           ),
                           border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
                         ),
                       ),
                     ),

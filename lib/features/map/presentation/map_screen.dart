@@ -17,7 +17,7 @@ import '../providers/navigation_provider.dart';
 import '../providers/search_provider.dart';
 import 'widgets/entrance_selector_sheet.dart';
 import 'widgets/interactive_market_map.dart';
-import 'widgets/map_search_modal.dart';
+import 'widgets/map_search_dropdown.dart';
 import 'widgets/navigation_loading_dialog.dart';
 import 'widgets/route_navigation_card.dart';
 import 'widgets/stall_origin_picker_sheet.dart';
@@ -33,6 +33,9 @@ class MapScreenState extends ConsumerState<MapScreen> {
   bool _isChatOpen = false;
   StallModel? _selectedStall;
   bool _isPickingEntranceOnMap = false;
+  bool _isSearchDropdownOpen = false;
+  final GlobalKey<MapSearchDropdownState> _searchDropdownKey =
+      GlobalKey<MapSearchDropdownState>();
 
   @override
   void initState() {
@@ -59,6 +62,13 @@ class MapScreenState extends ConsumerState<MapScreen> {
   /// Returns `true` if an internal state was cancelled/handled (preventing app exit).
   bool handleBackPressed() {
     if (!mounted) return false;
+
+    // 0. Close search dropdown if open
+    if (_isSearchDropdownOpen) {
+      _searchDropdownKey.currentState?.close();
+      setState(() => _isSearchDropdownOpen = false);
+      return true;
+    }
 
     // 1. Cancel active stall-to-stall origin picker
     if (ref.read(pickingOriginTargetStallProvider) != null) {
@@ -172,6 +182,10 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   }
                 },
                 onMapTapped: () {
+                  if (_isSearchDropdownOpen) {
+                    _searchDropdownKey.currentState?.close();
+                    setState(() => _isSearchDropdownOpen = false);
+                  }
                   if (_isPickingEntranceOnMap) return;
                   if (pickingOriginTargetStall != null) return;
                   if (_selectedStall != null) {
@@ -209,6 +223,18 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 ),
               ),
             ),
+
+            // Tap-outside backdrop scrim to dismiss search dropdown
+            if (_isSearchDropdownOpen)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () {
+                    _searchDropdownKey.currentState?.close();
+                    setState(() => _isSearchDropdownOpen = false);
+                  },
+                ),
+              ),
 
             // 2. Top Header (Direction Card in Navigation or Picking Mode, else Search Bar)
             SafeArea(
@@ -324,106 +350,30 @@ class MapScreenState extends ConsumerState<MapScreen> {
   Widget _buildTopSearchAndEntranceBar(selectedEntrance) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      child: Material(
-        elevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.15),
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Container(
-          height: 50,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: AppColors.border),
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 4,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => MapSearchModal.show(context),
-                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.inkMuted,
-                        size: 20,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          'Search stalls, fish, meat...',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.inkMuted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Container(
-                height: 24,
-                width: 1,
-                color: AppColors.border,
-                margin: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              InkWell(
-                onTap: () async {
-                  final result = await EntranceSelectorSheet.show(context);
-                  if (result == 'pick_on_map') {
-                    setState(() {
-                      _isPickingEntranceOnMap = true;
-                      _selectedStall = null;
-                    });
-                  }
-                },
-                borderRadius: BorderRadius.circular(AppSpacing.xs),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        color: selectedEntrance != null
-                            ? AppColors.primary
-                            : const Color(0xFFE53935),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        selectedEntrance != null
-                            ? 'Gate ${selectedEntrance.entranceId}'
-                            : 'Entrance',
-                        style: AppTextStyles.captionSmall.copyWith(
-                          color: selectedEntrance != null
-                              ? AppColors.primary
-                              : AppColors.ink,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_drop_down_rounded,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: MapSearchDropdown(
+        key: _searchDropdownKey,
+        isOpen: _isSearchDropdownOpen,
+        selectedEntrance: selectedEntrance,
+        onOpenChanged: (isOpen) {
+          setState(() => _isSearchDropdownOpen = isOpen);
+        },
+        onEntranceTap: () async {
+          final result = await EntranceSelectorSheet.show(context);
+          if (result == 'pick_on_map') {
+            setState(() {
+              _isPickingEntranceOnMap = true;
+              _selectedStall = null;
+            });
+          }
+        },
+        onStallSelected: (stall) async {
+          setState(() {
+            _selectedStall = stall;
+            _isSearchDropdownOpen = false;
+          });
+          unawaited(HapticFeedback.selectionClick());
+          await StallDetailSheet.show(context, stall);
+        },
       ),
     );
   }

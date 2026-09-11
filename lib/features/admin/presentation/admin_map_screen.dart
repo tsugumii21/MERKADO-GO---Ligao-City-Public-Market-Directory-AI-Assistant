@@ -8,7 +8,7 @@ import '../../../providers/stall_provider.dart';
 import '../../map/domain/navigation_models.dart';
 import '../../map/presentation/widgets/entrance_selector_sheet.dart';
 import '../../map/presentation/widgets/interactive_market_map.dart';
-import '../../map/presentation/widgets/map_search_modal.dart';
+import '../../map/presentation/widgets/map_search_dropdown.dart';
 import '../../map/presentation/widgets/route_navigation_card.dart';
 import '../../map/providers/navigation_provider.dart';
 import '../../map/providers/search_provider.dart';
@@ -25,6 +25,9 @@ class AdminMapScreen extends ConsumerStatefulWidget {
 
 class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
   StallModel? _selectedStall;
+  bool _isSearchDropdownOpen = false;
+  final GlobalKey<MapSearchDropdownState> _searchDropdownKey =
+      GlobalKey<MapSearchDropdownState>();
 
   @override
   void initState() {
@@ -61,6 +64,10 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
                 EntranceSelectorSheet.show(context);
               },
               onMapTapped: () {
+                if (_isSearchDropdownOpen) {
+                  _searchDropdownKey.currentState?.close();
+                  setState(() => _isSearchDropdownOpen = false);
+                }
                 if (_selectedStall != null) {
                   setState(() => _selectedStall = null);
                 }
@@ -97,6 +104,18 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
             ),
           ),
 
+          // Tap-outside backdrop scrim to dismiss search dropdown
+          if (_isSearchDropdownOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () {
+                  _searchDropdownKey.currentState?.close();
+                  setState(() => _isSearchDropdownOpen = false);
+                },
+              ),
+            ),
+
           // 2. Top Header Overlay (Active Route Card OR Search & Entrance Bar)
           SafeArea(
             child: Padding(
@@ -121,96 +140,21 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
   Widget _buildTopSearchAndEntranceBar(MarketEntryPoint? selectedEntrance) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      child: Material(
-        elevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.15),
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: AppColors.border),
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => MapSearchModal.show(context),
-                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.inkMuted,
-                        size: 22,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          'Search 134 stalls, fish, meat...',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.inkMuted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Container(
-                height: 24,
-                width: 1,
-                color: AppColors.border,
-                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-              ),
-              InkWell(
-                onTap: () => EntranceSelectorSheet.show(context),
-                borderRadius: BorderRadius.circular(AppSpacing.xs),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        color: selectedEntrance != null
-                            ? AppColors.primary
-                            : const Color(0xFFE53935),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        selectedEntrance != null
-                            ? 'Gate ${selectedEntrance.entranceId}'
-                            : 'Entrance',
-                        style: AppTextStyles.captionSmall.copyWith(
-                          color: selectedEntrance != null
-                              ? AppColors.primary
-                              : AppColors.ink,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_drop_down_rounded,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: MapSearchDropdown(
+        key: _searchDropdownKey,
+        isOpen: _isSearchDropdownOpen,
+        selectedEntrance: selectedEntrance,
+        onOpenChanged: (isOpen) {
+          setState(() => _isSearchDropdownOpen = isOpen);
+        },
+        onEntranceTap: () => EntranceSelectorSheet.show(context),
+        onStallSelected: (stall) {
+          setState(() {
+            _selectedStall = stall;
+            _isSearchDropdownOpen = false;
+          });
+          StallDetailSheet.show(context, stall);
+        },
       ),
     );
   }

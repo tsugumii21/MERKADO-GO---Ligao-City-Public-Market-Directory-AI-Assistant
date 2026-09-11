@@ -1,6 +1,8 @@
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/constants/market_categories.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -37,20 +39,16 @@ class MapSearchDropdown extends ConsumerStatefulWidget {
 class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
   late TextEditingController _searchController;
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _categoryScrollController = ScrollController();
+  final ScrollController _listScrollController = ScrollController();
   bool _isOpenInternal = false;
 
   bool get isOpen => widget.isOpen || _isOpenInternal;
 
-  static const List<String> _quickCategories = [
-    'All',
-    'Meat',
-    'Fish',
-    'Produce',
-    'Dry Goods',
-    'Eateries',
-    'Rice & Grains',
-    'Snacks',
-  ];
+  static List<String> get _quickCategories => [
+        'All',
+        ...MarketCategories.items.map((i) => i.primaryCategoryName),
+      ];
 
   @override
   void initState() {
@@ -80,6 +78,8 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
   void dispose() {
     _searchController.dispose();
     _focusNode.dispose();
+    _categoryScrollController.dispose();
+    _listScrollController.dispose();
     super.dispose();
   }
 
@@ -127,11 +127,11 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
     if (isSearching) {
       displayStalls = searchResults.map((r) => r.stall).toList();
     } else {
-      displayStalls = allStalls.take(15).toList();
+      displayStalls = allStalls;
     }
 
     final double screenHeight = MediaQuery.of(context).size.height;
-    final double maxDropdownHeight = (screenHeight * 0.46).clamp(240.0, 420.0);
+    final double maxDropdownHeight = (screenHeight * 0.56).clamp(320.0, 540.0);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -337,159 +337,297 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
     );
   }
 
-  /// Horizontal category chip filter bar inside dropdown
+  /// Horizontal category chip filter bar inside dropdown with smooth scrolling and mouse drag
   Widget _buildCategoryFilterBar(String? activeCategory) {
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       color: const Color(0xFFFAFAFA),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _quickCategories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (context, index) {
-          final cat = _quickCategories[index];
-          final isSelected = (cat == 'All' && (activeCategory == null || activeCategory.isEmpty || activeCategory == 'All')) ||
-              activeCategory == cat;
-
-          return InkWell(
+      child: Row(
+        children: [
+          // Left scroll arrow button
+          InkWell(
             onTap: () {
-              if (cat == 'All') {
-                ref.read(selectedCategoryFilterProvider.notifier).state = null;
-              } else {
-                ref.read(selectedCategoryFilterProvider.notifier).state = cat;
-              }
+              final newOffset = (_categoryScrollController.offset - 140).clamp(
+                0.0,
+                _categoryScrollController.position.maxScrollExtent,
+              );
+              _categoryScrollController.animateTo(
+                newOffset,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+              );
             },
-            borderRadius: BorderRadius.circular(20),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  cat,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11.5,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? Colors.white : const Color(0xFF475569),
-                  ),
-                ),
+            borderRadius: BorderRadius.circular(16),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: 20,
+                color: Color(0xFF64748B),
               ),
             ),
-          );
-        },
+          ),
+
+          // Scrollable chips with mouse drag support
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(
+                dragDevices: {
+                  PointerDeviceKind.touch,
+                  PointerDeviceKind.mouse,
+                  PointerDeviceKind.trackpad,
+                  PointerDeviceKind.stylus,
+                },
+              ),
+              child: ListView.separated(
+                controller: _categoryScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                itemCount: _quickCategories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final cat = _quickCategories[index];
+                  final isSelected = (cat == 'All' &&
+                          (activeCategory == null ||
+                              activeCategory.isEmpty ||
+                              activeCategory == 'All')) ||
+                      activeCategory == cat;
+
+                  return InkWell(
+                    onTap: () {
+                      if (cat == 'All') {
+                        ref
+                            .read(selectedCategoryFilterProvider.notifier)
+                            .state = null;
+                      } else {
+                        ref
+                            .read(selectedCategoryFilterProvider.notifier)
+                            .state = cat;
+                      }
+                      if (_listScrollController.hasClients) {
+                        _listScrollController.jumpTo(0);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 13, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          cat,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          // Right scroll arrow button
+          InkWell(
+            onTap: () {
+              final newOffset = (_categoryScrollController.offset + 140).clamp(
+                0.0,
+                _categoryScrollController.position.maxScrollExtent,
+              );
+              _categoryScrollController.animateTo(
+                newOffset,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// List of matching stalls matching reference design
+  /// List of matching stalls matching reference design with scrollbar and mouse drag
   Widget _buildStallsList(List<StallModel> stalls) {
-    return ListView.builder(
-      shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      itemCount: stalls.length,
-      itemBuilder: (context, index) {
-        final stall = stalls[index];
-        final colorSet = ZonePalette.getColorSet(stall.category);
-        final locationSummary =
-            StallUtils.formatLocation(stall.section, stall.address);
-        final hasStallNumber =
-            stall.stallNumber != null && stall.stallNumber!.trim().isNotEmpty;
-        final subtitle = hasStallNumber
-            ? '${stall.category} • Stall #${stall.stallNumber}'
-            : '${stall.category} • $locationSummary';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Stall count summary
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${stalls.length} stalls found',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              Text(
+                'Scroll for more',
+                style: GoogleFonts.poppins(
+                  fontSize: 10.5,
+                  color: const Color(0xFF94A3B8),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, thickness: 0.5, color: Color(0xFFF1F5F9)),
 
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              close();
-              widget.onStallSelected(stall);
-            },
-            hoverColor: const Color(0xFFF8FAFC),
-            splashColor: AppColors.primaryLight.withValues(alpha: 0.18),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              child: Row(
-                children: [
-                  // Circular initials avatar matching screenshot
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: colorSet.accent.withValues(alpha: 0.40),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _getInitials(stall.name),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: colorSet.outline,
+        Flexible(
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              dragDevices: {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+                PointerDeviceKind.trackpad,
+                PointerDeviceKind.stylus,
+              },
+              scrollbars: true,
+            ),
+            child: Scrollbar(
+              controller: _listScrollController,
+              thumbVisibility: true,
+              thickness: 5,
+              radius: const Radius.circular(4),
+              child: ListView.builder(
+                controller: _listScrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                itemCount: stalls.length,
+                itemBuilder: (context, index) {
+                  final stall = stalls[index];
+                  final colorSet = ZonePalette.getColorSet(stall.category);
+                  final locationSummary =
+                      StallUtils.formatLocation(stall.section, stall.address);
+                  final hasStallNumber = stall.stallNumber != null &&
+                      stall.stallNumber!.trim().isNotEmpty;
+                  final subtitle = hasStallNumber
+                      ? '${stall.category} • Stall #${stall.stallNumber}'
+                      : '${stall.category} • $locationSummary';
+
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        close();
+                        widget.onStallSelected(stall);
+                      },
+                      hoverColor: const Color(0xFFF8FAFC),
+                      splashColor:
+                          AppColors.primaryLight.withValues(alpha: 0.18),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 9),
+                        child: Row(
+                          children: [
+                            // Circular initials avatar matching screenshot
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: colorSet.accent.withValues(alpha: 0.40),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _getInitials(stall.name),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorSet.outline,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+
+                            // Stall Name & Subtitle
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    stall.name,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF0F172A),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    subtitle,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11.5,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Trailing Action Arrow
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 18,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Stall Name & Subtitle
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          stall.name,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF0F172A),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11.5,
-                            color: const Color(0xFF64748B),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Trailing Action Arrow
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 18,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 

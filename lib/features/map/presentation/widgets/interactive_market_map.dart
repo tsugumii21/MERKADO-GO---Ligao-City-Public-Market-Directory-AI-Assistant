@@ -1324,14 +1324,41 @@ class RouteOverlayPainter extends CustomPainter {
 
       // 5. FLOATING TURN ANNOUNCEMENT SPEECH BUBBLE HUD (MD §5, §13.9)
       final String announcementText;
-      if (walkProgress < 0.08) {
+      if (walkProgress < 0.03) {
         announcementText = 'Start';
-      } else if (walkProgress >= 0.95) {
+      } else if (walkProgress >= 0.98) {
         announcementText = 'Arrived';
       } else if (route.steps.isNotEmpty) {
-        final stepIdx = (walkProgress * route.steps.length).floor().clamp(0, route.steps.length - 1);
-        final step = route.steps[stepIdx];
-        announcementText = _getSummarizedDirection(step);
+        final double totalStepsDist = route.steps
+            .where((s) => s.direction != TurnDirection.arrive)
+            .fold<double>(0.0, (acc, s) => acc + s.distance);
+        final double effectiveTotal = totalStepsDist > 0 ? totalStepsDist : totalLength;
+        final double currentWalkDist = walkProgress * effectiveTotal;
+
+        int activeStepIdx = 0;
+        double accumulated = 0.0;
+        for (int i = 0; i < route.steps.length; i++) {
+          final s = route.steps[i];
+          if (s.direction == TurnDirection.arrive || i == route.steps.length - 1) {
+            if (walkProgress >= 0.98) {
+              activeStepIdx = i;
+            }
+            break;
+          }
+          accumulated += s.distance;
+          if (currentWalkDist <= accumulated) {
+            activeStepIdx = i;
+            break;
+          }
+          activeStepIdx = i;
+        }
+
+        final activeStep = route.steps[activeStepIdx];
+        if (activeStep.direction == TurnDirection.arrive && walkProgress < 0.98) {
+          announcementText = 'Go straight';
+        } else {
+          announcementText = _getSummarizedDirection(activeStep);
+        }
       } else {
         announcementText = 'Go straight';
       }
@@ -1417,20 +1444,8 @@ class RouteOverlayPainter extends CustomPainter {
     canvas.drawCircle(endPt, 8.0, destInner);
   }
 
-  /// Summarize step into concise directional actions (turn left, right, straight, start, arrived)
+  /// Summarize step into concise directional actions based on typed TurnDirection
   String _getSummarizedDirection(NavigationStep step) {
-    final lower = step.instruction.toLowerCase();
-    if (lower.contains('sharp left')) return 'Sharp left';
-    if (lower.contains('slight left')) return 'Slight left';
-    if (lower.contains('turn left') || lower.startsWith('left')) return 'Turn left';
-    if (lower.contains('sharp right')) return 'Sharp right';
-    if (lower.contains('slight right')) return 'Slight right';
-    if (lower.contains('turn right') || lower.startsWith('right')) return 'Turn right';
-    if (lower.contains('u-turn')) return 'Make U-turn';
-    if (lower.contains('arrive') || lower.contains('destination')) return 'Arrived';
-    if (lower.contains('start') || lower.contains('enter via')) return 'Start';
-    if (lower.contains('straight')) return 'Go straight';
-
     switch (step.direction) {
       case TurnDirection.start:
         return 'Start';

@@ -1324,18 +1324,16 @@ class RouteOverlayPainter extends CustomPainter {
 
       // 5. FLOATING TURN ANNOUNCEMENT SPEECH BUBBLE HUD (MD §5, §13.9)
       final String announcementText;
-      if (walkProgress < 0.12) {
-        if (route.originType == NavigationOriginType.stall) {
-          announcementText = '1. Start from ${route.originStallName ?? "Stall"}';
-        } else {
-          announcementText = '1. Enter via Gate ${route.entrance?.entranceId ?? ""}';
-        }
+      if (walkProgress < 0.08) {
+        announcementText = 'Start';
       } else if (walkProgress >= 0.95) {
-        announcementText = '🏁 Arrived!';
-      } else {
+        announcementText = 'Arrived';
+      } else if (route.steps.isNotEmpty) {
         final stepIdx = (walkProgress * route.steps.length).floor().clamp(0, route.steps.length - 1);
         final step = route.steps[stepIdx];
-        announcementText = step.instruction.isNotEmpty ? step.instruction : 'Follow Walkway';
+        announcementText = _getSummarizedDirection(step);
+      } else {
+        announcementText = 'Go straight';
       }
 
       canvas.save();
@@ -1417,6 +1415,44 @@ class RouteOverlayPainter extends CustomPainter {
     canvas.drawCircle(endPt, 42.0 * pulseScale, pulsePaint);
     canvas.drawCircle(endPt, 20.0, destPinPaint);
     canvas.drawCircle(endPt, 8.0, destInner);
+  }
+
+  /// Summarize step into concise directional actions (turn left, right, straight, start, arrived)
+  String _getSummarizedDirection(NavigationStep step) {
+    final lower = step.instruction.toLowerCase();
+    if (lower.contains('sharp left')) return 'Sharp left';
+    if (lower.contains('slight left')) return 'Slight left';
+    if (lower.contains('turn left') || lower.startsWith('left')) return 'Turn left';
+    if (lower.contains('sharp right')) return 'Sharp right';
+    if (lower.contains('slight right')) return 'Slight right';
+    if (lower.contains('turn right') || lower.startsWith('right')) return 'Turn right';
+    if (lower.contains('u-turn')) return 'Make U-turn';
+    if (lower.contains('arrive') || lower.contains('destination')) return 'Arrived';
+    if (lower.contains('start') || lower.contains('enter via')) return 'Start';
+    if (lower.contains('straight')) return 'Go straight';
+
+    switch (step.direction) {
+      case TurnDirection.start:
+        return 'Start';
+      case TurnDirection.straight:
+        return 'Go straight';
+      case TurnDirection.slightLeft:
+        return 'Slight left';
+      case TurnDirection.turnLeft:
+        return 'Turn left';
+      case TurnDirection.sharpLeft:
+        return 'Sharp left';
+      case TurnDirection.slightRight:
+        return 'Slight right';
+      case TurnDirection.turnRight:
+        return 'Turn right';
+      case TurnDirection.sharpRight:
+        return 'Sharp right';
+      case TurnDirection.uTurn:
+        return 'Make U-turn';
+      case TurnDirection.arrive:
+        return 'Arrived';
+    }
   }
 
   @override

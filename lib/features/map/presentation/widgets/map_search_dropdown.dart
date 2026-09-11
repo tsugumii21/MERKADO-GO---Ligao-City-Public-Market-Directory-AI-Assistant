@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/stall_utils.dart';
+import '../../../../core/widgets/market_category_icon.dart';
 import '../../../../models/stall_model.dart';
 import '../../../../providers/stall_provider.dart';
 import '../../domain/navigation_models.dart';
@@ -14,7 +15,7 @@ import '../../domain/zone_palette.dart';
 import '../../providers/search_provider.dart';
 
 /// Google Maps-style top search bar with anchored dropdown menu.
-/// Displays live query matches with vendor initials avatars, trailing arrow,
+/// Displays live query matches with category food icons, trailing arrow,
 /// and clean empty state matching the reference specification.
 class MapSearchDropdown extends ConsumerStatefulWidget {
   final Function(StallModel stall) onStallSelected;
@@ -42,13 +43,21 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
   final ScrollController _categoryScrollController = ScrollController();
   final ScrollController _listScrollController = ScrollController();
   bool _isOpenInternal = false;
+  bool _filterOpenOnly = false;
+
+  static const List<String> _popularKeywords = [
+    'Bangus',
+    'Tilapia',
+    'Pork Liempo',
+    'Beef',
+    'Chicken',
+    'Sinandomeng Rice',
+    'Vegetables',
+    'Kakanin',
+    'Spices',
+  ];
 
   bool get isOpen => widget.isOpen || _isOpenInternal;
-
-  static List<String> get _quickCategories => [
-        'All',
-        ...MarketCategories.items.map((i) => i.primaryCategoryName),
-      ];
 
   @override
   void initState() {
@@ -102,16 +111,6 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
     _focusNode.requestFocus();
   }
 
-  String _getInitials(String name) {
-    final clean = name.trim().replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '');
-    if (clean.isEmpty) return 'ST';
-    final parts = clean.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.length == 1) {
-      return parts[0].substring(0, parts[0].length.clamp(1, 2)).toUpperCase();
-    }
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final searchResults = ref.watch(searchResultsProvider);
@@ -120,14 +119,18 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
     final activeCategory = ref.watch(selectedCategoryFilterProvider);
 
     // If query is empty and no category filter, show top stalls
-    final List<StallModel> displayStalls;
+    List<StallModel> displayStalls;
     final bool isSearching = _searchController.text.trim().isNotEmpty ||
         (activeCategory != null && activeCategory.isNotEmpty && activeCategory != 'All');
 
     if (isSearching) {
       displayStalls = searchResults.map((r) => r.stall).toList();
     } else {
-      displayStalls = allStalls;
+      displayStalls = List.of(allStalls);
+    }
+
+    if (_filterOpenOnly) {
+      displayStalls = displayStalls.where((s) => StallUtils.isStallOpenNow(s)).toList();
     }
 
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -316,8 +319,12 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Quick Category Chips Bar
+                        // Quick Category & Status Chips Bar
                         _buildCategoryFilterBar(activeCategory),
+
+                        // Popular product search keywords (when search query is empty)
+                        if (_searchController.text.trim().isEmpty)
+                          _buildPopularKeywordsBar(),
 
                         const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
 
@@ -337,8 +344,86 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
     );
   }
 
+  /// Popular quick-search product keywords when query is empty (NO emojis)
+  Widget _buildPopularKeywordsBar() {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      color: const Color(0xFFF8FAFC),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.trending_up_rounded,
+            size: 15,
+            color: Color(0xFF64748B),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'Popular:',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(
+                dragDevices: {
+                  PointerDeviceKind.touch,
+                  PointerDeviceKind.mouse,
+                  PointerDeviceKind.trackpad,
+                  PointerDeviceKind.stylus,
+                },
+              ),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: _popularKeywords.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final kw = _popularKeywords[index];
+                  return InkWell(
+                    onTap: () {
+                      _searchController.text = kw;
+                      ref.read(mapSearchQueryProvider.notifier).state = kw;
+                      setState(() {});
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        kw,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF334155),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Horizontal category chip filter bar inside dropdown with smooth scrolling and mouse drag
   Widget _buildCategoryFilterBar(String? activeCategory) {
+    // 0: All, 1: Open Now toggle, 2..N: Canonical Categories
+    final categoriesList = MarketCategories.items.map((i) => i.primaryCategoryName).toList();
+    final totalCount = 2 + categoriesList.length;
+
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -385,27 +470,100 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                itemCount: _quickCategories.length,
+                itemCount: totalCount,
                 separatorBuilder: (_, __) => const SizedBox(width: 6),
                 itemBuilder: (context, index) {
-                  final cat = _quickCategories[index];
-                  final isSelected = (cat == 'All' &&
-                          (activeCategory == null ||
-                              activeCategory.isEmpty ||
-                              activeCategory == 'All')) ||
-                      activeCategory == cat;
+                  // Index 0: 'All'
+                  if (index == 0) {
+                    final isAllSelected = (activeCategory == null ||
+                            activeCategory.isEmpty ||
+                            activeCategory == 'All') &&
+                        !_filterOpenOnly;
+
+                    return InkWell(
+                      onTap: () {
+                        ref.read(selectedCategoryFilterProvider.notifier).state = null;
+                        setState(() => _filterOpenOnly = false);
+                        if (_listScrollController.hasClients) {
+                          _listScrollController.jumpTo(0);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isAllSelected ? AppColors.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isAllSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'All',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: isAllSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isAllSelected ? Colors.white : const Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Index 1: 'Open Now' toggle (NO emojis)
+                  if (index == 1) {
+                    final isSelected = _filterOpenOnly;
+                    return InkWell(
+                      onTap: () {
+                        setState(() => _filterOpenOnly = !_filterOpenOnly);
+                        if (_listScrollController.hasClients) {
+                          _listScrollController.jumpTo(0);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.access_time_rounded,
+                              size: 13,
+                              color: isSelected ? Colors.white : AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Open Now',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? Colors.white : const Color(0xFF475569),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Index 2+: Categories
+                  final cat = categoriesList[index - 2];
+                  final isSelected = activeCategory == cat;
 
                   return InkWell(
                     onTap: () {
-                      if (cat == 'All') {
-                        ref
-                            .read(selectedCategoryFilterProvider.notifier)
-                            .state = null;
-                      } else {
-                        ref
-                            .read(selectedCategoryFilterProvider.notifier)
-                            .state = cat;
-                      }
+                      ref.read(selectedCategoryFilterProvider.notifier).state = cat;
                       if (_listScrollController.hasClients) {
                         _listScrollController.jumpTo(0);
                       }
@@ -413,15 +571,12 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                     borderRadius: BorderRadius.circular(20),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 13, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
                       decoration: BoxDecoration(
                         color: isSelected ? AppColors.primary : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected
-                              ? AppColors.primary
-                              : const Color(0xFFE2E8F0),
+                          color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
                         ),
                       ),
                       child: Center(
@@ -429,11 +584,8 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                           cat,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF475569),
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? Colors.white : const Color(0xFF475569),
                           ),
                         ),
                       ),
@@ -472,25 +624,68 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
     );
   }
 
-  /// List of matching stalls matching reference design with scrollbar and mouse drag
+  /// List of matching stalls with food category icons, open status, and cleaned stall numbers
   Widget _buildStallsList(List<StallModel> stalls) {
+    final query = _searchController.text.trim().toLowerCase();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Stall count summary
+        // Stall count and active filter summary
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${stalls.length} stalls found',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF64748B),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${stalls.length} stalls found',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  if (_filterOpenOnly) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Open Only',
+                        style: GoogleFonts.poppins(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (widget.selectedEntrance != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Gate ${widget.selectedEntrance!.entranceId}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               Text(
                 'Scroll for more',
@@ -528,13 +723,33 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                 itemBuilder: (context, index) {
                   final stall = stalls[index];
                   final colorSet = ZonePalette.getColorSet(stall.category);
+                  final formattedStallNo = StallUtils.formatStallNumber(stall.stallNumber);
                   final locationSummary =
                       StallUtils.formatLocation(stall.section, stall.address);
-                  final hasStallNumber = stall.stallNumber != null &&
-                      stall.stallNumber!.trim().isNotEmpty;
-                  final subtitle = hasStallNumber
-                      ? '${stall.category} • Stall #${stall.stallNumber}'
+                  final subtitle = formattedStallNo.isNotEmpty
+                      ? '${stall.category} • $formattedStallNo'
                       : '${stall.category} • $locationSummary';
+
+                  final isOpenNow = StallUtils.isStallOpenNow(stall);
+
+                  // Find matched product/tag if user searched
+                  String? matchedProduct;
+                  if (query.isNotEmpty) {
+                    for (final p in stall.products) {
+                      if (p.toLowerCase().contains(query)) {
+                        matchedProduct = p;
+                        break;
+                      }
+                    }
+                    if (matchedProduct == null) {
+                      for (final t in stall.tags) {
+                        if (t.toLowerCase().contains(query)) {
+                          matchedProduct = StallUtils.getTagLabel(t);
+                          break;
+                        }
+                      }
+                    }
+                  }
 
                   return Material(
                     color: Colors.transparent,
@@ -551,27 +766,28 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                             horizontal: 14, vertical: 9),
                         child: Row(
                           children: [
-                            // Circular initials avatar matching screenshot
+                            // Food / Category Icon Container matching Stall Directory
                             Container(
                               width: 38,
                               height: 38,
                               decoration: BoxDecoration(
-                                color: colorSet.accent.withValues(alpha: 0.40),
-                                shape: BoxShape.circle,
+                                color: colorSet.accent.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: colorSet.outline.withValues(alpha: 0.30),
+                                  width: 1.2,
+                                ),
                               ),
                               alignment: Alignment.center,
-                              child: Text(
-                                _getInitials(stall.name),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: colorSet.outline,
-                                ),
+                              child: MarketCategoryIcon(
+                                category: stall.category,
+                                size: 20,
+                                color: colorSet.outline,
                               ),
                             ),
                             const SizedBox(width: 12),
 
-                            // Stall Name & Subtitle
+                            // Stall Name, Subtitle & Badges
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,6 +812,56 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    children: [
+                                      // Open / Closed Status Tag
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 5, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: isOpenNow
+                                              ? const Color(0xFFE8F5E9)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          isOpenNow ? 'Open' : 'Closed',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: isOpenNow
+                                                ? const Color(0xFF2E7D32)
+                                                : const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ),
+                                      if (matchedProduct != null) ...[
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 5, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEFF6FF),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              'Sells: $matchedProduct',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFF1D4ED8),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),

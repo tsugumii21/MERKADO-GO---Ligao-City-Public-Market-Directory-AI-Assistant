@@ -505,6 +505,24 @@ class StallUtils {
     return '$sec • $addr';
   }
 
+  /// Formats stall number cleanly, eliminating duplicated prefixes like "STALL #STALL #1".
+  static String formatStallNumber(String? rawStallNumber) {
+    if (rawStallNumber == null) return '';
+    final trimmed = rawStallNumber.trim();
+    if (trimmed.isEmpty) return '';
+
+    // Strip duplicated or redundant leading prefixes
+    final clean = trimmed
+        .replaceFirst(
+          RegExp(r'^(stall\s*(#|no\.?|number)?\s*)+', caseSensitive: false),
+          '',
+        )
+        .trim();
+
+    if (clean.isEmpty) return 'Stall';
+    return 'Stall #$clean';
+  }
+
   /// Formats products into a clean 1-line summary (e.g. "Item 1, Item 2 • +3 more").
   static String formatProductsSummary(List<String> products, {int maxPreview = 2}) {
     if (products.isEmpty) return '';

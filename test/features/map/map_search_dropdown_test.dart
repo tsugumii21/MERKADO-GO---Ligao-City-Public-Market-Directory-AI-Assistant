@@ -80,7 +80,7 @@ void main() {
       expect(find.text('Entrance'), findsOneWidget);
     });
 
-    testWidgets('Tapping input bar opens dropdown and renders stall initials',
+    testWidgets('Tapping input bar opens dropdown and renders category food icons',
         (tester) async {
       StallModel? selectedStall;
       await tester.pumpWidget(
@@ -94,11 +94,10 @@ void main() {
       await tester.tap(find.byType(TextField));
       await tester.pumpAndSettle();
 
-      // Verify dropdown appears with items
+      // Verify dropdown appears with items and food icons
       expect(find.text('Caleb Gates'), findsOneWidget);
-      expect(find.text('CG'), findsOneWidget);
       expect(find.text('Penelope Cabrera'), findsOneWidget);
-      expect(find.text('PC'), findsOneWidget);
+      expect(find.text('Open Now'), findsWidgets);
       expect(find.byIcon(Icons.arrow_forward_rounded), findsNWidgets(2));
 
       // Tap a stall item

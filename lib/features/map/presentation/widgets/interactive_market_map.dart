@@ -116,6 +116,16 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     _centerOnMarket(animate: animate);
   }
 
+  /// Rotates the map by [deltaRadians] smoothly
+  void rotateBy(double deltaRadians, {bool animate = true}) {
+    _rotateBy(deltaRadians, animate: animate);
+  }
+
+  /// Resets the map rotation back to North (0°)
+  void resetRotation({bool animate = true}) {
+    _resetRotation(animate: animate);
+  }
+
   static const double _svgWidth = 8004.0;
   static const double _svgHeight = 8000.0;
 
@@ -137,6 +147,8 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   final Map<String, Offset> _stallCenterCache = {};
   final Map<String, Rect> _stallBoundsCache = {};
   bool _isClamping = false;
+  bool _isUserInteracting = false;
+  double _previousGestureRotation = 0.0;
   Path? _cachedRoutePath;
   List<ui.PathMetric> _cachedRouteMetrics = [];
   double _cachedRouteLength = 0.0;
@@ -263,9 +275,39 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   void _onTransformChanged() {
     _clampScale();
-    if (mounted && !_isWalking) {
+    if (mounted) {
       setState(() {});
     }
+  }
+
+  void _handleInteractionStart(ScaleStartDetails details) {
+    _isUserInteracting = true;
+    _previousGestureRotation = 0.0;
+  }
+
+  void _handleInteractionUpdate(ScaleUpdateDetails details) {
+    _clampScale();
+    if (details.pointerCount >= 2) {
+      final deltaRotation = details.rotation - _previousGestureRotation;
+      _previousGestureRotation = details.rotation;
+
+      if (deltaRotation.abs() > 0.0005) {
+        final focal = details.localFocalPoint;
+        final rotMatrix = Matrix4.identity()
+          ..translateByVector3(Vector3(focal.dx, focal.dy, 0.0))
+          ..rotateZ(deltaRotation)
+          ..translateByVector3(Vector3(-focal.dx, -focal.dy, 0.0))
+          ..multiply(_transformController.value);
+        _transformController.value = rotMatrix;
+      }
+    }
+  }
+
+  void _handleInteractionEnd(ScaleEndDetails details) {
+    _previousGestureRotation = 0.0;
+    _isUserInteracting = false;
+    _clampScale();
+    if (mounted) setState(() {});
   }
 
   void _clampScale() {
@@ -539,29 +581,55 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     _centerOnMarket(animate: animate);
   }
 
-  void _animateToPoint(Offset target, double zoom, {bool animate = true}) {
+  void _animateToPoint(Offset target, double zoom, {bool animate = true, double? rotation}) {
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     final viewportSize = renderBox.size;
     final targetX = target.dx;
     final targetY = target.dy;
+    final rad = rotation ?? _currentRotation;
 
     final matrix = Matrix4.identity()
       ..translateByVector3(
-        Vector3(
-          viewportSize.width / 2 - targetX * zoom,
-          viewportSize.height / 2 - targetY * zoom,
-          0.0,
-        ),
+        Vector3(viewportSize.width / 2, viewportSize.height / 2, 0.0),
       )
-      ..scaleByVector3(Vector3(zoom, zoom, zoom));
+      ..rotateZ(rad)
+      ..scaleByVector3(Vector3(zoom, zoom, zoom))
+      ..translateByVector3(Vector3(-targetX, -targetY, 0.0));
 
     if (animate) {
       _animateToMatrix(matrix);
     } else {
       _transformController.value = matrix;
     }
+  }
+
+  void _rotateBy(double deltaRadians, {bool animate = true}) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final center = Offset(renderBox.size.width / 2, renderBox.size.height / 2);
+    final currentMatrix = _transformController.value;
+
+    final rotMatrix = Matrix4.identity()
+      ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
+      ..rotateZ(deltaRadians)
+      ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
+      ..multiply(currentMatrix);
+
+    if (animate) {
+      _animateToMatrix(rotMatrix);
+    } else {
+      _transformController.value = rotMatrix;
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _resetRotation({bool animate = true}) {
+    if (_currentRotation.abs() < 0.001) return;
+    HapticFeedback.lightImpact();
+    _rotateBy(-_currentRotation, animate: animate);
   }
 
   void _animateToMatrix(Matrix4 targetMatrix) {
@@ -630,6 +698,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _trackAvatarCamera() {
+    if (_isUserInteracting) return;
     final tangent = _getRouteTangent(_walkController.value);
     if (tangent == null) return;
     final renderBox = context.findRenderObject() as RenderBox?;
@@ -641,34 +710,14 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     final targetY = tangent.position.dy;
     final rad = _currentRotation;
 
-    if (rad.abs() > 0.001) {
-      final cosVal = math.cos(rad);
-      final sinVal = math.sin(rad);
-      final dx = targetX - _marketCenter.dx;
-      final dy = targetY - _marketCenter.dy;
-      final rotX = _marketCenter.dx + (dx * cosVal - dy * sinVal);
-      final rotY = _marketCenter.dy + (dx * sinVal + dy * cosVal);
-
-      final tx = (viewportSize.width / 2.0) - (rotX * targetScale);
-      final ty = (viewportSize.height / 2.0) - (rotY * targetScale);
-
-      final matrix = Matrix4.identity()
-        ..translateByVector3(Vector3(tx, ty, 0.0))
-        ..scaleByVector3(Vector3(targetScale, targetScale, targetScale))
-        ..rotateZ(rad);
-      _transformController.value = matrix;
-    } else {
-      final matrix = Matrix4.identity()
-        ..translateByVector3(
-          Vector3(
-            viewportSize.width / 2 - targetX * targetScale,
-            viewportSize.height / 2 - targetY * targetScale,
-            0.0,
-          ),
-        )
-        ..scaleByVector3(Vector3(targetScale, targetScale, targetScale));
-      _transformController.value = matrix;
-    }
+    final matrix = Matrix4.identity()
+      ..translateByVector3(
+        Vector3(viewportSize.width / 2, viewportSize.height / 2, 0.0),
+      )
+      ..rotateZ(rad)
+      ..scaleByVector3(Vector3(targetScale, targetScale, targetScale))
+      ..translateByVector3(Vector3(-targetX, -targetY, 0.0));
+    _transformController.value = matrix;
   }
 
   void _skipWalking() {
@@ -776,8 +825,9 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
               maxScale: _maxScale,
               boundaryMargin: const EdgeInsets.all(600),
               constrained: false,
-              onInteractionUpdate: (_) => _clampScale(),
-              onInteractionEnd: (_) => _clampScale(),
+              onInteractionStart: _handleInteractionStart,
+              onInteractionUpdate: _handleInteractionUpdate,
+              onInteractionEnd: _handleInteractionEnd,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (details) => _handleCanvasTap(details.localPosition),
@@ -970,7 +1020,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
               ),
             ),
 
-          // Floating Map Controls (Replay, Zoom In, Zoom Out, Reposition)
+          // Floating Map Controls (Replay, Compass, Rotate 90, Zoom In, Zoom Out, Reposition)
           Positioned(
             right: 16,
             bottom: widget.activeRoute != null ? 84 : 24,
@@ -985,6 +1035,14 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                   ),
                   const SizedBox(height: 8),
                 ],
+                _buildCompassButton(),
+                const SizedBox(height: 8),
+                _buildMapControlButton(
+                  icon: Icons.rotate_right_rounded,
+                  tooltip: 'Rotate Map 90° Clockwise',
+                  onPressed: () => _rotateBy(math.pi / 2),
+                ),
+                const SizedBox(height: 8),
                 _buildMapControlButton(
                   icon: Icons.add_rounded,
                   tooltip: _canZoomIn ? 'Zoom In' : 'Maximum Zoom Reached',
@@ -1023,6 +1081,38 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     return _allGraphNodes[nodeId];
   }
 
+  Widget _buildCompassButton() {
+    final rad = _currentRotation;
+    final isRotated = rad.abs() > 0.01;
+
+    return Material(
+      color: isRotated ? AppColors.surface : AppColors.surfaceDim,
+      elevation: isRotated ? 4 : 1,
+      shadowColor: Colors.black.withValues(alpha: isRotated ? 0.15 : 0.05),
+      shape: const CircleBorder(side: BorderSide(color: AppColors.border)),
+      child: Tooltip(
+        message: isRotated ? 'Reset to North (0°)' : 'Map Oriented North',
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: isRotated ? () => _resetRotation(animate: true) : null,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(
+              child: Transform.rotate(
+                angle: -rad,
+                child: CustomPaint(
+                  size: const Size(20, 20),
+                  painter: _CompassNeedlePainter(isRotated: isRotated),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMapControlButton({
     required IconData icon,
     required String tooltip,
@@ -1048,6 +1138,54 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       ),
     );
   }
+}
+
+/// Dynamic dual-color compass needle: red/emerald pointing North, grey pointing South
+class _CompassNeedlePainter extends CustomPainter {
+  final bool isRotated;
+
+  const _CompassNeedlePainter({required this.isRotated});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // North Needle (Red tip / Brand Emerald)
+    final northPath = Path()
+      ..moveTo(cx, cy - 9)
+      ..lineTo(cx - 3.5, cy)
+      ..lineTo(cx + 3.5, cy)
+      ..close();
+
+    final northPaint = Paint()
+      ..color = isRotated ? const Color(0xFFE53935) : AppColors.primary
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(northPath, northPaint);
+
+    // South Needle (Muted Grey)
+    final southPath = Path()
+      ..moveTo(cx, cy + 9)
+      ..lineTo(cx - 3.5, cy)
+      ..lineTo(cx + 3.5, cy)
+      ..close();
+
+    final southPaint = Paint()
+      ..color = isRotated ? const Color(0xFF9E9E9E) : AppColors.inkMuted.withValues(alpha: 0.5)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(southPath, southPaint);
+
+    // Center pivot dot
+    canvas.drawCircle(
+      Offset(cx, cy),
+      1.8,
+      Paint()..color = isRotated ? AppColors.ink : AppColors.inkMuted,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CompassNeedlePainter oldDelegate) =>
+      oldDelegate.isRotated != isRotated;
 }
 
 /// CustomPainter for drawing two-layer corridor ribbon, progressive under-heel path reveal,

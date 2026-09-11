@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -111,17 +111,17 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
   bool _isSending = false;
 
   final List<String> _suggestedPrompts = [
-    '🐟 Where can I buy fresh fish?',
-    '🥩 Who sells pork liempo?',
-    '📍 Where is the meat section?',
-    '🕒 Stalls open right now',
+    'Where can I buy fresh fish?',
+    'Who sells pork liempo?',
+    'Where is the meat section?',
+    'Stalls open right now',
   ];
 
   final List<String> _suggestedPromptsTL = [
-    '🐟 Saan makakabili ng sariwang isda?',
-    '🥩 Sino nagtitinda ng pork liempo?',
-    '📍 Nasaan ang meat section?',
-    '🕒 Mga stall na bukas ngayon',
+    'Saan makakabili ng sariwang isda?',
+    'Sino nagtitinda ng pork liempo?',
+    'Nasaan ang meat section?',
+    'Mga stall na bukas ngayon',
   ];
 
   @override
@@ -566,8 +566,8 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                     // Short Greeting
                     Text(
                       _currentLanguage == 'TL'
-                          ? 'Kumusta! Ako si Aling Suki 🛒. Matutulungan kita mahanap ang mga stall, sariwang produkto, at direksyon sa loob ng Ligao Public Market.'
-                          : 'Kumusta! I\'m Aling Suki 🛒. I can help you find stalls, fresh produce, and directions inside Ligao Public Market.',
+                          ? 'Kumusta! Ako si Aling Suki. Matutulungan kita mahanap ang mga stall, sariwang produkto, at direksyon sa loob ng Ligao Public Market.'
+                          : 'Kumusta! I\'m Aling Suki. I can help you find stalls, fresh produce, and directions inside Ligao Public Market.',
                       style: GoogleFonts.poppins(
                         fontSize: 13.5,
                         color: const Color(0xFF1F2937),

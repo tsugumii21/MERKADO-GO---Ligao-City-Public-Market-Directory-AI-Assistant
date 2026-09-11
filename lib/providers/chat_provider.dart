@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/services/gemini_service.dart';
 import '../features/chat/domain/chat_message.dart';
+import '../models/stall_model.dart';
+import 'stall_provider.dart';
 
 class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   ChatNotifier(this._geminiService) : super([]) {
@@ -26,6 +27,14 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
 
     final hasUserMessages = state.any((m) => m.role == 'user');
     if (reset || !hasUserMessages) {
+      _addWelcomeMessage();
+    }
+  }
+
+  void updateStalls(List<StallModel> stalls) {
+    _geminiService.updateStalls(stalls);
+    final hasUserMessages = state.any((m) => m.role == 'user');
+    if (!hasUserMessages) {
       _addWelcomeMessage();
     }
   }
@@ -105,13 +114,21 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
 }
 
 final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
-  try {
-    final gemini = ref.watch(geminiServiceProvider);
-    return ChatNotifier(gemini);
-  } catch (e) {
-    debugPrint('❌ Failed: Failed to create ChatNotifier: $e');
-    // Return a safe default - the service will handle errors gracefully
-    final gemini = ref.read(geminiServiceProvider);
-    return ChatNotifier(gemini);
+  final gemini = ref.watch(geminiServiceProvider);
+  final notifier = ChatNotifier(gemini);
+
+  ref.listen<AsyncValue<List<StallModel>>>(allStallsProvider, (_, next) {
+    next.whenData((stalls) {
+      if (stalls.isNotEmpty) {
+        notifier.updateStalls(stalls);
+      }
+    });
+  });
+
+  final currentStalls = ref.read(allStallsProvider).asData?.value;
+  if (currentStalls != null && currentStalls.isNotEmpty) {
+    notifier.updateStalls(currentStalls);
   }
+
+  return notifier;
 });

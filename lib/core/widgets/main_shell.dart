@@ -153,6 +153,26 @@ class MainShellState extends ConsumerState<MainShell> {
     applyFavoritesView();
   }
 
+  void openCategoryInDirectory(String category) {
+    if (!mounted) return;
+
+    void applyCategoryView() {
+      if (!mounted) return;
+      stallsPageKey.currentState?.selectCategory(category);
+    }
+
+    if (widget.navigationShell.currentIndex != 1) {
+      goToTab(1);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        applyCategoryView();
+        Future<void>.delayed(const Duration(milliseconds: 80), applyCategoryView);
+      });
+      return;
+    }
+
+    applyCategoryView();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = AppBreakpoints.isDesktop(context);

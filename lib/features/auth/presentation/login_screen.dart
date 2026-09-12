@@ -106,34 +106,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       if (user != null) {
+        // Read providers synchronously before async delays in case widget unmounts during redirect
+        final favNotifier = ref.read(favoriteProvider.notifier);
+        final authRepo = ref.read(authRepositoryProvider);
+
         await Future.delayed(const Duration(milliseconds: 500));
         await user.getIdToken(true);
 
         try {
-          await ref.read(favoriteProvider.notifier).loadFavorites();
+          await favNotifier.loadFavorites();
         } catch (e) {
-          debugPrint('❌ Error: Favorites load failed: $e');
+          debugPrint('Error: Favorites load failed: $e');
         }
 
-        final authRepo = ref.read(authRepositoryProvider);
         final userData = await authRepo.getUserData(user.uid);
 
-        if (mounted) {
-          final resolvedName = (userData?.fullName.trim().isNotEmpty == true)
-              ? userData!.fullName.trim()
-              : (userData?.username.trim().isNotEmpty == true ? userData!.username.trim() : null);
+        if (!mounted) return;
 
-          // 3-second frosted loading transition with map.json animation and market phrases
-          await AuthLoadingDialog.show(
-            context,
-            userName: resolvedName,
-          );
-        }
+        final resolvedName = (userData?.fullName.trim().isNotEmpty == true)
+            ? userData!.fullName.trim()
+            : (userData?.username.trim().isNotEmpty == true ? userData!.username.trim() : null);
+
+        // 3-second frosted loading transition with map.json animation and market phrases
+        await AuthLoadingDialog.show(
+          context,
+          userName: resolvedName,
+        );
+
+        if (!mounted) return;
 
         if (userData?.role == 'admin') {
-          if (mounted) context.go(RouteNames.admin);
+          context.go(RouteNames.admin);
         } else {
-          if (mounted) context.go(RouteNames.home);
+          context.go(RouteNames.home);
         }
       }
     } on FirebaseAuthException catch (e) {

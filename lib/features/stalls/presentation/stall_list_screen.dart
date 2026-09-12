@@ -125,9 +125,23 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     if (!mounted) return;
     setState(() {
       _searchController.clear();
-      _selectedCategory = 'Favorites';
       resetAllFilters();
+      _selectedCategory = 'Favorites';
     });
+    _scrollToTop();
+  }
+
+  void selectCategory(String category) {
+    if (!mounted) return;
+    final matched = MarketCategories.findCategory(category);
+    final target = matched?.primaryCategoryName ??
+        (category == 'Favorites' ? 'Favorites' : 'All');
+    setState(() {
+      _searchController.clear();
+      resetAllFilters();
+      _selectedCategory = target;
+    });
+    _scrollToTop();
   }
 
   void _openStallDetails(StallModel stall) {

@@ -4,10 +4,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import '../../../core/constants/market_categories.dart';
 import '../../../core/utils/stall_utils.dart';
+import '../../../models/stall_model.dart';
 import '../../../providers/chat_provider.dart';
 import '../../../providers/stall_provider.dart';
+import '../domain/chat_directory_action.dart';
 import '../domain/chat_message.dart';
+import '../domain/chat_route_action.dart';
+import 'widgets/chat_directory_card.dart';
+import 'widgets/chat_route_card.dart';
 
 /// Clean, modern, engaging Aling Suki Chatbot modal / screen
 class AlingSukiChatScreen extends ConsumerStatefulWidget {
@@ -139,6 +145,7 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _scrollToBottom(instant: true);
       unawaited(ref.read(chatProvider.notifier).initializeChat());
     });
@@ -416,7 +423,22 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                     );
                   }
 
-                  return _buildMessageBubble(msg, isBot);
+                  ChatMessage? prevUserMsg;
+                  if (index > 0) {
+                    for (var i = index - 1; i >= 0; i--) {
+                      if (messages[i].role == 'user') {
+                        prevUserMsg = messages[i];
+                        break;
+                      }
+                    }
+                  }
+
+                  return _buildMessageBubble(
+                    msg,
+                    isBot,
+                    stalls: stallsAsync.asData?.value ?? const [],
+                    previousUserMsg: prevUserMsg,
+                  );
                 },
               ),
             ),
@@ -734,8 +756,37 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
   }
 
   // Regular Chat Bubble
-  Widget _buildMessageBubble(ChatMessage msg, bool isBot) {
+  Widget _buildMessageBubble(
+    ChatMessage msg,
+    bool isBot, {
+    List<StallModel> stalls = const [],
+    ChatMessage? previousUserMsg,
+  }) {
     if (isBot) {
+      final routeAction = msg.routeAction ??
+          ChatRouteAction.tryParseFromText(msg.content) ??
+          (msg.isStreaming
+              ? null
+              : _resolveFallbackRouteAction(
+                  msg.content,
+                  previousUserMsg?.content,
+                  stalls: stalls,
+                ));
+
+      final directoryAction = msg.directoryAction ??
+          ChatDirectoryAction.tryParseFromText(msg.content) ??
+          (msg.isStreaming
+              ? null
+              : _resolveFallbackDirectoryAction(
+                  msg.content,
+                  previousUserMsg?.content,
+                  stalls: stalls,
+                ));
+
+      final cleanContent = ChatDirectoryAction.stripDirectoryTags(
+        ChatRouteAction.stripRouteTags(msg.content),
+      );
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Row(
@@ -785,7 +836,7 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                     ),
                   ],
                 ),
-                child: msg.isStreaming && msg.content.isEmpty
+                child: msg.isStreaming && cleanContent.isEmpty
                     ? Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -808,33 +859,50 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                           ),
                         ],
                       )
-                    : MarkdownBody(
-                        data: _formatMarkdownText(msg.content),
-                        selectable: true,
-                        styleSheet: MarkdownStyleSheet(
-                          p: GoogleFonts.poppins(
-                            fontSize: 13.5,
-                            color: const Color(0xFF1F2937),
-                            height: 1.5,
-                          ),
-                          strong: GoogleFonts.poppins(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF111827),
-                          ),
-                          em: GoogleFonts.poppins(
-                            fontSize: 13.0,
-                            fontStyle: FontStyle.italic,
-                            color: const Color(0xFF4B5563),
-                          ),
-                          listBullet: GoogleFonts.poppins(
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1B5E20),
-                          ),
-                          listIndent: 16.0,
-                          blockSpacing: 14.0,
-                        ),
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (cleanContent.isNotEmpty)
+                            MarkdownBody(
+                              data: _formatMarkdownText(cleanContent),
+                              selectable: true,
+                              styleSheet: MarkdownStyleSheet(
+                                p: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  color: const Color(0xFF1F2937),
+                                  height: 1.5,
+                                ),
+                                strong: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF111827),
+                                ),
+                                em: GoogleFonts.poppins(
+                                  fontSize: 13.0,
+                                  fontStyle: FontStyle.italic,
+                                  color: const Color(0xFF4B5563),
+                                ),
+                                listBullet: GoogleFonts.poppins(
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1B5E20),
+                                ),
+                                listIndent: 16.0,
+                                blockSpacing: 14.0,
+                              ),
+                            ),
+                          if (routeAction != null)
+                            ChatRouteCard(
+                              action: routeAction,
+                              onClose: widget.onClose,
+                            ),
+                          if (directoryAction != null)
+                            ChatDirectoryCard(
+                              action: directoryAction,
+                              onClose: widget.onClose,
+                            ),
+                        ],
                       ),
               ),
             ),
@@ -885,5 +953,94 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
         ],
       ),
     );
+  }
+
+  ChatRouteAction? _resolveFallbackRouteAction(
+    String botContent,
+    String? userPrompt, {
+    List<StallModel> stalls = const [],
+  }) {
+    final combined = '${userPrompt ?? ''} $botContent'.toLowerCase();
+    final isRoutingIntent = combined.contains('route') ||
+        combined.contains('direction') ||
+        combined.contains('papunta') ||
+        combined.contains('pumunta') ||
+        combined.contains('direksyon') ||
+        combined.contains('paano pumunta') ||
+        combined.contains('how to get') ||
+        combined.contains('take me to') ||
+        combined.contains('saan banda');
+
+    if (!isRoutingIntent) return null;
+    if (stalls.isEmpty) return null;
+
+    // Detect destination stall
+    StallModel? matchedStall;
+    for (final stall in stalls) {
+      if (stall.stallNumber != null &&
+          stall.stallNumber!.trim().isNotEmpty &&
+          combined.contains(stall.stallNumber!.toLowerCase())) {
+        matchedStall = stall;
+        break;
+      }
+      if (stall.name.length > 4 && combined.contains(stall.name.toLowerCase())) {
+        matchedStall = stall;
+        break;
+      }
+    }
+
+    if (matchedStall == null) return null;
+
+    // Detect entrance origin if mentioned (e.g. "entrance 2" or "gate 2")
+    final gateMatch = RegExp(r'(?:gate|entrance)\s*(\d+)', caseSensitive: false)
+        .firstMatch(combined);
+    final originId = gateMatch?.group(1);
+
+    return ChatRouteAction(
+      originType: 'entrance',
+      originId: originId ?? 'default',
+      destinationStallId: matchedStall.stallId,
+      destinationStallName: matchedStall.name,
+    );
+  }
+
+  ChatDirectoryAction? _resolveFallbackDirectoryAction(
+    String botContent,
+    String? userPrompt, {
+    List<StallModel> stalls = const [],
+  }) {
+    final combined = '${userPrompt ?? ''} $botContent'.toLowerCase();
+    final mentionsDirectory = combined.contains('stall directory') ||
+        combined.contains('direktoryo') ||
+        combined.contains('directory tab') ||
+        combined.contains('directory screen') ||
+        combined.contains('tingnan sa directory') ||
+        combined.contains('check it out in the stall directory');
+
+    final userAskedAll = (userPrompt ?? '').toLowerCase().contains('all') ||
+        (userPrompt ?? '').toLowerCase().contains('lahat');
+
+    for (final item in MarketCategories.items) {
+      final pName = item.primaryCategoryName.toLowerCase();
+      final sName = item.shortName.toLowerCase();
+      final hasCategoryMention = combined.contains(pName) ||
+          combined.contains(sName) ||
+          item.keywords.any((k) => combined.contains(k.toLowerCase()));
+
+      if (hasCategoryMention) {
+        final matchingCount = stalls
+            .where((s) => StallUtils.matchesCategory(s, item.primaryCategoryName))
+            .length;
+
+        if (matchingCount > 5 && (mentionsDirectory || userAskedAll || matchingCount >= 10)) {
+          return ChatDirectoryAction(
+            category: item.primaryCategoryName,
+            totalCount: matchingCount,
+          );
+        }
+      }
+    }
+
+    return null;
   }
 }

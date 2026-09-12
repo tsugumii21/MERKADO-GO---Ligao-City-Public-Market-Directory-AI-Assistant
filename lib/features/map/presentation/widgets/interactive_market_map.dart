@@ -133,6 +133,13 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   static const double _minScale = 0.15;
   static const double _maxScale = 3.5;
   static const Offset _marketCenter = Offset(3850, 3650);
+  static const double _boundaryPadding = 100.0;
+  static const Rect _mapBoundaryRect = Rect.fromLTRB(
+    -_boundaryPadding,
+    -_boundaryPadding,
+    _svgWidth + _boundaryPadding,
+    _svgHeight + _boundaryPadding,
+  );
 
   // Calibrated coordinate offsets between node space and SVG canvas space (0.0000 diff across 112 markers)
   static const double _nodeOffsetX = 7823.47;
@@ -278,7 +285,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _onTransformChanged() {
-    _clampScale();
+    _clampTransform();
     if (mounted) {
       setState(() {});
     }
@@ -291,7 +298,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _handleInteractionUpdate(ScaleUpdateDetails details) {
-    _clampScale();
+    _clampTransform();
     if (details.pointerCount >= 2) {
       final deltaRotation = details.rotation - _previousGestureRotation;
       _previousGestureRotation = details.rotation;
@@ -312,54 +319,93 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   void _handleInteractionEnd(ScaleEndDetails details) {
     _previousGestureRotation = 0.0;
     _isUserInteracting = false;
-    _clampScale();
+    _clampTransform();
     if (mounted) setState(() {});
   }
 
-  void _clampScale() {
+  void _clampTransform() {
     if (_isClamping) return;
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize || renderBox.size.isEmpty) return;
+
+    final viewportSize = renderBox.size;
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) return;
+
     final currentMatrix = _transformController.value;
-    final currentScale = _getScale(currentMatrix);
+    final clampedMatrix = _computeClampedMatrix(currentMatrix, viewportSize);
 
-    if (currentScale < _minScale) {
+    if (clampedMatrix != currentMatrix) {
       _isClamping = true;
       try {
-        final factor = _minScale / currentScale;
-        final renderBox = context.findRenderObject() as RenderBox?;
-        final center = renderBox != null
-            ? Offset(renderBox.size.width / 2, renderBox.size.height / 2)
-            : Offset.zero;
-
-        final clampedMatrix = Matrix4.identity()
-          ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
-          ..scaleByVector3(Vector3(factor, factor, factor))
-          ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
-          ..multiply(currentMatrix);
-
-        _transformController.value = clampedMatrix;
-      } finally {
-        _isClamping = false;
-      }
-    } else if (currentScale > _maxScale) {
-      _isClamping = true;
-      try {
-        final factor = _maxScale / currentScale;
-        final renderBox = context.findRenderObject() as RenderBox?;
-        final center = renderBox != null
-            ? Offset(renderBox.size.width / 2, renderBox.size.height / 2)
-            : Offset.zero;
-
-        final clampedMatrix = Matrix4.identity()
-          ..translateByVector3(Vector3(center.dx, center.dy, 0.0))
-          ..scaleByVector3(Vector3(factor, factor, factor))
-          ..translateByVector3(Vector3(-center.dx, -center.dy, 0.0))
-          ..multiply(currentMatrix);
-
         _transformController.value = clampedMatrix;
       } finally {
         _isClamping = false;
       }
     }
+  }
+
+  Matrix4 _computeClampedMatrix(Matrix4 matrix, Size viewportSize) {
+    final s = matrix.storage;
+    final scale = math.sqrt(s[0] * s[0] + s[1] * s[1]);
+    Matrix4 m = matrix.clone();
+
+    // 1. Clamp scale to [_minScale, _maxScale] around viewport center
+    if (scale < _minScale || scale > _maxScale) {
+      final clampedScale = scale.clamp(_minScale, _maxScale);
+      final factor = clampedScale / scale;
+      final cx = viewportSize.width / 2;
+      final cy = viewportSize.height / 2;
+      m = Matrix4.identity()
+        ..translateByVector3(Vector3(cx, cy, 0.0))
+        ..scaleByVector3(Vector3(factor, factor, factor))
+        ..translateByVector3(Vector3(-cx, -cy, 0.0))
+        ..multiply(m);
+    }
+
+    // 2. Project 4 boundary corners into viewport/screen space
+    final p0 = m.transform3(Vector3(_mapBoundaryRect.left, _mapBoundaryRect.top, 0.0));
+    final p1 = m.transform3(Vector3(_mapBoundaryRect.right, _mapBoundaryRect.top, 0.0));
+    final p2 = m.transform3(Vector3(_mapBoundaryRect.right, _mapBoundaryRect.bottom, 0.0));
+    final p3 = m.transform3(Vector3(_mapBoundaryRect.left, _mapBoundaryRect.bottom, 0.0));
+
+    final minX = math.min(math.min(p0.x, p1.x), math.min(p2.x, p3.x));
+    final maxX = math.max(math.max(p0.x, p1.x), math.max(p2.x, p3.x));
+    final minY = math.min(math.min(p0.y, p1.y), math.min(p2.y, p3.y));
+    final maxY = math.max(math.max(p0.y, p1.y), math.max(p2.y, p3.y));
+
+    final spanX = maxX - minX;
+    final spanY = maxY - minY;
+
+    double deltaX = 0.0;
+    if (spanX <= viewportSize.width) {
+      final targetMinX = (viewportSize.width - spanX) / 2;
+      deltaX = targetMinX - minX;
+    } else {
+      if (minX > 0.0) {
+        deltaX = -minX;
+      } else if (maxX < viewportSize.width) {
+        deltaX = viewportSize.width - maxX;
+      }
+    }
+
+    double deltaY = 0.0;
+    if (spanY <= viewportSize.height) {
+      final targetMinY = (viewportSize.height - spanY) / 2;
+      deltaY = targetMinY - minY;
+    } else {
+      if (minY > 0.0) {
+        deltaY = -minY;
+      } else if (maxY < viewportSize.height) {
+        deltaY = viewportSize.height - maxY;
+      }
+    }
+
+    if (deltaX.abs() > 0.0001 || deltaY.abs() > 0.0001) {
+      m.storage[12] += deltaX;
+      m.storage[13] += deltaY;
+    }
+
+    return m;
   }
 
   Future<void> _loadGraphNodes() async {
@@ -832,7 +878,10 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
               transformationController: _transformController,
               minScale: _minScale,
               maxScale: _maxScale,
-              boundaryMargin: const EdgeInsets.all(600),
+              // Boundary clamping is enforced smoothly by _clampTransform (_boundaryPadding = 100.0).
+              // Setting double.infinity avoids Flutter issue #57698 where finite boundaryMargin locks up
+              // translation and gets stuck at the map edges when rotated or zoomed.
+              boundaryMargin: const EdgeInsets.all(double.infinity),
               constrained: false,
               interactionEndFrictionCoefficient: 0.001,
               onInteractionStart: _handleInteractionStart,

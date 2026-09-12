@@ -194,5 +194,49 @@ void main() {
       final rotAfter = math.atan2(transformController.value.storage[1], transformController.value.storage[0]);
       expect((rotAfter - math.pi / 4).abs(), lessThan(0.05));
     });
+
+    testWidgets('Navigation does not lock screen movement when user interacts with map', (tester) async {
+      final mapKey = GlobalKey<InteractiveMarketMapState>();
+      final transformController = TransformationController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 800,
+              child: InteractiveMarketMap(
+                key: mapKey,
+                transformationController: transformController,
+                stalls: stalls,
+                activeRoute: sampleRouteA,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      for (int i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      // User manual interaction with map
+      mapKey.currentState!.rotateBy(0.2, animate: false);
+      for (int i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      final posAfterManual = transformController.value.getTranslation();
+
+      // Pump more animation frames: avatar continues walking, but camera does NOT snap back or lock!
+      for (int i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      final posLater = transformController.value.getTranslation();
+      // Camera stays where user left it, never violently snapped back
+      expect((posLater.x - posAfterManual.x).abs(), lessThan(1.0));
+      expect((posLater.y - posAfterManual.y).abs(), lessThan(1.0));
+    });
   });
 }

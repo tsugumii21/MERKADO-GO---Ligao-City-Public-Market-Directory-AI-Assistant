@@ -148,6 +148,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   final Map<String, Rect> _stallBoundsCache = {};
   bool _isClamping = false;
   bool _isUserInteracting = false;
+  bool _cameraFollowsAvatar = false;
   double _previousGestureRotation = 0.0;
   Path? _cachedRoutePath;
   List<ui.PathMetric> _cachedRouteMetrics = [];
@@ -222,7 +223,9 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
           setState(() {
             _isWalking = false;
           });
-          _autoFrameRoute();
+          if (_cameraFollowsAvatar) {
+            _autoFrameRoute();
+          }
         }
       });
 
@@ -268,6 +271,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     if (mounted) {
       setState(() {
         _isWalking = true;
+        _cameraFollowsAvatar = true;
       });
     }
     _walkController.forward(from: 0.0);
@@ -282,6 +286,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
 
   void _handleInteractionStart(ScaleStartDetails details) {
     _isUserInteracting = true;
+    _cameraFollowsAvatar = false; // User touched or moved the map: release camera immediately
     _previousGestureRotation = 0.0;
   }
 
@@ -291,11 +296,12 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       final deltaRotation = details.rotation - _previousGestureRotation;
       _previousGestureRotation = details.rotation;
 
-      if (deltaRotation.abs() > 0.0005) {
+      // Lower rotation sensitivity to prevent twitchy accidental rotation
+      if (deltaRotation.abs() > 0.002) {
         final focal = details.localFocalPoint;
         final rotMatrix = Matrix4.identity()
           ..translateByVector3(Vector3(focal.dx, focal.dy, 0.0))
-          ..rotateZ(deltaRotation)
+          ..rotateZ(deltaRotation * 0.75)
           ..translateByVector3(Vector3(-focal.dx, -focal.dy, 0.0))
           ..multiply(_transformController.value);
         _transformController.value = rotMatrix;
@@ -570,6 +576,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _repositionMap({bool animate = true}) {
+    _cameraFollowsAvatar = true;
     if (widget.selectedEntrance != null) {
       final node = _findNodeInRouteOrService(widget.selectedEntrance!.nodeId);
       if (node != null) {
@@ -606,6 +613,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _rotateBy(double deltaRadians, {bool animate = true}) {
+    _cameraFollowsAvatar = false;
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
@@ -698,7 +706,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _trackAvatarCamera() {
-    if (_isUserInteracting) return;
+    if (!_cameraFollowsAvatar || _isUserInteracting) return;
     final tangent = _getRouteTangent(_walkController.value);
     if (tangent == null) return;
     final renderBox = context.findRenderObject() as RenderBox?;
@@ -762,6 +770,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   }
 
   void _zoomBy(double factor) {
+    _cameraFollowsAvatar = false;
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
@@ -825,6 +834,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
               maxScale: _maxScale,
               boundaryMargin: const EdgeInsets.all(600),
               constrained: false,
+              interactionEndFrictionCoefficient: 0.001,
               onInteractionStart: _handleInteractionStart,
               onInteractionUpdate: _handleInteractionUpdate,
               onInteractionEnd: _handleInteractionEnd,
@@ -1020,7 +1030,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
               ),
             ),
 
-          // Floating Map Controls (Replay, Compass, Rotate 90, Zoom In, Zoom Out, Reposition)
+          // Floating Map Controls (Replay, Compass, Zoom In, Zoom Out, Reposition)
           Positioned(
             right: 16,
             bottom: widget.activeRoute != null ? 84 : 24,
@@ -1036,12 +1046,6 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                   const SizedBox(height: 8),
                 ],
                 _buildCompassButton(),
-                const SizedBox(height: 8),
-                _buildMapControlButton(
-                  icon: Icons.rotate_right_rounded,
-                  tooltip: 'Rotate Map 90° Clockwise',
-                  onPressed: () => _rotateBy(math.pi / 2),
-                ),
                 const SizedBox(height: 8),
                 _buildMapControlButton(
                   icon: Icons.add_rounded,

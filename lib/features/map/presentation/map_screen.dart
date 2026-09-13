@@ -34,8 +34,6 @@ class MapScreenState extends ConsumerState<MapScreen> {
   StallModel? _selectedStall;
   bool _isPickingEntranceOnMap = false;
   bool _isSearchDropdownOpen = false;
-  final GlobalKey<MapSearchDropdownState> _searchDropdownKey =
-      GlobalKey<MapSearchDropdownState>();
 
   @override
   void initState() {
@@ -65,7 +63,6 @@ class MapScreenState extends ConsumerState<MapScreen> {
 
     // 0. Close search dropdown if open
     if (_isSearchDropdownOpen) {
-      _searchDropdownKey.currentState?.close();
       setState(() => _isSearchDropdownOpen = false);
       return true;
     }
@@ -99,6 +96,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final selectedEntrance = ref.watch(selectedEntranceProvider);
     final entryPoints = ref.watch(entryPointsProvider);
     final traversalTrigger = ref.watch(routeTraversalTriggerProvider);
+    final skipTrigger = ref.watch(routeSkipTraversalTriggerProvider);
     final pickingOriginTargetStall = ref.watch(pickingOriginTargetStallProvider);
     final selectedOriginStall = ref.watch(selectedOriginStallProvider);
 
@@ -117,6 +115,18 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 selectedEntrance: selectedEntrance,
                 showEntrancePins: _isPickingEntranceOnMap,
                 traversalTrigger: traversalTrigger,
+                skipTrigger: skipTrigger,
+                onTraversalCompleted: () {
+                  if (activeRoute != null && activeRoute.steps.isNotEmpty) {
+                    ref.read(currentStepIndexProvider.notifier).state =
+                        activeRoute.steps.length - 1;
+                  }
+                  ref.read(isNavigationCompletedProvider.notifier).state = true;
+                },
+                onRepeatRoute: () {
+                  ref.read(currentStepIndexProvider.notifier).state = 0;
+                  ref.read(isNavigationCompletedProvider.notifier).state = false;
+                },
                 onStallSelected: (stall) async {
                   if (_isPickingEntranceOnMap) return;
 
@@ -183,7 +193,6 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 },
                 onMapTapped: () {
                   if (_isSearchDropdownOpen) {
-                    _searchDropdownKey.currentState?.close();
                     setState(() => _isSearchDropdownOpen = false);
                   }
                   if (_isPickingEntranceOnMap) return;
@@ -230,7 +239,6 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onTap: () {
-                    _searchDropdownKey.currentState?.close();
                     setState(() => _isSearchDropdownOpen = false);
                   },
                 ),
@@ -263,11 +271,79 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   alignment: Alignment.bottomCenter,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: RouteNavigationCard(
-                      route: activeRoute,
-                      onClose: () {
-                        ref.read(activeRouteProvider.notifier).clearRoute();
-                      },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Dedicated floating Skip to Arrival pill during active navigation traversal
+                        if (!ref.watch(isNavigationCompletedProvider) &&
+                            activeRoute.steps.length > 1)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.xs + 2),
+                            child: Material(
+                              color: Colors.white,
+                              elevation: 6,
+                              shadowColor: Colors.black.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(24),
+                              child: InkWell(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  ref.read(routeSkipTraversalTriggerProvider.notifier).state++;
+                                  ref.read(currentStepIndexProvider.notifier).state =
+                                      activeRoute.steps.length - 1;
+                                  ref.read(isNavigationCompletedProvider.notifier).state = true;
+                                },
+                                borderRadius: BorderRadius.circular(24),
+                                child: Container(
+                                  constraints: const BoxConstraints(minHeight: 44),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: const Color(0xFFC8E6C9),
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.fast_forward_rounded,
+                                        size: 18,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Skip to Arrival',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        RouteNavigationCard(
+                          route: activeRoute,
+                          onClose: () {
+                            ref.read(activeRouteProvider.notifier).clearRoute();
+                          },
+                          onSkip: () {
+                            ref.read(routeSkipTraversalTriggerProvider.notifier).state++;
+                            ref.read(currentStepIndexProvider.notifier).state =
+                                activeRoute.steps.length - 1;
+                            ref.read(isNavigationCompletedProvider.notifier).state = true;
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -347,11 +423,10 @@ class MapScreenState extends ConsumerState<MapScreen> {
   }
 
 
-  Widget _buildTopSearchAndEntranceBar(selectedEntrance) {
+  Widget _buildTopSearchAndEntranceBar(MarketEntryPoint? selectedEntrance) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       child: MapSearchDropdown(
-        key: _searchDropdownKey,
         isOpen: _isSearchDropdownOpen,
         selectedEntrance: selectedEntrance,
         onOpenChanged: (isOpen) {

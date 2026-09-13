@@ -59,6 +59,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _selectedCategory = ref.read(selectedDirectoryCategoryProvider);
+    _selectedSubcategory = ref.read(selectedDirectorySubcategoryProvider);
   }
 
   void _onScroll() {
@@ -99,6 +101,8 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   void resetUI() {
     if (!mounted) return;
+    ref.read(selectedDirectoryCategoryProvider.notifier).state = 'All';
+    ref.read(selectedDirectorySubcategoryProvider.notifier).state = null;
     setState(() {
       _searchController.clear();
       _selectedCategory = 'All';
@@ -123,9 +127,18 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   void showFavoritesView() {
     if (!mounted) return;
+    ref.read(selectedDirectoryCategoryProvider.notifier).state = 'Favorites';
+    ref.read(selectedDirectorySubcategoryProvider.notifier).state = null;
     setState(() {
       _searchController.clear();
-      resetAllFilters();
+      _selectedSubcategory = null;
+      sortAlpha = null;
+      filterOpenTime = null;
+      filterCloseTime = null;
+      selectedDay = null;
+      showOpenOnDay = true;
+      _filterOpenOnly = false;
+      _isFilterDrawerOpen = false;
       _selectedCategory = 'Favorites';
     });
     _scrollToTop();
@@ -136,9 +149,18 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
     final matched = MarketCategories.findCategory(category);
     final target = matched?.primaryCategoryName ??
         (category == 'Favorites' ? 'Favorites' : 'All');
+    ref.read(selectedDirectoryCategoryProvider.notifier).state = target;
+    ref.read(selectedDirectorySubcategoryProvider.notifier).state = null;
     setState(() {
       _searchController.clear();
-      resetAllFilters();
+      _selectedSubcategory = null;
+      sortAlpha = null;
+      filterOpenTime = null;
+      filterCloseTime = null;
+      selectedDay = null;
+      showOpenOnDay = true;
+      _filterOpenOnly = false;
+      _isFilterDrawerOpen = false;
       _selectedCategory = target;
     });
     _scrollToTop();
@@ -182,6 +204,20 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Synchronize category updates from external navigation (e.g. Chatbot redirection)
+    ref.listen<String>(selectedDirectoryCategoryProvider, (prev, next) {
+      if (prev != next && _selectedCategory != next) {
+        setState(() {
+          _searchController.clear();
+          _selectedCategory = next;
+          _selectedSubcategory = ref.read(selectedDirectorySubcategoryProvider);
+          _filterOpenOnly = false;
+          _isFilterDrawerOpen = false;
+        });
+        _scrollToTop();
+      }
+    });
+
     final stallsAsync = ref.watch(allStallsProvider);
     final favState = ref.watch(favoriteProvider);
     final favNotifier = ref.read(favoriteProvider.notifier);
@@ -291,12 +327,10 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
           CategoryFilterChipsBar(
             selectedCategory: _selectedCategory,
             selectedSubcategory: _selectedSubcategory,
-            onCategorySelected: (cat) => setState(() {
-              _selectedCategory = cat;
-              _selectedSubcategory = null;
-            }),
+            onCategorySelected: (cat) => selectCategory(cat),
             onSubcategorySelected: (sub) => setState(() {
               _selectedSubcategory = sub;
+              ref.read(selectedDirectorySubcategoryProvider.notifier).state = sub;
             }),
             padding: const EdgeInsets.symmetric(horizontal: 20),
           ),

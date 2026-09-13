@@ -12,6 +12,7 @@ class RouteNavigationCard extends ConsumerStatefulWidget {
   final VoidCallback? onChangeEntrance;
   final VoidCallback onClose;
   final VoidCallback? onRepeatRoute;
+  final VoidCallback? onSkip;
 
   const RouteNavigationCard({
     super.key,
@@ -19,6 +20,7 @@ class RouteNavigationCard extends ConsumerStatefulWidget {
     this.onChangeEntrance,
     required this.onClose,
     this.onRepeatRoute,
+    this.onSkip,
   });
 
   @override
@@ -60,7 +62,7 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                 vertical: _isMinimized ? AppSpacing.sm : AppSpacing.md,
               ),
               child: _isMinimized
-                  ? _buildMinimizedBar()
+                  ? _buildMinimizedBar(safeIdx)
                   : _buildExpandedContent(safeIdx, currentStep),
             ),
           ),
@@ -69,7 +71,7 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
     );
   }
 
-  Widget _buildMinimizedBar() {
+  Widget _buildMinimizedBar(int safeIdx) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -149,7 +151,7 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Header: Destination + Minimize + Close
+        // Header: Destination + Skip + Minimize + Close
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [

@@ -235,11 +235,11 @@ class GeminiService {
           : 'Main Market Area';
       final stallNum = (stall.stallNumber != null && stall.stallNumber!.trim().isNotEmpty)
           ? stall.stallNumber!.trim()
-          : 'ID: ${stall.stallId}';
+          : section;
 
       stallData.writeln(
         '- STALL: ${stall.name} ($stallNum) | '
-        'ID: ${stall.stallId} | '
+        'ROUTE_ID: ${stall.stallId} | '
         'SECTION: $section | '
         'STATUS: ${isOpen ? 'OPEN' : 'CLOSED'} | '
         'CATEGORY: $cats | '
@@ -323,6 +323,10 @@ GUARDRAILS:
    - Do NOT confirm or deny technical guesses.
    - Provide a bulleted list of 2-3 capabilities you can help with (stall names/sections, hours/status, vendor goods), and redirect the user back to market inquiries.
    - Keep meta-question replies under 80 words.
+3. STRICT NO TECHNICAL IDS RULE:
+   - NEVER display raw technical database/SVG IDs (such as "id_212", "id_27", "ROUTE_ID", or "ID: id_...") in your user-facing response text.
+   - Always refer to stalls using their real merchant business name (e.g. "Rodel Moratalla's Eatery") and stall number/section (e.g. "Stall #5, Carenderia").
+   - Technical IDs are strictly for machine-readable <!--ROUTE:...--> tags at the end of the message.
 
 MARKET SECTIONS & LAYOUT:
 - Building II: Rice & Grains, Dry Goods, Sari-Sari stalls. Located near Gate 1 and Gate 2.

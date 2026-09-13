@@ -136,16 +136,20 @@ class ChatRouteCard extends ConsumerWidget {
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                Text(
-                  isReroute ? 'REROUTE SUGGESTION' : 'INTERACTIVE NAVIGATION ROUTE',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: AppColors.primary,
+                Flexible(
+                  child: Text(
+                    isReroute ? 'REROUTE SUGGESTION' : 'NAVIGATION ROUTE',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: AppColors.primary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: AppSpacing.xs),
                 if (destStall != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -359,13 +363,17 @@ class ChatRouteCard extends ConsumerWidget {
                       color: Colors.white,
                     ),
                     const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      isReroute ? 'Reroute Navigation' : 'Start Navigation',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13.0,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
-                        color: Colors.white,
+                    Flexible(
+                      child: Text(
+                        isReroute ? 'Reroute Navigation' : 'Start Navigation',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13.0,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.xs),

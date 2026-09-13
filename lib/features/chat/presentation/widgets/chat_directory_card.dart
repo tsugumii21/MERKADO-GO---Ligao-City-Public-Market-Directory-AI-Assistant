@@ -1,14 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/market_categories.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/main_shell.dart' show mainShellKey;
+import '../../../../providers/stall_provider.dart';
 import '../../domain/chat_directory_action.dart';
 
 /// Clean, responsive in-chat directory redirection card providing 1-tap category exploration
-class ChatDirectoryCard extends StatelessWidget {
+class ChatDirectoryCard extends ConsumerWidget {
   final ChatDirectoryAction action;
   final VoidCallback? onClose;
 
@@ -18,22 +21,36 @@ class ChatDirectoryCard extends StatelessWidget {
     this.onClose,
   });
 
-  void _handleRedirect(BuildContext context, String targetCategory) {
-    HapticFeedback.mediumImpact();
+  void _handleRedirect(
+    BuildContext context,
+    WidgetRef ref,
+    String targetCategory,
+  ) {
+    unawaited(HapticFeedback.mediumImpact());
 
-    // 1. Close chat modal if open
+    final matched = MarketCategories.findCategory(targetCategory);
+    final target = matched?.primaryCategoryName ??
+        (targetCategory == 'Favorites' ? 'Favorites' : targetCategory);
+
+    // 1. Immediately set provider state synchronously
+    try {
+      ref.read(selectedDirectoryCategoryProvider.notifier).state = target;
+      ref.read(selectedDirectorySubcategoryProvider.notifier).state = null;
+    } catch (_) {}
+
+    // 2. Close chat modal if open
     if (onClose != null) {
       onClose!();
     } else {
       Navigator.of(context).maybePop();
     }
 
-    // 2. Instruct MainShell to jump to Tab 1 (Stall Directory) and activate category chip
-    mainShellKey.currentState?.openCategoryInDirectory(targetCategory);
+    // 3. Instruct MainShell to jump to Tab 1 (Stall Directory) and activate category chip
+    mainShellKey.currentState?.openCategoryInDirectory(target);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final matchedCategory = MarketCategories.findCategory(action.category);
     final categoryVisuals = MarketCategories.getVisuals(action.category);
 
@@ -43,8 +60,8 @@ class ChatDirectoryCard extends StatelessWidget {
     final totalCount = action.totalCount;
 
     final countBadgeText = totalCount > 0
-        ? '$totalCount stalls total'
-        : 'All stalls directory';
+        ? '$totalCount stalls'
+        : 'Directory';
 
     return Container(
       margin: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
@@ -87,16 +104,20 @@ class ChatDirectoryCard extends StatelessWidget {
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                Text(
-                  'STALL DIRECTORY EXPLORER',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: AppColors.primary,
+                Flexible(
+                  child: Text(
+                    'STALL DIRECTORY',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: AppColors.primary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: AppSpacing.xs),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 7,
@@ -157,6 +178,8 @@ class ChatDirectoryCard extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF111827),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -180,12 +203,13 @@ class ChatDirectoryCard extends StatelessWidget {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => _handleRedirect(context, targetCategoryName),
+                    onTap: () => _handleRedirect(context, ref, targetCategoryName),
                     borderRadius: BorderRadius.circular(12),
                     splashColor: Colors.white.withValues(alpha: 0.2),
                     highlightColor: Colors.white.withValues(alpha: 0.1),
                     child: Container(
-                      height: 44,
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
@@ -206,15 +230,17 @@ class ChatDirectoryCard extends StatelessWidget {
                             color: Colors.white,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            totalCount > 0
-                                ? 'View all $totalCount stalls in Directory'
-                                : 'Redirect to Stall Directory',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.2,
+                          Flexible(
+                            child: Text(
+                              'View in Stall Directory',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 6),

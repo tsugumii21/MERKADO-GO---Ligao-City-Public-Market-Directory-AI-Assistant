@@ -42,3 +42,10 @@ final stallByIdProvider =
   final repository = ref.watch(stallRepositoryProvider);
   return repository.getStallById(stallId);
 });
+
+/// Active category filter for StallListScreen directory
+final selectedDirectoryCategoryProvider = StateProvider<String>((ref) => 'All');
+
+/// Active subcategory filter for StallListScreen directory
+final selectedDirectorySubcategoryProvider = StateProvider<String?>((ref) => null);
+

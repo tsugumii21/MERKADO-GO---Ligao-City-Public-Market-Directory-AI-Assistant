@@ -1,14 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:merkado_go/core/constants/market_categories.dart';
-import 'package:merkado_go/core/services/gemini_service.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:merkado_go/data/seed_stalls.dart';
 import 'package:merkado_go/features/chat/domain/chat_directory_action.dart';
 import 'package:merkado_go/features/chat/presentation/widgets/chat_directory_card.dart';
-import 'package:merkado_go/features/map/domain/navigation_models.dart';
 import 'package:merkado_go/features/map/services/pathfinding_service.dart';
 
 void main() {
@@ -61,11 +58,13 @@ Here are 5 sari-sari stores. Since there are 18 stalls total, you can check them
       bool wasClosed = false;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ChatDirectoryCard(
-              action: action,
-              onClose: () => wasClosed = true,
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ChatDirectoryCard(
+                action: action,
+                onClose: () => wasClosed = true,
+              ),
             ),
           ),
         ),
@@ -74,9 +73,9 @@ Here are 5 sari-sari stores. Since there are 18 stalls total, you can check them
       await tester.pumpAndSettle();
 
       // Verify category title and count badge rendered
-      expect(find.text('STALL DIRECTORY EXPLORER'), findsOneWidget);
-      expect(find.text('18 stalls total'), findsOneWidget);
-      expect(find.text('View all 18 stalls in Directory'), findsOneWidget);
+      expect(find.text('STALL DIRECTORY'), findsOneWidget);
+      expect(find.text('18 stalls'), findsOneWidget);
+      expect(find.text('View in Stall Directory'), findsOneWidget);
       expect(find.textContaining('Sari Sari'), findsWidgets);
 
       // Verify zero emojis
@@ -91,7 +90,7 @@ Here are 5 sari-sari stores. Since there are 18 stalls total, you can check them
       }
 
       // Tap CTA button
-      await tester.tap(find.text('View all 18 stalls in Directory'));
+      await tester.tap(find.text('View in Stall Directory'));
       await tester.pumpAndSettle();
 
       expect(wasClosed, isTrue);

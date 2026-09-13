@@ -34,8 +34,8 @@ class FavoriteState {
 class FavoriteNotifier extends StateNotifier<FavoriteState> {
   FavoriteNotifier() : super(const FavoriteState());
   
-  final _db = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
+  FirebaseAuth get _auth => FirebaseAuth.instance;
   static const String _localPrefsKey = 'guest_favorite_stalls';
   
   String? get _uid => _auth.currentUser?.uid;

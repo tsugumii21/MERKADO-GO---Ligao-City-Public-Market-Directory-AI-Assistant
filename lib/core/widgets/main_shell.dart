@@ -9,6 +9,8 @@ import '../responsive/responsive_breakpoints.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/stalls/presentation/stall_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../providers/stall_provider.dart';
+import '../constants/market_categories.dart';
 import 'exit_confirmation_dialog.dart';
 
 // GlobalKeys for accessing each page's State (for resetUI)
@@ -136,41 +138,44 @@ class MainShellState extends ConsumerState<MainShell> {
   void openFavoriteStalls() {
     if (!mounted) return;
 
-    void applyFavoritesView() {
-      if (!mounted) return;
-      stallsPageKey.currentState?.showFavoritesView();
-    }
+    ref.read(selectedDirectoryCategoryProvider.notifier).state = 'Favorites';
+    ref.read(selectedDirectorySubcategoryProvider.notifier).state = null;
+
+    stallsPageKey.currentState?.showFavoritesView();
 
     if (widget.navigationShell.currentIndex != 1) {
-      goToTab(1);
+      goToTab(1, resetCurrentPage: false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        applyFavoritesView();
-        Future<void>.delayed(const Duration(milliseconds: 80), applyFavoritesView);
+        if (!mounted) return;
+        stallsPageKey.currentState?.showFavoritesView();
       });
       return;
     }
-
-    applyFavoritesView();
   }
 
   void openCategoryInDirectory(String category) {
     if (!mounted) return;
 
-    void applyCategoryView() {
-      if (!mounted) return;
-      stallsPageKey.currentState?.selectCategory(category);
-    }
+    final matched = MarketCategories.findCategory(category);
+    final target = matched?.primaryCategoryName ??
+        (category == 'Favorites' ? 'Favorites' : 'All');
 
+    // 1. Synchronously set the category provider state
+    ref.read(selectedDirectoryCategoryProvider.notifier).state = target;
+    ref.read(selectedDirectorySubcategoryProvider.notifier).state = null;
+
+    // 2. Direct imperative update if StallListScreen is already mounted
+    stallsPageKey.currentState?.selectCategory(target);
+
+    // 3. Switch to Tab 1 without wiping current page UI via duplicate pop
     if (widget.navigationShell.currentIndex != 1) {
-      goToTab(1);
+      goToTab(1, resetCurrentPage: false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        applyCategoryView();
-        Future<void>.delayed(const Duration(milliseconds: 80), applyCategoryView);
+        if (!mounted) return;
+        stallsPageKey.currentState?.selectCategory(target);
       });
       return;
     }
-
-    applyCategoryView();
   }
 
   @override

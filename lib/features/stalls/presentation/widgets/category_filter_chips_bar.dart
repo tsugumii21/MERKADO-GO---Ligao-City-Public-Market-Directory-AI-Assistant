@@ -5,7 +5,7 @@ import '../../../../core/constants/market_categories.dart';
 
 /// Reusable category filter and subcategory chips strip.
 /// Shared identically across MapSearchModal and StallListScreen.
-class CategoryFilterChipsBar extends StatelessWidget {
+class CategoryFilterChipsBar extends StatefulWidget {
   final String selectedCategory;
   final String? selectedSubcategory;
   final ValueChanged<String> onCategorySelected;
@@ -21,11 +21,66 @@ class CategoryFilterChipsBar extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
   });
 
+  @override
+  State<CategoryFilterChipsBar> createState() => _CategoryFilterChipsBarState();
+}
+
+class _CategoryFilterChipsBarState extends State<CategoryFilterChipsBar> {
+  final ScrollController _scrollController = ScrollController();
+
   static List<String> get _categories => MarketCategories.directoryFilterNames;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected(animate: false));
+  }
+
+  @override
+  void didUpdateWidget(covariant CategoryFilterChipsBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedCategory != oldWidget.selectedCategory) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected(animate: true));
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSelected({bool animate = true}) {
+    if (!mounted || !_scrollController.hasClients) return;
+    final index = _categories.indexOf(widget.selectedCategory);
+    if (index <= 0) {
+      if (animate) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scrollController.jumpTo(0);
+      }
+      return;
+    }
+
+    final targetOffset = (index * 88.0 - 40.0).clamp(0.0, _scrollController.position.maxScrollExtent);
+    if (animate) {
+      _scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _scrollController.jumpTo(targetOffset);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final activeItem = MarketCategories.findCategory(selectedCategory);
+    final activeItem = MarketCategories.findCategory(widget.selectedCategory);
     final hasSubcategories = activeItem != null && activeItem.subcategories.isNotEmpty;
 
     return Column(
@@ -36,18 +91,19 @@ class CategoryFilterChipsBar extends StatelessWidget {
         SizedBox(
           height: 38,
           child: ListView.separated(
+            controller: _scrollController,
             scrollDirection: Axis.horizontal,
-            padding: padding,
+            padding: widget.padding,
             itemCount: _categories.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final category = _categories[index];
-              final isSelected = category == selectedCategory;
+              final isSelected = category == widget.selectedCategory;
 
               return GestureDetector(
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  onCategorySelected(isSelected ? 'All' : category);
+                  widget.onCategorySelected(isSelected ? 'All' : category);
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -120,16 +176,16 @@ class CategoryFilterChipsBar extends StatelessWidget {
             height: 32,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: padding,
+              padding: widget.padding,
               itemCount: activeItem.subcategories.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  final isAllSelected = selectedSubcategory == null;
+                  final isAllSelected = widget.selectedSubcategory == null;
                   return GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      onSubcategorySelected(null);
+                      widget.onSubcategorySelected(null);
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
@@ -163,12 +219,12 @@ class CategoryFilterChipsBar extends StatelessWidget {
                 }
 
                 final sub = activeItem.subcategories[index - 1];
-                final isSubSelected = selectedSubcategory == sub;
+                final isSubSelected = widget.selectedSubcategory == sub;
 
                 return GestureDetector(
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    onSubcategorySelected(isSubSelected ? null : sub);
+                    widget.onSubcategorySelected(isSubSelected ? null : sub);
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),

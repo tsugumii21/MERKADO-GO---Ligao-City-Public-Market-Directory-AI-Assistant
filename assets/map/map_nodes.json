@@ -425,7 +425,8 @@
     "x": -3335,
     "y": 1443,
     "neighbors": [
-      "node_ex_t1"
+      "node_ex_t1",
+      "node_wm_e1.1"
     ]
   },
   "node_wm_e1.1": {
@@ -433,7 +434,8 @@
     "y": 1263,
     "neighbors": [
       "node_wm_e2",
-      "node_wm_t1"
+      "node_wm_t1",
+      "node_wm_e1"
     ]
   },
   "node_wm_e2": {
@@ -557,7 +559,8 @@
     "y": 488,
     "neighbors": [
       "node_wm_t21",
-      "node_wm_t9"
+      "node_wm_t9",
+      "node_wm_x31"
     ]
   },
   "node_wm_t21": {
@@ -772,7 +775,8 @@
     "neighbors": [
       "node_wm_t6",
       "node_wm_x10",
-      "node_wm_x19"
+      "node_wm_x19",
+      "node_wm_x23"
     ]
   },
   "node_wm_x19": {
@@ -828,7 +832,9 @@
     "y": 632,
     "neighbors": [
       "node_wm_t7",
-      "node_wm_x24"
+      "node_wm_x24",
+      "node_wm_x18",
+      "node_wm_x31"
     ]
   },
   "node_wm_x24": {
@@ -872,7 +878,8 @@
     "neighbors": [
       "node_wm_t19",
       "node_wm_x27",
-      "node_wm_x29"
+      "node_wm_x29",
+      "node_wm_x36"
     ]
   },
   "node_wm_x29": {
@@ -907,7 +914,9 @@
     "y": 565,
     "neighbors": [
       "node_wm_t8",
-      "node_wm_x32"
+      "node_wm_x32",
+      "node_wm_x23",
+      "node_wm_t20"
     ]
   },
   "node_wm_x32": {
@@ -949,7 +958,8 @@
     "y": 565,
     "neighbors": [
       "node_wm_x35",
-      "node_wm_x37"
+      "node_wm_x37",
+      "node_wm_x28"
     ]
   },
   "node_wm_x37": {

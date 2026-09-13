@@ -319,7 +319,9 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                             ),
                           ),
                           Text(
-                            'AI Market Assistant • Ligao Market',
+                            _currentLanguage == 'TL'
+                                ? 'AI Gabay sa Palengke'
+                                : 'AI Market Assistant',
                             style: GoogleFonts.poppins(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -486,7 +488,7 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
                           isDense: true,
                           hintText: isTagalog
                               ? 'Magtanong kay Aling Suki...'
-                              : 'Ask Aling Suki anything...',
+                              : 'Ask Aling Suki...',
                           hintStyle: GoogleFonts.poppins(
                             fontSize: 13.5,
                             color: const Color(0xFF9CA3AF),
@@ -750,6 +752,20 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
     cleaned = cleaned.replaceAllMapped(
       RegExp(r'([^\n])\n(- )'),
       (match) => '${match.group(1)}\n\n${match.group(2)}',
+    );
+
+    // 4. Strip stray raw internal IDs (e.g., "id_212" or "(ID: id_212)") from user-facing text
+    cleaned = cleaned.replaceAll(
+      RegExp(r'^- id_\d+\s*[—–\-]\s*', multiLine: true),
+      '- ',
+    );
+    cleaned = cleaned.replaceAll(
+      RegExp(r'\s*\(\s*(?:ID:\s*)?id_\d+\s*\)', caseSensitive: false),
+      '',
+    );
+    cleaned = cleaned.replaceAll(
+      RegExp(r'\b(?:ID:\s*)?id_\d+\b\s*', caseSensitive: false),
+      '',
     );
 
     return cleaned;

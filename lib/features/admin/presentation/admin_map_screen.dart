@@ -26,8 +26,6 @@ class AdminMapScreen extends ConsumerStatefulWidget {
 class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
   StallModel? _selectedStall;
   bool _isSearchDropdownOpen = false;
-  final GlobalKey<MapSearchDropdownState> _searchDropdownKey =
-      GlobalKey<MapSearchDropdownState>();
 
   @override
   void initState() {
@@ -65,7 +63,6 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
               },
               onMapTapped: () {
                 if (_isSearchDropdownOpen) {
-                  _searchDropdownKey.currentState?.close();
                   setState(() => _isSearchDropdownOpen = false);
                 }
                 if (_selectedStall != null) {
@@ -110,7 +107,6 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: () {
-                  _searchDropdownKey.currentState?.close();
                   setState(() => _isSearchDropdownOpen = false);
                 },
               ),
@@ -141,7 +137,6 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       child: MapSearchDropdown(
-        key: _searchDropdownKey,
         isOpen: _isSearchDropdownOpen,
         selectedEntrance: selectedEntrance,
         onOpenChanged: (isOpen) {

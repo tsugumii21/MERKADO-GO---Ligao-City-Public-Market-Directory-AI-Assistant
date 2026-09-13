@@ -87,7 +87,10 @@ class InteractiveMarketMap extends StatefulWidget {
   final TransformationController? transformationController;
   final VoidCallback? onMapTapped;
   final int traversalTrigger;
+  final int skipTrigger;
   final bool showEntrancePins;
+  final VoidCallback? onTraversalCompleted;
+  final VoidCallback? onRepeatRoute;
 
   const InteractiveMarketMap({
     super.key,
@@ -102,7 +105,10 @@ class InteractiveMarketMap extends StatefulWidget {
     this.transformationController,
     this.onMapTapped,
     this.traversalTrigger = 0,
+    this.skipTrigger = 0,
     this.showEntrancePins = false,
+    this.onTraversalCompleted,
+    this.onRepeatRoute,
   });
 
   @override
@@ -233,6 +239,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
           if (_cameraFollowsAvatar) {
             _autoFrameRoute();
           }
+          widget.onTraversalCompleted?.call();
         }
       });
 
@@ -282,6 +289,25 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       });
     }
     _walkController.forward(from: 0.0);
+  }
+
+  /// Skip the walking traversal animation and jump immediately to route arrival
+  void skipWalkingTraversal() {
+    _walkController.stop();
+    _walkController.value = 1.0;
+    if (mounted) {
+      setState(() {
+        _isWalking = false;
+        _cameraFollowsAvatar = false;
+      });
+      _autoFrameRoute();
+    }
+    widget.onTraversalCompleted?.call();
+  }
+
+  void _handleRepeatTraversal() {
+    _startWalkingTraversal();
+    widget.onRepeatRoute?.call();
   }
 
   void _onTransformChanged() {
@@ -456,6 +482,12 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
         widget.activeRoute != null &&
         widget.activeRoute!.nodes.isNotEmpty) {
       _startWalkingTraversal();
+    }
+
+    if (widget.skipTrigger != oldWidget.skipTrigger &&
+        widget.activeRoute != null &&
+        widget.activeRoute!.nodes.isNotEmpty) {
+      skipWalkingTraversal();
     }
 
     if (widget.activeRoute != oldWidget.activeRoute) {
@@ -774,15 +806,6 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     _transformController.value = matrix;
   }
 
-  void _skipWalking() {
-    _walkController.stop();
-    _walkController.value = 1.0;
-    setState(() {
-      _isWalking = false;
-    });
-    _autoFrameRoute();
-  }
-
   void _autoFrameRoute() {
     final points = _getRouteCanvasPoints();
     if (points.length < 2) return;
@@ -1035,50 +1058,6 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
           ),
         ),
 
-          // Floating Skip Walking Button during traversal
-          if (_isWalking)
-            Positioned(
-              top: 16,
-              right: 16,
-              child: SafeArea(
-                child: Material(
-                  color: AppColors.surface,
-                  elevation: 6,
-                  shadowColor: Colors.black.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    onTap: _skipWalking,
-                    borderRadius: BorderRadius.circular(20),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Skip',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Icon(
-                            Icons.fast_forward_rounded,
-                            size: 16,
-                            color: AppColors.primary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
           // Floating Map Controls (Replay, Compass, Zoom In, Zoom Out, Reposition)
           Positioned(
             right: 16,
@@ -1090,7 +1069,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                   _buildMapControlButton(
                     icon: Icons.replay_rounded,
                     tooltip: 'Repeat Walk Redirection',
-                    onPressed: _startWalkingTraversal,
+                    onPressed: _handleRepeatTraversal,
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -1399,7 +1378,7 @@ class RouteOverlayPainter extends CustomPainter {
     canvas.drawCircle(startPt, 12.0, startInner);
 
     // 4. ARTICULATED VECTOR WALKING PEDESTRIAN AVATAR (MD §4, §8, Fix 13.8)
-    if (isWalking && tangent != null) {
+    if (tangent != null) {
       final avatarPos = tangent.position;
       final double dxLayer = tangent.vector.dx;
       final double dyLayer = tangent.vector.dy;
@@ -1416,13 +1395,16 @@ class RouteOverlayPainter extends CustomPainter {
       canvas.scale(facingSign, 1.0);
       canvas.scale(1.8, 1.8); // 1.8x scale for mobile corridor visibility
 
-      // Stride swing cycle calculation (1 cycle every ~45 units)
-      final double strideCycle =
-          (walkProgress * (totalLength / 45.0)) * 2 * math.pi;
-      final double legAngle = math.sin(strideCycle) * 0.42;
+      // Stride swing cycle calculation: animate when walking, stationary resting when arrived/stopped
+      final double strideCycle = isWalking
+          ? (walkProgress * (totalLength / 45.0)) * 2 * math.pi
+          : 0.0;
+      final double legAngle = isWalking ? math.sin(strideCycle) * 0.42 : 0.0;
 
       // Ground Shadow Pulse
-      final double shadowScale = 1.0 + 0.12 * math.cos(strideCycle * 2);
+      final double shadowScale = isWalking
+          ? 1.0 + 0.12 * math.cos(strideCycle * 2)
+          : 1.0;
       canvas.drawOval(
         Rect.fromCenter(
           center: const Offset(0, 36),
@@ -1515,10 +1497,10 @@ class RouteOverlayPainter extends CustomPainter {
 
       // 5. FLOATING TURN ANNOUNCEMENT SPEECH BUBBLE HUD (MD §5, §13.9)
       final String announcementText;
-      if (walkProgress < 0.03) {
-        announcementText = 'Start';
-      } else if (walkProgress >= 0.98) {
+      if (!isWalking || walkProgress >= 0.98) {
         announcementText = 'Arrived';
+      } else if (walkProgress < 0.03) {
+        announcementText = 'Start';
       } else if (route.steps.isNotEmpty) {
         final double totalStepsDist = route.steps
             .where((s) => s.direction != TurnDirection.arrive)

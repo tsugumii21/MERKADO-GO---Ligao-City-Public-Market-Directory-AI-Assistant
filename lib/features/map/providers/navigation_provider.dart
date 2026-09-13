@@ -69,6 +69,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
 
     state = route;
     _ref.read(currentStepIndexProvider.notifier).state = 0;
+    _ref.read(isNavigationCompletedProvider.notifier).state = false;
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
   }
@@ -94,6 +95,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
 
     state = route;
     _ref.read(currentStepIndexProvider.notifier).state = 0;
+    _ref.read(isNavigationCompletedProvider.notifier).state = false;
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
   }
@@ -155,6 +157,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
   void clearRoute() {
     state = null;
     _ref.read(currentStepIndexProvider.notifier).state = 0;
+    _ref.read(isNavigationCompletedProvider.notifier).state = false;
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
   }
@@ -168,8 +171,14 @@ final activeRouteProvider =
 /// Current active navigation instruction step index (0-indexed)
 final currentStepIndexProvider = StateProvider<int>((ref) => 0);
 
+/// Whether the current navigation route traversal has completed (arrived or skipped)
+final isNavigationCompletedProvider = StateProvider<bool>((ref) => false);
+
 /// Trigger counter to replay the walking traversal animation on the map
 final routeTraversalTriggerProvider = StateProvider<int>((ref) => 0);
+
+/// Trigger counter to skip the walking traversal animation and jump directly to arrival
+final routeSkipTraversalTriggerProvider = StateProvider<int>((ref) => 0);
 
 /// Target destination stall when the user is picking a starting stall on the map
 final pickingOriginTargetStallProvider = StateProvider<StallModel?>((ref) => null);

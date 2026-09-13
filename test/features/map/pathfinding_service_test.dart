@@ -496,5 +496,97 @@ void main() {
       // Expected clean path along the street: node_ex_t16 -> node_ex_t17 -> node_ex_t18 -> node_ex_w3 -> node_ex_w2
       expect(route.nodeIds, ['node_ex_t16', 'node_ex_t17', 'node_ex_t18', 'node_ex_w3', 'node_ex_w2']);
     });
+
+    test('Zone-aware: Marilyn Loria Store to Kyla and Kyle General uses internal Wet Market walkway', () {
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_155',
+        destinationStallId: 'id_119',
+        originName: 'MARILYN LORIA STORE',
+        destinationName: 'KYLA AND KYLE GENERAL MERCHANDISE',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Must traverse Wet Market internal corridor (node_wm_*)
+      final hasWetMarketNodes = route.nodeIds.any((n) => n.startsWith('node_wm'));
+      expect(hasWetMarketNodes, isTrue, reason: 'Route should cut through Wet Market walkway');
+
+      // Must be direct internal route (~3,300 px), not outer perimeter detour (>10,000 px)
+      expect(route.totalDistance, lessThan(3600.0));
+    });
+
+    test('Zone-aware: Marilyn Loria Store to Malou and Princess Store uses internal Wet Market walkway', () {
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_155',
+        destinationStallId: 'id_146',
+        originName: 'MARILYN LORIA STORE',
+        destinationName: 'MALOU AND PRINCESS STORE',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Must be direct internal route (~1,925 px), not outer perimeter detour (>11,000 px)
+      expect(route.totalDistance, lessThan(2500.0));
+    });
+
+    test('Zone-aware: Yhesha Sari-Sari Store to Marixon Fruits and Vegetables uses internal wet market corridor', () {
+      // id_261 (YHESHA'S SARI-SARI STORE) to id_157 (MARIXON FRUITS AND VEGETABLES STORE)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_261',
+        destinationStallId: 'id_157',
+        originName: "YHESHA'S SARI-SARI STORE",
+        destinationName: 'MARIXON FRUITS AND VEGETABLES STORE',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Must follow the straight wet market aisle beside Meat Section
+      expect(route.nodeIds, [
+        'node_wm_x3',
+        'node_wm_t18',
+        'node_wm_x15',
+        'node_wm_t19',
+        'node_wm_x28',
+        'node_wm_x36',
+        'node_wm_x37',
+        'node_wm_x39',
+        'node_ex_x1',
+        'node_ex_n3',
+      ]);
+
+      // Must not take western perimeter detour (node_ex_t9..node_ex_t13)
+      expect(route.nodeIds.contains('node_ex_t9'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t10'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t11'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t12'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t13'), isFalse);
+
+      // Distance should be ~1050 px, far shorter than western perimeter detour (>2000 px)
+      expect(route.totalDistance, lessThan(1200.0));
+    });
+
+    test('Zone-aware: M. Bello Dried Fish Store to Jo Patingo Sari-Sari Store routes through aisle walkways without penetrating empty stalls', () {
+      // id_143 (M. BELLO DRIED FISH STORE) to id_108 (JO PATINGO SARI-SARI STORE I)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_143',
+        destinationStallId: 'id_108',
+        originName: 'M. BELLO DRIED FISH STORE',
+        destinationName: 'JO PATINGO SARI-SARI STORE I',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Must exit to North Street and enter South walkway via node_ex_t23 -> node_wm_t26
+      expect(route.nodeIds, ['node_ex_n5', 'node_ex_t23', 'node_wm_t26']);
+
+      // Destination node must be on the south aisle (node_wm_t26), not across the building on North Street (node_ex_n5)
+      expect(route.nodeIds.last, 'node_wm_t26');
+      expect(route.nodeIds.length, greaterThan(1));
+    });
   });
 }
+

@@ -142,7 +142,6 @@ class _NavigationLoadingDialogState extends State<NavigationLoadingDialog>
                 ),
               ),
             ),
-
             // Centered Floating Animation & Navigation Typography
             Center(
               child: Padding(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -464,7 +465,8 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   @override
   void didUpdateWidget(covariant InteractiveMarketMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.stalls != oldWidget.stalls) {
+    if (widget.stalls != oldWidget.stalls ||
+        !listEquals(widget.stalls, oldWidget.stalls)) {
       _applyCategoryColors();
     }
 
@@ -518,7 +520,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
           .loadString('assets/map/LigaoCity_PublicMarket_Map.svg');
       // Set pure white background for the SVG map
       svgStr = svgStr.replaceFirst('fill="#1E1E1E"', 'fill="#FFFFFF"');
-      final parsedBounds = StallSvgParser.parseBounds(svgStr);
+      final parsedBounds = StallSvgParser.parseAllBounds(svgStr);
       _stallBoundsCache.clear();
       _stallBoundsCache.addAll(parsedBounds);
       _stallCenterCache.clear();
@@ -595,9 +597,15 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       final hitNum = hitLower.replaceFirst('id_', '');
 
       for (final stall in widget.stalls) {
+        if (!stall.hasMapLocation) continue;
         final sid = stall.stallId.toLowerCase();
+        final mapId = stall.mapStallId.toLowerCase();
+        final physId = (stall.physicalStallId ?? '').toLowerCase();
         if (sid == hitLower ||
+            mapId == hitLower ||
+            physId == hitLower ||
             sid == hitNum ||
+            mapId == hitNum ||
             (stall.stallNumber != null &&
                 stall.stallNumber!.toLowerCase() == hitNum)) {
           matchedStall = stall;
@@ -620,23 +628,29 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   void _applyCategoryColors() {
     if (_rawSvgContent == null) return;
 
-    var modified = _rawSvgContent!;
+    final colorMap =
+        <String, ({String fill, String stroke, double? strokeWidth})>{};
 
-    // Replace color attributes for each stall
+    // Build color lookup for each stall
     for (final stall in widget.stalls) {
+      if (!stall.hasMapLocation) continue;
+
       final colorSet = ZonePalette.getColorSet(stall.category);
       final fillHex = _colorToHex(colorSet.fill);
       final outlineHex = _colorToHex(colorSet.outline);
+      final config = (fill: fillHex, stroke: outlineHex, strokeWidth: 2.0);
 
-      // Regex replace fill and stroke for id="stall_id"
-      final pattern = RegExp(
-        'id="${RegExp.escape(stall.stallId)}"[^>]*?(fill="[^"]*")?([^>]*?)(stroke="[^"]*")?',
-      );
-
-      modified = modified.replaceAllMapped(pattern, (match) {
-        return 'id="${stall.stallId}" fill="$fillHex" stroke="$outlineHex" stroke-width="2"';
-      });
+      if (stall.mapStallId.isNotEmpty) {
+        colorMap[stall.mapStallId] = config;
+      }
+      if (stall.physicalStallId != null &&
+          stall.physicalStallId!.trim().isNotEmpty) {
+        colorMap[stall.physicalStallId!.trim()] = config;
+      }
     }
+
+    final modified =
+        StallSvgParser.applyStallColorsBatch(_rawSvgContent!, colorMap);
 
     if (mounted) {
       setState(() {
@@ -882,12 +896,14 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       );
     }
 
-    final effectiveDestStallId =
-        widget.activeRoute?.destinationStallId ?? widget.selectedStall?.stallId;
+    final effectiveDestStallId = widget.activeRoute?.destinationStallId ??
+        widget.selectedStall?.mapStallId ??
+        widget.selectedStall?.stallId;
     final destBounds = _getStallBounds(effectiveDestStallId);
 
-    final effectiveOriginStallId =
-        widget.activeRoute?.originStallId ?? widget.selectedOriginStall?.stallId;
+    final effectiveOriginStallId = widget.activeRoute?.originStallId ??
+        widget.selectedOriginStall?.mapStallId ??
+        widget.selectedOriginStall?.stallId;
     final originBounds = _getStallBounds(effectiveOriginStallId);
 
     return Container(

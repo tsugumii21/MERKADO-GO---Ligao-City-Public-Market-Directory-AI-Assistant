@@ -225,11 +225,40 @@ class FirestoreStallRepository implements StallRepository {
   @override
   Future<void> deleteStall(String stallId) async {
     try {
-      // Soft delete by setting isActive to false
-      await _firestore.collection(_collection).doc(stallId).update({
-        'isActive': false,
-        'updatedAt': Timestamp.now(),
-      });
+      final docRef = _firestore.collection(_collection).doc(stallId);
+      final docSnap = await docRef.get();
+      if (docSnap.exists) {
+        await docRef.update({
+          'isActive': false,
+          'updatedAt': Timestamp.now(),
+        });
+        return;
+      }
+
+      // If document doesn't exist by doc.id, check by stall_id, physical_stall_id, or id
+      final queries = await Future.wait([
+        _firestore
+            .collection(_collection)
+            .where('stall_id', isEqualTo: stallId)
+            .get(),
+        _firestore
+            .collection(_collection)
+            .where('physical_stall_id', isEqualTo: stallId)
+            .get(),
+        _firestore
+            .collection(_collection)
+            .where('id', isEqualTo: stallId)
+            .get(),
+      ]);
+
+      for (final querySnap in queries) {
+        for (final doc in querySnap.docs) {
+          await doc.reference.update({
+            'isActive': false,
+            'updatedAt': Timestamp.now(),
+          });
+        }
+      }
     } catch (e) {
       throw Exception('Error deleting stall: $e');
     }

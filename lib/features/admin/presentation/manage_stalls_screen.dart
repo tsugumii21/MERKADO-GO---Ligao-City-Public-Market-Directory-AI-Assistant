@@ -226,9 +226,9 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
   Future<void> _deleteStall(
     BuildContext context,
-    String stallId,
-    String stallName,
+    StallModel stall,
   ) async {
+    final stallName = stall.name;
     unawaited(HapticFeedback.selectionClick());
     final confirmed = await showDialog<bool>(
       context: context,
@@ -280,10 +280,47 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
     if (confirmed == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('stalls')
-            .doc(stallId)
-            .delete();
+        final collection = FirebaseFirestore.instance.collection('stalls');
+
+        // 1. Delete by document ID directly (guaranteed Firestore document key)
+        if (stall.documentId != null && stall.documentId!.isNotEmpty) {
+          await collection.doc(stall.documentId).delete();
+        }
+
+        // 2. Also delete by stallId if different
+        if (stall.stallId.isNotEmpty && stall.stallId != stall.documentId) {
+          await collection.doc(stall.stallId).delete();
+        }
+
+        // 3. Also delete by physicalStallId if different
+        if (stall.physicalStallId != null &&
+            stall.physicalStallId!.isNotEmpty &&
+            stall.physicalStallId != stall.documentId &&
+            stall.physicalStallId != stall.stallId) {
+          await collection.doc(stall.physicalStallId).delete();
+        }
+
+        // 4. Query and delete any matching documents in Firestore by name or slot
+        final querySnapshots = await Future.wait([
+          collection.where('name', isEqualTo: stall.name).get(),
+          if (stall.physicalStallId != null &&
+              stall.physicalStallId!.isNotEmpty)
+            collection
+                .where('stall_id', isEqualTo: stall.physicalStallId)
+                .get(),
+          if (stall.physicalStallId != null &&
+              stall.physicalStallId!.isNotEmpty)
+            collection
+                .where('physical_stall_id', isEqualTo: stall.physicalStallId)
+                .get(),
+        ]);
+
+        for (final snap in querySnapshots) {
+          for (final d in snap.docs) {
+            await d.reference.delete();
+          }
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(this.context).showSnackBar(
             SnackBar(
@@ -759,6 +796,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
                 final rawStalls = snapshot.data?.docs
                         .map((doc) => StallModel.fromFirestore(doc))
+                        .where((stall) => stall.isActive != false)
                         .toList() ??
                     [];
 
@@ -1022,7 +1060,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                             borderRadius: BorderRadius.circular(10),
                             onTap: () {
                               context.push(
-                                '${RouteNames.adminStalls}/${stall.stallId}/edit',
+                                '${RouteNames.adminStalls}/${stall.documentId ?? stall.stallId}/edit',
                               );
                             },
                             child: const Padding(
@@ -1043,8 +1081,7 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                             borderRadius: BorderRadius.circular(10),
                             onTap: () => _deleteStall(
                               context,
-                              stall.stallId,
-                              stall.name,
+                              stall,
                             ),
                             child: const Padding(
                               padding: EdgeInsets.all(8),

@@ -11,6 +11,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/market_categories.dart';
 import '../../../core/constants/market_sections.dart';
+import '../../map/domain/zone_palette.dart';
+import 'widgets/admin_stall_location_picker.dart';
 
 class AddEditStallScreen extends StatefulWidget {
   final String? stallId;
@@ -41,6 +43,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   bool _isLoadingSubcategories = false;
   List<String> _products = [];
   String? _selectedSection;
+  String? _selectedPhysicalStallId;
   final List<String> _selectedTags = [];
   final List<String> _selectedDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   String _stallStatus = 'open';
@@ -48,6 +51,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   String? _existingPhotoUrl;
   bool _isLoading = false;
   bool _isSaving = false;
+  String? _actualDocumentId;
 
   // Canonical Primary Category Name
   String get _finalPrimaryCategoryName {
@@ -247,17 +251,48 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   Future<void> _loadStallData() async {
     setState(() => _isLoading = true);
     try {
-      final doc = await FirebaseFirestore.instance
+      DocumentSnapshot<Map<String, dynamic>>? doc;
+      final directDoc = await FirebaseFirestore.instance
           .collection('stalls')
           .doc(widget.stallId)
           .get();
 
-      if (doc.exists && mounted) {
+      if (directDoc.exists) {
+        doc = directDoc;
+      } else {
+        final queries = await Future.wait([
+          FirebaseFirestore.instance
+              .collection('stalls')
+              .where('stall_id', isEqualTo: widget.stallId)
+              .limit(1)
+              .get(),
+          FirebaseFirestore.instance
+              .collection('stalls')
+              .where('physical_stall_id', isEqualTo: widget.stallId)
+              .limit(1)
+              .get(),
+          FirebaseFirestore.instance
+              .collection('stalls')
+              .where('id', isEqualTo: widget.stallId)
+              .limit(1)
+              .get(),
+        ]);
+        for (final q in queries) {
+          if (q.docs.isNotEmpty) {
+            doc = q.docs.first;
+            break;
+          }
+        }
+      }
+
+      if (doc != null && doc.exists && mounted) {
+        _actualDocumentId = doc.id;
         final stall = StallModel.fromFirestore(doc);
         final data = doc.data() ?? {};
         _nameController.text = stall.name;
         _products = List<String>.from(stall.products);
         _stallNumberController.text = stall.address;
+        _selectedPhysicalStallId = stall.hasMapLocation ? stall.mapStallId : null;
 
         // Find matching primary category
         final matchedCat = MarketCategories.findCategory(stall.category) ??
@@ -1310,11 +1345,29 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       final latValue = double.tryParse(_latitudeController.text.trim()) ?? 13.2419233;
       final lngValue = double.tryParse(_longitudeController.text.trim()) ?? 123.538546;
 
+      final physicalSlot = (_selectedPhysicalStallId != null &&
+              _selectedPhysicalStallId!.trim().isNotEmpty)
+          ? _selectedPhysicalStallId!.trim()
+          : null;
+
+      final resolvedStallId = widget.stallId != null && widget.stallId!.isNotEmpty
+          ? widget.stallId!
+          : (physicalSlot ?? '');
+
       final stallData = <String, dynamic>{
-        if (widget.stallId != null && widget.stallId!.isNotEmpty) ...{
-          'id': widget.stallId,
-          'stallId': widget.stallId,
-          'stall_id': widget.stallId,
+        if (resolvedStallId.isNotEmpty) ...{
+          'id': resolvedStallId,
+          'stallId': physicalSlot ?? resolvedStallId,
+          'stall_id': physicalSlot ?? resolvedStallId,
+        },
+        if (physicalSlot != null) ...{
+          'physical_stall_id': physicalSlot,
+          'physicalStallId': physicalSlot,
+          'has_map_location': true,
+        } else ...{
+          'physical_stall_id': FieldValue.delete(),
+          'physicalStallId': FieldValue.delete(),
+          'has_map_location': false,
         },
         'name': stallNameText,
         'category': _finalPrimaryCategoryName,
@@ -1355,17 +1408,25 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         // Edit Existing Stall - Use set with merge to guarantee save
         await FirebaseFirestore.instance
             .collection('stalls')
-            .doc(widget.stallId)
+            .doc(_actualDocumentId ?? widget.stallId)
             .set(stallData, SetOptions(merge: true));
       } else {
         // Add New Stall
-        final newDoc =
-            await FirebaseFirestore.instance.collection('stalls').add(stallData);
-        await newDoc.set({
-          'stallId': newDoc.id,
-          'id': newDoc.id,
-          'stall_id': newDoc.id,
-        }, SetOptions(merge: true));
+        if (physicalSlot != null && physicalSlot.isNotEmpty) {
+          // Write directly to document matching the physical SVG slot ID
+          await FirebaseFirestore.instance
+              .collection('stalls')
+              .doc(physicalSlot)
+              .set(stallData, SetOptions(merge: true));
+        } else {
+          final newDoc =
+              await FirebaseFirestore.instance.collection('stalls').add(stallData);
+          await newDoc.set({
+            'stallId': newDoc.id,
+            'id': newDoc.id,
+            'stall_id': newDoc.id,
+          }, SetOptions(merge: true));
+        }
       }
 
       if (mounted) {
@@ -1602,6 +1663,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                             ],
                           ),
                         ),
+
+                        const SizedBox(height: 16),
+
+                        // MARKET MAP LOCATION PICKER
+                        _buildMapLocationCard(),
 
                         const SizedBox(height: 16),
 
@@ -2461,6 +2527,271 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Future<void> _openMapLocationPicker() async {
+    final result = await AdminStallLocationPicker.show(
+      context,
+      initialStallId: _selectedPhysicalStallId ?? widget.stallId,
+      stallCategory: _finalPrimaryCategoryName,
+      stallName: _nameController.text.trim(),
+    );
+
+    if (result != null && mounted) {
+      if (result.isCleared) {
+        setState(() {
+          _selectedPhysicalStallId = null;
+        });
+      } else {
+        setState(() {
+          _selectedPhysicalStallId = result.stallId;
+          if (_selectedSection == null || _selectedSection!.isEmpty) {
+            final matchedSec = MarketSections.findSection(result.sectionName);
+            _selectedSection = matchedSec?.id ?? result.sectionName;
+          }
+          if (_stallNumberController.text.trim().isEmpty) {
+            _stallNumberController.text = result.suggestedStallNumber;
+          }
+        });
+      }
+    }
+  }
+
+  Widget _buildMapLocationCard() {
+    final hasLocation =
+        _selectedPhysicalStallId != null && _selectedPhysicalStallId!.isNotEmpty;
+    final catColorSet = _finalPrimaryCategoryName.isNotEmpty
+        ? ZonePalette.getColorSet(_finalPrimaryCategoryName)
+        : ZonePalette.produce;
+
+    return _buildFormCard(
+      title: 'Market Map Location',
+      subtitle:
+          'Physical position on the vector market map (only vacant light gray stalls can be picked)',
+      icon: Icons.map_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!hasLocation) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B5E20).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.add_location_alt_rounded,
+                      color: Color(0xFF1B5E20),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'No Map Location Selected',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        Text(
+                          'Tap the button below to pick an empty light gray stall on the map.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.map_rounded, size: 18, color: Color(0xFF1B5E20)),
+                label: Text(
+                  'Select Stall on Market Map',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1B5E20),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF1B5E20), width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: _openMapLocationPicker,
+              ),
+            ),
+          ] else ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B5E20).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.place_rounded,
+                          color: Color(0xFF1B5E20),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedPhysicalStallId!,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: catColorSet.fill,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _finalPrimaryCategoryName.isNotEmpty
+                                      ? 'Color: $_finalPrimaryCategoryName'
+                                      : 'Color based on Category',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        ),
+                        child: Text(
+                          'Assigned',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF16A34A),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(
+                            Icons.edit_location_alt_rounded,
+                            size: 16,
+                            color: Color(0xFF1B5E20),
+                          ),
+                          label: Text(
+                            'Change Location',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1B5E20),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF1B5E20)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: _openMapLocationPicker,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Color(0xFFDC2626),
+                        ),
+                        label: Text(
+                          'Remove',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFDC2626),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFDC2626)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _selectedPhysicalStallId = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

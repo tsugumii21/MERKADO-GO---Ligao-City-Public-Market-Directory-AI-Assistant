@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -241,7 +241,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               ),
                               padding: const EdgeInsets.all(16),
                               child: const Image(
-                                image: _splashLogoProvider,
+                                image: _brandLogoProvider,
                                 fit: BoxFit.contain,
                                 filterQuality: FilterQuality.medium,
                               ),

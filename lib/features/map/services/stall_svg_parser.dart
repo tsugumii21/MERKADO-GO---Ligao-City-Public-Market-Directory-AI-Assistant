@@ -68,16 +68,25 @@ class StallSvgParser {
     return null;
   }
 
-  /// Extracts bounding boxes for all 134 stalls from the SVG content
-  static Map<String, Rect> parseBounds(String svgContent) {
+  /// Extracts bounding boxes for stalls from the SVG content.
+  /// If [includeSlots] is true, includes both assigned stalls (id_#) and empty slots (slot_[zone]_#).
+  static Map<String, Rect> parseBounds(
+    String svgContent, {
+    bool includeSlots = false,
+  }) {
     final bounds = <String, Rect>{};
+    final idPattern =
+        includeSlots ? r'\bid="((?:id_|slot_)[^"]+)"' : r'\bid="(id_[^"]+)"';
+    final gPattern = includeSlots
+        ? r'<g\s+[^>]*?\bid="((?:id_|slot_)[^"]+)"[^>]*?>'
+        : r'<g\s+[^>]*?\bid="(id_[^"]+)"[^>]*?>';
 
     // 1. Parse <rect> elements
     final rectRegex = RegExp(r'<rect\s+([^>]*?)>', caseSensitive: false);
     for (final match in rectRegex.allMatches(svgContent)) {
       final attrs = match.group(1);
       if (attrs == null) continue;
-      final idMatch = RegExp(r'\bid="(id_[^"]+)"').firstMatch(attrs);
+      final idMatch = RegExp(idPattern).firstMatch(attrs);
       final xMatch = RegExp(r'\bx="([0-9.-]+)"').firstMatch(attrs);
       final yMatch = RegExp(r'\by="([0-9.-]+)"').firstMatch(attrs);
       final wMatch = RegExp(r'\bwidth="([0-9.-]+)"').firstMatch(attrs);
@@ -104,7 +113,7 @@ class StallSvgParser {
     for (final match in pathRegex.allMatches(svgContent)) {
       final attrs = match.group(1);
       if (attrs == null) continue;
-      final idMatch = RegExp(r'\bid="(id_[^"]+)"').firstMatch(attrs);
+      final idMatch = RegExp(idPattern).firstMatch(attrs);
       final dMatch = RegExp(r'\bd="([^"]+)"').firstMatch(attrs);
 
       if (idMatch != null && dMatch != null) {
@@ -117,11 +126,8 @@ class StallSvgParser {
       }
     }
 
-    // 3. Parse <g> elements with id="id_..."
-    final gRegex = RegExp(
-      r'<g\s+[^>]*?\bid="(id_[^"]+)"[^>]*?>',
-      caseSensitive: false,
-    );
+    // 3. Parse <g> elements with matching id
+    final gRegex = RegExp(gPattern, caseSensitive: false);
     for (final match in gRegex.allMatches(svgContent)) {
       final id = match.group(1)!;
       final startIdx = match.end;
@@ -165,4 +171,132 @@ class StallSvgParser {
 
     return bounds;
   }
+
+  /// Convenience helper to extract all 231 stall and slot bounding boxes
+  static Map<String, Rect> parseAllBounds(String svgContent) =>
+      parseBounds(svgContent, includeSlots: true);
+
+  /// Efficiently applies fill and stroke colors to multiple stalls and slots in a single pass.
+  /// [colorMap] maps stall or slot ID to fill, stroke, and optional strokeWidth.
+  static String applyStallColorsBatch(
+    String svgContent,
+    Map<String, ({String fill, String stroke, double? strokeWidth})> colorMap,
+  ) {
+    if (colorMap.isEmpty) return svgContent;
+
+    var modified = svgContent;
+
+    // 1. Direct single tags: <rect ... id="..." ...>, <path ... id="..." ...>, etc.
+    final singleTagRegex = RegExp(
+      r'<([a-zA-Z0-9]+)\b([^>]*?\bid="([^"]+)"[^>]*)>',
+      caseSensitive: false,
+    );
+
+    modified = modified.replaceAllMapped(singleTagRegex, (match) {
+      final tagName = match.group(1)!;
+      final id = match.group(3)!;
+
+      if (tagName.toLowerCase() == 'g' || !colorMap.containsKey(id)) {
+        return match.group(0)!;
+      }
+
+      final colorConfig = colorMap[id]!;
+      final fillHex = colorConfig.fill;
+      final strokeHex = colorConfig.stroke;
+      final strokeWidth = colorConfig.strokeWidth ?? 2.0;
+
+      var attrs = match.group(2)!;
+
+      // Handle self-closing tags (e.g. <rect ... />)
+      final isSelfClosing = attrs.trimRight().endsWith('/');
+      if (isSelfClosing) {
+        attrs = attrs.trimRight();
+        attrs = attrs.substring(0, attrs.length - 1).trimRight();
+      }
+
+      // Update or insert fill
+      if (RegExp(r'\bfill="[^"]*"').hasMatch(attrs)) {
+        attrs = attrs.replaceAll(RegExp(r'\bfill="[^"]*"'), 'fill="$fillHex"');
+      } else {
+        attrs += ' fill="$fillHex"';
+      }
+
+      // Update or insert stroke
+      if (RegExp(r'\bstroke="[^"]*"').hasMatch(attrs)) {
+        attrs = attrs.replaceAll(RegExp(r'\bstroke="[^"]*"'), 'stroke="$strokeHex"');
+      } else {
+        attrs += ' stroke="$strokeHex"';
+      }
+
+      // Update or insert stroke-width
+      if (RegExp(r'\bstroke-width="[^"]*"').hasMatch(attrs)) {
+        attrs = attrs.replaceAll(
+          RegExp(r'\bstroke-width="[^"]*"'),
+          'stroke-width="$strokeWidth"',
+        );
+      } else {
+        attrs += ' stroke-width="$strokeWidth"';
+      }
+
+      return isSelfClosing ? '<$tagName$attrs/>' : '<$tagName$attrs>';
+    });
+
+    // 2. Group tags: <g ... id="..."> ... </g>
+    final groupRegex = RegExp(
+      r'(<g\b[^>]*?\bid="([^"]+)"[^>]*?>)([\s\S]*?)(<\/g>)',
+      caseSensitive: false,
+    );
+
+    modified = modified.replaceAllMapped(groupRegex, (match) {
+      final gStart = match.group(1)!;
+      final id = match.group(2)!;
+      var inner = match.group(3)!;
+      final gEnd = match.group(4)!;
+
+      if (!colorMap.containsKey(id)) {
+        return match.group(0)!;
+      }
+
+      final colorConfig = colorMap[id]!;
+      final fillHex = colorConfig.fill;
+      final strokeHex = colorConfig.stroke;
+
+      // Replace fill on inner elements
+      if (RegExp(r'\bfill="[^"]*"').hasMatch(inner)) {
+        inner = inner.replaceAll(RegExp(r'\bfill="[^"]*"'), 'fill="$fillHex"');
+      }
+      // Replace stroke on inner elements
+      if (RegExp(r'\bstroke="[^"]*"').hasMatch(inner)) {
+        inner = inner.replaceAll(RegExp(r'\bstroke="[^"]*"'), 'stroke="$strokeHex"');
+      }
+
+      return '$gStart$inner$gEnd';
+    });
+
+    return modified;
+  }
+
+  /// Safely updates fill and stroke color for a stall or slot by ID without
+  /// stripping geometry attributes (x, y, width, height, d) or element tags.
+  /// Handles both direct elements (`<rect>`, `<path>`, `<polygon>`) and group elements (`<g>`).
+  static String applyStallColor(
+    String svgContent,
+    String stallId,
+    String fillHex,
+    String strokeHex, {
+    double strokeWidth = 2.0,
+  }) {
+    if (stallId.trim().isEmpty) return svgContent;
+    return applyStallColorsBatch(
+      svgContent,
+      {
+        stallId.trim(): (
+          fill: fillHex,
+          stroke: strokeHex,
+          strokeWidth: strokeWidth,
+        ),
+      },
+    );
+  }
 }
+

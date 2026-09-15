@@ -852,59 +852,70 @@ class StallListScreenState extends ConsumerState<StallListScreen> {
                 if (stall.openTime.isNotEmpty || stall.daysOpen.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFF1F5F9)),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 13.5,
-                          color: Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
-                              ? '${stall.openTime} – ${stall.closeTime}'
-                              : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not set'),
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF334155),
-                          ),
-                        ),
-                        if (stall.daysOpen.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 3,
-                            height: 3,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF94A3B8),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.event_available_rounded,
-                            size: 13.5,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              StallUtils.formatOperatingDays(
-                                  stall.daysOpen.join(', ')),
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF64748B),
+                        if (stall.openTime.isNotEmpty || stall.closeTime.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 13.5,
+                                color: Color(0xFF64748B),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
+                                      ? '${stall.openTime} – ${stall.closeTime}'
+                                      : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not set'),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF334155),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if ((stall.openTime.isNotEmpty || stall.closeTime.isNotEmpty) &&
+                            stall.daysOpen.isNotEmpty)
+                          const SizedBox(height: 5),
+                        if (stall.daysOpen.isNotEmpty) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.event_available_rounded,
+                                size: 13.5,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  StallUtils.formatOperatingDays(
+                                      stall.daysOpen.join(', ')),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ],

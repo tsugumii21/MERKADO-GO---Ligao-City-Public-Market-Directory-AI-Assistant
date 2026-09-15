@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/router/route_names.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../report/presentation/report_screen.dart';
@@ -26,19 +28,34 @@ class StallDetailSheet extends ConsumerStatefulWidget {
   final StallModel stall;
   final VoidCallback onClose;
   final bool isChangingOrigin;
+  final bool isAdmin;
+  final VoidCallback? onEdit;
 
   const StallDetailSheet({
     super.key,
     required this.stall,
     required this.onClose,
     this.isChangingOrigin = false,
+    this.isAdmin = false,
+    this.onEdit,
   });
 
   static Future<void> show(
     BuildContext context,
     StallModel stall, {
     bool isChangingOrigin = false,
+    bool isAdmin = false,
+    VoidCallback? onEdit,
   }) {
+    bool effectiveAdmin = isAdmin;
+    if (!effectiveAdmin) {
+      try {
+        effectiveAdmin = GoRouterState.of(context).uri.toString().startsWith('/admin');
+      } catch (_) {
+        // GoRouter not mounted or unavailable in isolated test environments
+      }
+    }
+
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -54,6 +71,8 @@ class StallDetailSheet extends ConsumerStatefulWidget {
         stall: stall,
         onClose: () => Navigator.of(ctx).pop(),
         isChangingOrigin: isChangingOrigin,
+        isAdmin: effectiveAdmin,
+        onEdit: onEdit,
       ),
     );
   }
@@ -251,7 +270,20 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     final IconData primaryActionIcon;
     final bool isActionDisabled;
 
-    if (pickingOriginTarget != null) {
+    if (widget.isAdmin) {
+      primaryActionLabel = 'Edit Stall';
+      primaryActionSubtitle = null;
+      primaryActionIcon = Icons.edit_rounded;
+      primaryActionPressed = () {
+        widget.onClose();
+        if (widget.onEdit != null) {
+          widget.onEdit!();
+        } else {
+          context.push('${RouteNames.adminStalls}/${stall.stallId}/edit');
+        }
+      };
+      isActionDisabled = false;
+    } else if (pickingOriginTarget != null) {
       if (stall.stallId == pickingOriginTarget.stallId) {
         primaryActionLabel = 'Target Destination';
         primaryActionSubtitle = 'Choose a different stall as your starting point';
@@ -899,27 +931,29 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    if (!widget.isAdmin) ...[
+                      const SizedBox(height: 12),
 
-                    // 7. Secondary Action: Report Link
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: _navigateToReportScreen,
-                        icon: const Icon(
-                          Icons.flag_outlined,
-                          size: 15,
-                          color: Color(0xFFEF4444),
-                        ),
-                        label: Text(
-                          'Report an issue with this stall',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.5,
-                            color: const Color(0xFFEF4444),
-                            fontWeight: FontWeight.w500,
+                      // 7. Secondary Action: Report Link
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _navigateToReportScreen,
+                          icon: const Icon(
+                            Icons.flag_outlined,
+                            size: 15,
+                            color: Color(0xFFEF4444),
+                          ),
+                          label: Text(
+                            'Report an issue with this stall',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12.5,
+                              color: const Color(0xFFEF4444),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

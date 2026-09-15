@@ -23,6 +23,7 @@ class MapSearchDropdown extends ConsumerStatefulWidget {
   final MarketEntryPoint? selectedEntrance;
   final bool isOpen;
   final ValueChanged<bool>? onOpenChanged;
+  final bool showEntrance;
 
   const MapSearchDropdown({
     super.key,
@@ -31,6 +32,7 @@ class MapSearchDropdown extends ConsumerStatefulWidget {
     this.selectedEntrance,
     this.isOpen = false,
     this.onOpenChanged,
+    this.showEntrance = true,
   });
 
   @override
@@ -227,54 +229,56 @@ class MapSearchDropdownState extends ConsumerState<MapSearchDropdown> {
                     ),
                   ),
 
-                // Vertical Divider
-                Container(
-                  height: 24,
-                  width: 1,
-                  color: AppColors.border,
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                ),
+                if (widget.showEntrance) ...[
+                  // Vertical Divider
+                  Container(
+                    height: 24,
+                    width: 1,
+                    color: AppColors.border,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
 
-                // Entrance Gate Shortcut Button
-                InkWell(
-                  onTap: () {
-                    close();
-                    widget.onEntranceTap?.call();
-                  },
-                  borderRadius: BorderRadius.circular(AppSpacing.xs),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_on_rounded,
-                          color: widget.selectedEntrance != null
-                              ? AppColors.primary
-                              : const Color(0xFFE53935),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          widget.selectedEntrance != null
-                              ? 'Gate ${widget.selectedEntrance!.entranceId}'
-                              : 'Entrance',
-                          style: AppTextStyles.captionSmall.copyWith(
+                  // Entrance Gate Shortcut Button
+                  InkWell(
+                    onTap: () {
+                      close();
+                      widget.onEntranceTap?.call();
+                    },
+                    borderRadius: BorderRadius.circular(AppSpacing.xs),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on_rounded,
                             color: widget.selectedEntrance != null
                                 ? AppColors.primary
-                                : AppColors.ink,
-                            fontWeight: FontWeight.w700,
+                                : const Color(0xFFE53935),
+                            size: 16,
                           ),
-                        ),
-                        const Icon(
-                          Icons.arrow_drop_down_rounded,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.selectedEntrance != null
+                                ? 'Gate ${widget.selectedEntrance!.entranceId}'
+                                : 'Entrance',
+                            style: AppTextStyles.captionSmall.copyWith(
+                              color: widget.selectedEntrance != null
+                                  ? AppColors.primary
+                                  : AppColors.ink,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_drop_down_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

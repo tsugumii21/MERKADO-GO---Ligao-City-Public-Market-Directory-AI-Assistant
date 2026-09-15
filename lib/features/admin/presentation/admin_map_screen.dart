@@ -5,17 +5,13 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/stall_provider.dart';
-import '../../map/domain/navigation_models.dart';
-import '../../map/presentation/widgets/entrance_selector_sheet.dart';
 import '../../map/presentation/widgets/interactive_market_map.dart';
 import '../../map/presentation/widgets/map_search_dropdown.dart';
-import '../../map/presentation/widgets/route_navigation_card.dart';
-import '../../map/providers/navigation_provider.dart';
 import '../../map/providers/search_provider.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
 
-/// Admin Map Screen with interactive vector map, pathfinding navigation, search, and stall inspection.
-/// Designed for administrators with a clean, focused UI (no floating chatbots or non-standard emojis).
+/// Admin Map Screen with interactive vector map, search, and stall inspection/editing.
+/// Designed for administrators with a clean, focused UI without customer navigation routes.
 class AdminMapScreen extends ConsumerStatefulWidget {
   const AdminMapScreen({super.key});
 
@@ -30,17 +26,13 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-initialize graph pathfinding engine & search directory
-    ref.read(pathfindingInitProvider);
+    // Pre-initialize search directory
     ref.read(marketSearchInitProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final stallsAsync = ref.watch(allStallsProvider);
-    final activeRoute = ref.watch(activeRouteProvider);
-    final selectedEntrance = ref.watch(selectedEntranceProvider);
-    final entryPoints = ref.watch(entryPointsProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -51,15 +43,9 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
             data: (stalls) => InteractiveMarketMap(
               stalls: stalls,
               selectedStall: _selectedStall,
-              activeRoute: activeRoute,
-              entryPoints: entryPoints,
-              selectedEntrance: selectedEntrance,
               onStallSelected: (stall) {
                 setState(() => _selectedStall = stall);
-                StallDetailSheet.show(context, stall);
-              },
-              onEntranceTapped: (entrance) {
-                EntranceSelectorSheet.show(context);
+                StallDetailSheet.show(context, stall, isAdmin: true);
               },
               onMapTapped: () {
                 if (_isSearchDropdownOpen) {
@@ -112,20 +98,11 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
               ),
             ),
 
-          // 2. Top Header Overlay (Active Route Card OR Search & Entrance Bar)
+          // 2. Top Header Overlay (Search Bar)
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(top: AppSpacing.sm),
-              child: activeRoute != null
-                  ? RouteNavigationCard(
-                      route: activeRoute,
-                      onChangeEntrance: () =>
-                          EntranceSelectorSheet.show(context),
-                      onClose: () {
-                        ref.read(activeRouteProvider.notifier).clearRoute();
-                      },
-                    )
-                  : _buildTopSearchAndEntranceBar(selectedEntrance),
+              child: _buildTopSearchBar(),
             ),
           ),
         ],
@@ -133,22 +110,21 @@ class _AdminMapScreenState extends ConsumerState<AdminMapScreen> {
     );
   }
 
-  Widget _buildTopSearchAndEntranceBar(MarketEntryPoint? selectedEntrance) {
+  Widget _buildTopSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       child: MapSearchDropdown(
         isOpen: _isSearchDropdownOpen,
-        selectedEntrance: selectedEntrance,
+        showEntrance: false,
         onOpenChanged: (isOpen) {
           setState(() => _isSearchDropdownOpen = isOpen);
         },
-        onEntranceTap: () => EntranceSelectorSheet.show(context),
         onStallSelected: (stall) {
           setState(() {
             _selectedStall = stall;
             _isSearchDropdownOpen = false;
           });
-          StallDetailSheet.show(context, stall);
+          StallDetailSheet.show(context, stall, isAdmin: true);
         },
       ),
     );

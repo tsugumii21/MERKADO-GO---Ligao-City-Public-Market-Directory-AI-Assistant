@@ -131,15 +131,17 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
     if (!categoryMatched) return false;
 
-    // Filter by subcategory if selected
+    // Filter by subcategory if selected (products are not subcategories)
     if (subcategory != null && subcategory.isNotEmpty) {
       final subNorm = subcategory.toLowerCase();
-      final inProducts = stall.products.any((p) =>
-          p.toLowerCase().contains(subNorm) || subNorm.contains(p.toLowerCase()));
+      final inSubcategories = stall.subcategories.any((s) =>
+          s.toLowerCase().contains(subNorm) || subNorm.contains(s.toLowerCase()));
       final inTags = stall.tags.any((t) =>
           t.toLowerCase().contains(subNorm) || subNorm.contains(t.toLowerCase()));
+      final inCategories = stall.categories.any((c) =>
+          c.toLowerCase().contains(subNorm) || subNorm.contains(c.toLowerCase()));
       final inName = stall.name.toLowerCase().contains(subNorm);
-      return inProducts || inTags || inName;
+      return inSubcategories || inTags || inCategories || inName;
     }
 
     return true;

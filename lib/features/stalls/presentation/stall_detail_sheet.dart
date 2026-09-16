@@ -739,7 +739,74 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
 
                     const SizedBox(height: 18),
 
-                    // 5. Products Available
+                    // 5. Subcategories section
+                    Builder(
+                      builder: (context) {
+                        final productSetLower = stall.products
+                            .map((p) => p.toLowerCase().trim())
+                            .where((p) => p.isNotEmpty)
+                            .toSet();
+
+                        final stallSubcategories = <String>{
+                          ...stall.subcategories,
+                          ...stall.tags,
+                          ...stall.categories.where(
+                            (c) => c.trim().toLowerCase() != stall.category.trim().toLowerCase(),
+                          ),
+                        }
+                            .where((s) => s.trim().isNotEmpty)
+                            .where((s) => !productSetLower.contains(s.toLowerCase().trim()))
+                            .toList();
+
+                        if (stallSubcategories.isEmpty) return const SizedBox.shrink();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Subcategories',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1F2937),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: stallSubcategories.map((sub) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: categoryVisuals.color.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: categoryVisuals.color.withValues(alpha: 0.25),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    StallUtils.getTagLabel(sub),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11.5,
+                                      color: categoryVisuals.color,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 18),
+                          ],
+                        );
+                      },
+                    ),
+
+                    // 6. Products Available
                     Text(
                       'Products Available',
                       style: GoogleFonts.poppins(
@@ -800,67 +867,9 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                         }).toList(),
                       ),
 
-                    // Subcategories & Tags section
-                    Builder(
-                      builder: (context) {
-                        final stallSubcategories = <String>{
-                          ...stall.tags,
-                          ...stall.categories.where(
-                            (c) => c.trim().toLowerCase() != stall.category.trim().toLowerCase(),
-                          ),
-                        }.where((s) => s.trim().isNotEmpty).toList();
-
-                        if (stallSubcategories.isEmpty) return const SizedBox.shrink();
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 18),
-                            Text(
-                              'Subcategories & Tags',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF1F2937),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: stallSubcategories.map((sub) {
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4.5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: categoryVisuals.color.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: categoryVisuals.color.withValues(alpha: 0.25),
-                                      width: 0.8,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    StallUtils.getTagLabel(sub),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 11.5,
-                                      color: categoryVisuals.color,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-
                     const SizedBox(height: 24),
 
-                    // 6. Context-Aware Primary Action: Navigate, Confirm Start, or Redirect
+                    // 7. Context-Aware Primary Action: Navigate, Confirm Start, or Redirect
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(

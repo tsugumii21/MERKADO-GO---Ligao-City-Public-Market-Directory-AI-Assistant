@@ -205,11 +205,20 @@ class MarketSections {
     if (query == null || query.trim().isEmpty) return null;
     final normalized = query.trim().toUpperCase().replaceAll('_', ' ');
 
+    // 1. Exact match first (prevents 'BUILDING I' or 'EXTENSION I' matching longer Roman numerals)
     for (final item in items) {
       if (item.id.toUpperCase() == normalized ||
           item.label.toUpperCase() == normalized ||
-          item.id.replaceAll(' ', '') == normalized.replaceAll(' ', '') ||
-          normalized.contains(item.id.toUpperCase())) {
+          item.id.replaceAll(' ', '') == normalized.replaceAll(' ', '')) {
+        return item;
+      }
+    }
+
+    // 2. Substring match fallback sorted by length descending so e.g. 'BUILDING II' matches before 'BUILDING I'
+    final sorted = List<MarketSectionItem>.from(items)
+      ..sort((a, b) => b.id.length.compareTo(a.id.length));
+    for (final item in sorted) {
+      if (normalized.contains(item.id.toUpperCase())) {
         return item;
       }
     }

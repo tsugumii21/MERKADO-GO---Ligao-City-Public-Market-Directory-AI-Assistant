@@ -22,6 +22,7 @@ class StallModel {
   final String? stallNumber;
   final DateTime updatedAt;
   final List<String> tags;
+  final List<String> subcategories;
 
   StallModel({
     required this.stallId,
@@ -45,7 +46,9 @@ class StallModel {
     this.stallNumber,
     required this.updatedAt,
     this.tags = const [],
-  }) : categories = categories ?? [category];
+    List<String>? subcategories,
+  })  : categories = categories ?? [category],
+        subcategories = subcategories ?? const [];
 
   /// Returns the physical slot / stall ID for vector map rendering and hit-testing.
   /// Returns empty string if this stall has no physical slot on the map.
@@ -114,6 +117,36 @@ class StallModel {
               ? physicalSlot
               : doc.id;
 
+      final products = data['products'] is List
+          ? (data['products'] as List)
+              .map((e) => (e ?? '').toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
+          : <String>[];
+
+      final productSetLower = products.map((p) => p.toLowerCase().trim()).toSet();
+
+      final rawSubcategories = data['subcategories'] is List
+          ? (data['subcategories'] as List)
+              .map((e) => (e ?? '').toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
+          : <String>[];
+
+      final rawTags = data['tags'] is List
+          ? (data['tags'] as List)
+              .map((e) => (e ?? '').toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
+          : <String>[];
+
+      // Products are never subcategories - ensure complete separation
+      final resolvedSubcategories = (rawSubcategories.isNotEmpty
+              ? rawSubcategories
+              : rawTags)
+          .where((s) => !productSetLower.contains(s.toLowerCase().trim()))
+          .toList();
+
       return StallModel(
         stallId: resolvedStallId,
         documentId: doc.id,
@@ -122,12 +155,7 @@ class StallModel {
         name: (data['name'] as String? ?? '').trim(),
         category: category,
         categories: categories,
-        products: data['products'] is List
-            ? (data['products'] as List)
-                .map((e) => (e ?? '').toString().trim())
-                .where((e) => e.isNotEmpty)
-                .toList()
-            : <String>[],
+        products: products,
         address: (data['address'] as String? ?? '').trim(),
         photoUrls: data['photoUrls'] is List
             ? (data['photoUrls'] as List)
@@ -177,12 +205,8 @@ class StallModel {
                 data['stall_number'] as String?)
             ?.trim(),
         updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        tags: data['tags'] is List
-            ? (data['tags'] as List)
-                .map((e) => (e ?? '').toString().trim())
-                .where((e) => e.isNotEmpty)
-                .toList()
-            : <String>[],
+        tags: rawTags,
+        subcategories: resolvedSubcategories,
       );
     } catch (e) {
       return StallModel(
@@ -204,6 +228,7 @@ class StallModel {
         stallNumber: '',
         updatedAt: DateTime.now(),
         tags: const <String>[],
+        subcategories: const <String>[],
       );
     }
   }
@@ -247,6 +272,7 @@ class StallModel {
       'stall_number': stallNumber ?? '',
       'updatedAt': Timestamp.fromDate(updatedAt),
       'tags': tags,
+      'subcategories': subcategories,
     };
   }
 
@@ -274,6 +300,7 @@ class StallModel {
     String? stallNumber,
     DateTime? updatedAt,
     List<String>? tags,
+    List<String>? subcategories,
   }) {
     return StallModel(
       stallId: stallId ?? this.stallId,
@@ -301,6 +328,7 @@ class StallModel {
       stallNumber: stallNumber ?? this.stallNumber,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,
+      subcategories: subcategories ?? this.subcategories,
     );
   }
 

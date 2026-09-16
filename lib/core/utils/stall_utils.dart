@@ -588,15 +588,17 @@ class StallUtils {
 
     if (!categoryMatched) return false;
 
-    // If subcategory is selected, filter strictly by subcategory
+    // If subcategory is selected, filter strictly by subcategory (products are not subcategories)
     if (subcategory != null && subcategory.isNotEmpty) {
       final subNorm = subcategory.toLowerCase();
-      final inProducts = stall.products.any((p) =>
-          p.toLowerCase().contains(subNorm) || subNorm.contains(p.toLowerCase()));
+      final inSubcategories = stall.subcategories.any((s) =>
+          s.toLowerCase().contains(subNorm) || subNorm.contains(s.toLowerCase()));
       final inTags = stall.tags.any((t) =>
           t.toLowerCase().contains(subNorm) || subNorm.contains(t.toLowerCase()));
+      final inCategories = stall.categories.any((c) =>
+          c.toLowerCase().contains(subNorm) || subNorm.contains(c.toLowerCase()));
       final inName = stall.name.toLowerCase().contains(subNorm);
-      return inProducts || inTags || inName;
+      return inSubcategories || inTags || inCategories || inName;
     }
 
     return true;

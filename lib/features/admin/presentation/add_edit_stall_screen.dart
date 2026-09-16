@@ -13,6 +13,7 @@ import '../../../core/constants/market_categories.dart';
 import '../../../core/constants/market_sections.dart';
 import '../../map/domain/zone_palette.dart';
 import 'widgets/admin_stall_location_picker.dart';
+import 'widgets/admin_market_section_picker.dart';
 
 class AddEditStallScreen extends StatefulWidget {
   final String? stallId;
@@ -35,6 +36,11 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   final _latitudeController = TextEditingController(text: '13.2419233');
   final _longitudeController = TextEditingController(text: '123.538546');
   final FocusNode _productFocusNode = FocusNode();
+
+  // Stepper & UI State
+  int _currentStep = 0;
+  bool _isSubcategoriesExpanded = false;
+  final ScrollController _scrollController = ScrollController();
 
   // State Variables
   String? _selectedCategoryKey;
@@ -169,6 +175,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     _latitudeController.dispose();
     _longitudeController.dispose();
     _productFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -305,13 +312,14 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
           await _loadSubcategoriesForCategory(_selectedCategoryKey!);
         }
 
-        // Extract subcategories
+        // Extract subcategories (products are never subcategories)
         final rawSubcategories = <String>{
+          ...stall.subcategories,
           ...stall.tags,
           ...stall.categories,
           if (data['subcategories'] is List)
             ...(data['subcategories'] as List).map((e) => (e ?? '').toString().trim()),
-        };
+        }..removeWhere((s) => _products.any((p) => p.trim().toLowerCase() == s.trim().toLowerCase()));
 
         if (_selectedCategoryKey != null) {
           final currentSubs = _getCurrentSubcategories(_selectedCategoryKey!);
@@ -1474,7 +1482,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     final isDesktop = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -1512,7 +1520,9 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               ),
             ),
             Text(
-              widget.stallId != null ? 'Update stall information & schedule' : 'Register a new vendor in the directory',
+              widget.stallId != null
+                  ? 'Update stall information & schedule'
+                  : 'Register a new vendor in the directory',
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
@@ -1523,1011 +1533,1436 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: const Color(0xFFE2E8F0), height: 1),
+          child: Container(color: AppColors.border, height: 1),
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.only(
-          left: isDesktop ? 24 : 16,
-          right: isDesktop ? 24 : 16,
-          top: 12,
-          bottom: MediaQuery.of(context).padding.bottom > 0
-              ? MediaQuery.of(context).padding.bottom + 8
-              : 16,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 10,
-              offset: Offset(0, -3),
-            ),
-          ],
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: _isSaving ? null : _saveStall,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFF1B5E20).withValues(alpha: 0.6),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: _isSaving
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.check_circle_outline_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        widget.stallId != null ? 'Save Stall Changes' : 'Create Stall',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
+      bottomNavigationBar: _buildBottomBar(isDesktop),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF1B5E20)),
+              child: CircularProgressIndicator(color: AppColors.primary),
             )
           : Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 760),
-                child: Form(
-                  key: _formKey,
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      isDesktop ? 24 : 16,
-                      16,
-                      isDesktop ? 24 : 16,
-                      48,
+                child: Column(
+                  children: [
+                    _buildStepperHeader(),
+                    const Divider(height: 1, color: AppColors.border),
+                    Expanded(
+                      child: Form(
+                        key: _formKey,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: EdgeInsets.fromLTRB(
+                            isDesktop ? 24 : 16,
+                            16,
+                            isDesktop ? 24 : 16,
+                            32,
+                          ),
+                          child: _buildCurrentStepContent(),
+                        ),
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // SECTION 1: BASIC INFORMATION
-                        _buildFormCard(
-                          title: 'Basic Information',
-                          subtitle: 'Stall business name and physical address / number',
-                          icon: Icons.storefront_rounded,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFieldLabel('Stall Name', isRequired: true),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _nameController,
-                                style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
-                                decoration: _buildFieldDecoration(
-                                  hintText: 'e.g. 4E\'S LLOBET MEATSHOP',
-                                  prefixIcon: Icons.store_rounded,
-                                ),
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return 'Stall name is required';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFieldLabel('Stall Number & Full Address', isRequired: true),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _stallNumberController,
-                                style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
-                                maxLines: 2,
-                                minLines: 1,
-                                decoration: _buildFieldDecoration(
-                                  hintText: 'e.g. STALL #1 MEAT SECTION MARKET SITE, BAGUMBAYAN',
-                                  prefixIcon: Icons.location_on_outlined,
-                                ),
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return 'Stall address is required';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // MARKET MAP LOCATION PICKER
-                        _buildMapLocationCard(),
-
-                        const SizedBox(height: 16),
-
-                        // SECTION 2: CATEGORY & SUBCATEGORIES
-                        _buildFormCard(
-                          title: 'Category & Subcategories',
-                          subtitle: 'Select primary classification and add/edit subcategories (saved in database)',
-                          icon: Icons.category_rounded,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFieldLabel('Primary Category', isRequired: true),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _categoryList.map((cat) {
-                                  final isSelected = _selectedCategoryKey == cat['key'];
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedCategoryKey = null;
-                                          _selectedSubcategories.clear();
-                                          _selectedTags.clear();
-                                        } else {
-                                          _selectedCategoryKey = cat['key'] as String;
-                                          _selectedSubcategories.clear();
-                                          _selectedTags.clear();
-                                          _loadSubcategoriesForCategory(_selectedCategoryKey!);
-                                        }
-                                      });
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 180),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFFE2E8F0),
-                                          width: isSelected ? 1.5 : 1,
-                                        ),
-                                        boxShadow: isSelected
-                                            ? [
-                                                BoxShadow(
-                                                  color: const Color(0xFF1B5E20).withValues(alpha: 0.18),
-                                                  blurRadius: 6,
-                                                  offset: const Offset(0, 2),
-                                                ),
-                                              ]
-                                            : [],
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            cat['icon'] as IconData,
-                                            size: 15,
-                                            color: isSelected
-                                                ? Colors.white
-                                                : (cat['color'] as Color? ?? const Color(0xFF1B5E20)),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            cat['label'] as String,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                              color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                                            ),
-                                          ),
-                                          if (isSelected) ...[
-                                            const SizedBox(width: 5),
-                                            const Icon(
-                                              Icons.check_circle_rounded,
-                                              size: 13,
-                                              color: Colors.white,
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-
-                              // Subcategories Multi-Select Panel with Dynamic Add/Edit/Delete
-                              AnimatedSize(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeInOut,
-                                child: _selectedCategoryKey != null
-                                    ? Builder(
-                                        builder: (context) {
-                                          final subcategories = _getCurrentSubcategories(_selectedCategoryKey!);
-
-                                          return Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              const SizedBox(height: 16),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons.subdirectory_arrow_right_rounded,
-                                                        size: 16,
-                                                        color: Color(0xFF1B5E20),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      Text(
-                                                        'Subcategories',
-                                                        style: GoogleFonts.poppins(
-                                                          fontSize: 12.5,
-                                                          fontWeight: FontWeight.w700,
-                                                          color: const Color(0xFF1B5E20),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      // Quick Add Button
-                                                      GestureDetector(
-                                                        onTap: _showAddSubcategoryDialog,
-                                                        child: Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                          decoration: BoxDecoration(
-                                                            color: const Color(0xFF1B5E20),
-                                                            borderRadius: BorderRadius.circular(6),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize: MainAxisSize.min,
-                                                            children: [
-                                                              const Icon(Icons.add_rounded, size: 13, color: Colors.white),
-                                                              const SizedBox(width: 3),
-                                                              Text(
-                                                                'Add',
-                                                                style: GoogleFonts.poppins(
-                                                                  fontSize: 11,
-                                                                  fontWeight: FontWeight.w600,
-                                                                  color: Colors.white,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      // Manage All Button
-                                                      GestureDetector(
-                                                        onTap: _showManageSubcategoriesDialog,
-                                                        child: Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                          decoration: BoxDecoration(
-                                                            color: const Color(0xFFF1F5F9),
-                                                            borderRadius: BorderRadius.circular(6),
-                                                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize: MainAxisSize.min,
-                                                            children: [
-                                                              const Icon(Icons.tune_rounded, size: 13, color: Color(0xFF475569)),
-                                                              const SizedBox(width: 3),
-                                                              Text(
-                                                                'Manage',
-                                                                style: GoogleFonts.poppins(
-                                                                  fontSize: 11,
-                                                                  fontWeight: FontWeight.w600,
-                                                                  color: const Color(0xFF475569),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      // Select All / Clear All
-                                                      GestureDetector(
-                                                        onTap: () {
-                                                          setState(() {
-                                                            if (_selectedSubcategories.length == subcategories.length) {
-                                                              _selectedSubcategories.clear();
-                                                            } else {
-                                                              _selectedSubcategories.addAll(subcategories);
-                                                            }
-                                                          });
-                                                        },
-                                                        child: Text(
-                                                          _selectedSubcategories.length == subcategories.length
-                                                              ? 'Clear'
-                                                              : 'Select All',
-                                                          style: GoogleFonts.poppins(
-                                                            fontSize: 11,
-                                                            fontWeight: FontWeight.w600,
-                                                            color: const Color(0xFF1B5E20),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Container(
-                                                width: double.infinity,
-                                                padding: const EdgeInsets.all(12),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFF1F8E9),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
-                                                  ),
-                                                ),
-                                                child: _isLoadingSubcategories
-                                                    ? const Padding(
-                                                        padding: EdgeInsets.all(12.0),
-                                                        child: Center(
-                                                          child: SizedBox(
-                                                            width: 20,
-                                                            height: 20,
-                                                            child: CircularProgressIndicator(
-                                                              color: Color(0xFF1B5E20),
-                                                              strokeWidth: 2,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : Wrap(
-                                                        spacing: 8,
-                                                        runSpacing: 8,
-                                                        children: [
-                                                          ...subcategories.map((subValue) {
-                                                            final isSubSelected = _selectedSubcategories.contains(subValue);
-
-                                                            return GestureDetector(
-                                                              onTap: () {
-                                                                setState(() {
-                                                                  if (isSubSelected) {
-                                                                    _selectedSubcategories.remove(subValue);
-                                                                  } else {
-                                                                    _selectedSubcategories.add(subValue);
-                                                                  }
-                                                                });
-                                                              },
-                                                              onLongPress: () => _showSubcategoryActionSheet(subValue),
-                                                              child: AnimatedContainer(
-                                                                duration: const Duration(milliseconds: 180),
-                                                                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                                                                decoration: BoxDecoration(
-                                                                  color: isSubSelected ? const Color(0xFF1B5E20) : Colors.white,
-                                                                  borderRadius: BorderRadius.circular(20),
-                                                                  border: Border.all(
-                                                                    color: isSubSelected
-                                                                        ? const Color(0xFF1B5E20)
-                                                                        : const Color(0xFFE2E8F0),
-                                                                    width: isSubSelected ? 1.5 : 1,
-                                                                  ),
-                                                                ),
-                                                                child: Row(
-                                                                  mainAxisSize: MainAxisSize.min,
-                                                                  children: [
-                                                                    Icon(
-                                                                      isSubSelected
-                                                                          ? Icons.check_circle_rounded
-                                                                          : Icons.add_circle_outline_rounded,
-                                                                      size: 13,
-                                                                      color: isSubSelected
-                                                                          ? Colors.white
-                                                                          : const Color(0xFF94A3B8),
-                                                                    ),
-                                                                    const SizedBox(width: 5),
-                                                                    Text(
-                                                                      subValue,
-                                                                      style: GoogleFonts.poppins(
-                                                                        fontSize: 11.5,
-                                                                        fontWeight: isSubSelected
-                                                                            ? FontWeight.w600
-                                                                            : FontWeight.w400,
-                                                                        color: isSubSelected
-                                                                            ? Colors.white
-                                                                            : const Color(0xFF1E293B),
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              ),
-                                                            );
-                                                          }),
-                                                          // Inline Add Chip
-                                                          GestureDetector(
-                                                            onTap: _showAddSubcategoryDialog,
-                                                            child: Container(
-                                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                              decoration: BoxDecoration(
-                                                                color: Colors.white,
-                                                                borderRadius: BorderRadius.circular(20),
-                                                                border: Border.all(
-                                                                  color: const Color(0xFF1B5E20),
-                                                                  style: BorderStyle.solid,
-                                                                ),
-                                                              ),
-                                                              child: Row(
-                                                                mainAxisSize: MainAxisSize.min,
-                                                                children: [
-                                                                  const Icon(Icons.add_rounded, size: 14, color: Color(0xFF1B5E20)),
-                                                                  const SizedBox(width: 4),
-                                                                  Text(
-                                                                    'Add Subcategory',
-                                                                    style: GoogleFonts.poppins(
-                                                                      fontSize: 11.5,
-                                                                      fontWeight: FontWeight.w600,
-                                                                      color: const Color(0xFF1B5E20),
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      )
-                                    : const SizedBox.shrink(),
-                              ),
-
-                              if (_finalPrimaryCategoryName.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE8F5E9),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: const Color(0xFF81C784)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.verified_rounded, size: 16, color: Color(0xFF2E7D32)),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _selectedSubcategories.isEmpty
-                                              ? 'Category: $_finalPrimaryCategoryName'
-                                              : '$_finalPrimaryCategoryName (${_selectedSubcategories.length} subcategories selected)',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1B5E20),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // SECTION 3: MARKET SECTION & BUILDING LOCATION
-                        _buildFormCard(
-                          title: 'Market Section / Building',
-                          subtitle: 'Physical building, specialized section, or extension',
-                          icon: Icons.account_balance_rounded,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ...[
-                                'Commodity Sections',
-                                'Camarin Buildings',
-                                'Numbered Buildings',
-                                'Market Extensions',
-                              ].map((groupName) {
-                                final groupItems =
-                                    MarketSections.items.where((s) => s.group == groupName).toList();
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4, bottom: 6),
-                                      child: Text(
-                                        groupName.toUpperCase(),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF64748B),
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ),
-                                    Wrap(
-                                      spacing: 7,
-                                      runSpacing: 7,
-                                      children: groupItems.map((section) {
-                                        final isSelected =
-                                            _selectedSection?.toUpperCase() == section.id.toUpperCase();
-                                        return GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              _selectedSection = isSelected ? null : section.id;
-                                            });
-                                          },
-                                          child: AnimatedContainer(
-                                            duration: const Duration(milliseconds: 180),
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: isSelected
-                                                    ? const Color(0xFF1B5E20)
-                                                    : const Color(0xFFE2E8F0),
-                                                width: isSelected ? 1.5 : 1,
-                                              ),
-                                              boxShadow: isSelected
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: const Color(0xFF1B5E20).withValues(alpha: 0.18),
-                                                        blurRadius: 4,
-                                                        offset: const Offset(0, 2),
-                                                      ),
-                                                    ]
-                                                  : [],
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  section.icon,
-                                                  size: 13,
-                                                  color: isSelected ? Colors.white : const Color(0xFF16A34A),
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  section.label,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11.5,
-                                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                                    color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                    const SizedBox(height: 10),
-                                  ],
-                                );
-                              }),
-
-                              if (_selectedSection != null) ...[
-                                const SizedBox(height: 2),
-                                Builder(
-                                  builder: (context) {
-                                    final sectionItem = MarketSections.findSection(_selectedSection);
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE8F5E9),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: const Color(0xFF81C784)),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            sectionItem?.icon ?? Icons.location_on_rounded,
-                                            size: 16,
-                                            color: const Color(0xFF2E7D32),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              'Assigned: ${sectionItem?.label ?? _selectedSection!}',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: const Color(0xFF1B5E20),
-                                              ),
-                                            ),
-                                          ),
-                                          GestureDetector(
-                                            onTap: () => setState(() => _selectedSection = null),
-                                            child: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF2E7D32)),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // SECTION 4: OPERATING SCHEDULE
-                        _buildFormCard(
-                          title: 'Operating Hours & Schedule',
-                          subtitle: 'Service times and active days in the week',
-                          icon: Icons.schedule_rounded,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFieldLabel('Operating Hours', isRequired: true),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildTimePickerTile(
-                                      label: 'Open Time',
-                                      controller: _openTimeController,
-                                      icon: Icons.wb_sunny_outlined,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildTimePickerTile(
-                                      label: 'Close Time',
-                                      controller: _closeTimeController,
-                                      icon: Icons.nightlight_outlined,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFieldLabel('Operating Days', isRequired: true),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  _buildDayPresetButton('Mon - Fri', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']),
-                                  const SizedBox(width: 8),
-                                  _buildDayPresetButton('Mon - Sat', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']),
-                                  const SizedBox(width: 8),
-                                  _buildDayPresetButton('Everyday', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: _days.map((day) {
-                                  final isSelected = _selectedDays.contains(day['value']);
-                                  return Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          if (isSelected) {
-                                            _selectedDays.remove(day['value']);
-                                          } else {
-                                            _selectedDays.add(day['value']!);
-                                          }
-                                        });
-                                      },
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 150),
-                                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                                        padding: const EdgeInsets.symmetric(vertical: 10),
-                                        decoration: BoxDecoration(
-                                          color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: isSelected ? const Color(0xFF1B5E20) : const Color(0xFFCBD5E1),
-                                            width: isSelected ? 1.5 : 1,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            day['label']!,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 11,
-                                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                              color: isSelected ? Colors.white : const Color(0xFF475569),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // SECTION 5: PRODUCTS & INVENTORY
-                        _buildFormCard(
-                          title: 'Products & Inventory',
-                          subtitle: 'Items and goods sold at this stall',
-                          icon: Icons.shopping_basket_rounded,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (_productSuggestions.isNotEmpty) ...[
-                                Text(
-                                  'POPULAR SUGGESTIONS',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF64748B),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: _productSuggestions.take(8).map((s) {
-                                      return GestureDetector(
-                                        onTap: () => _addProduct(s),
-                                        child: Container(
-                                          margin: const EdgeInsets.only(right: 6),
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF1F5F9),
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.add_rounded, size: 13, color: Color(0xFF475569)),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                s,
-                                                style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF334155)),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                              if (_products.isNotEmpty) ...[
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: _products.map((p) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF1B5E20),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            p,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 11.5,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 5),
-                                          GestureDetector(
-                                            onTap: () => _removeProduct(p),
-                                            child: const Icon(Icons.close_rounded, size: 13, color: Colors.white),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _productController,
-                                      focusNode: _productFocusNode,
-                                      style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF0F172A)),
-                                      decoration: _buildFieldDecoration(
-                                        hintText: 'Add product (e.g. Pork Liempo, Adobo)',
-                                        prefixIcon: Icons.add_shopping_cart_rounded,
-                                      ),
-                                      textInputAction: TextInputAction.done,
-                                      onSubmitted: (_) => _addProduct(_productController.text),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Material(
-                                    color: const Color(0xFF1B5E20),
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(10),
-                                      onTap: () => _addProduct(_productController.text),
-                                      child: const SizedBox(
-                                        width: 44,
-                                        height: 44,
-                                        child: Icon(Icons.add_rounded, color: Colors.white, size: 22),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // SECTION 6: STALL PHOTO
-                        _buildFormCard(
-                          title: 'Stall Photo',
-                          subtitle: 'Upload a clear front-facing photo of this stall',
-                          icon: Icons.photo_camera_rounded,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildPhotoSection(),
-                              if (_selectedImageBytes != null ||
-                                  (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty)) ...[
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: Color(0xFF1B5E20)),
-                                        label: Text('Change Photo', style: GoogleFonts.poppins(fontSize: 12, color: Color(0xFF1B5E20))),
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Color(0xFF1B5E20)),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                        ),
-                                        onPressed: _pickImage,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    OutlinedButton.icon(
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFE53935)),
-                                      label: Text('Remove', style: GoogleFonts.poppins(fontSize: 12, color: Color(0xFFE53935))),
-                                      style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(color: Color(0xFFE53935)),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _selectedImageBytes = null;
-                                          _existingPhotoUrl = null;
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // SECTION 7: STALL STATUS
-                        _buildFormCard(
-                          title: 'Stall Operational Status',
-                          subtitle: 'Current operational state shown in the public directory',
-                          icon: Icons.toggle_on_rounded,
-                          child: Column(
-                            children: _statusOptions.map((status) {
-                              final isSelected = _stallStatus == status['value'];
-                              return GestureDetector(
-                                onTap: () => setState(() => _stallStatus = status['value'] as String),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? (status['bgColor'] as Color) : Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? (status['color'] as Color)
-                                          : const Color(0xFFE2E8F0),
-                                      width: isSelected ? 1.5 : 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? (status['color'] as Color).withValues(alpha: 0.15)
-                                              : const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Icon(
-                                          status['icon'] as IconData,
-                                          size: 18,
-                                          color: isSelected ? status['color'] as Color : const Color(0xFF64748B),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              status['label'] as String,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 13,
-                                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                                color: isSelected ? status['color'] as Color : const Color(0xFF0F172A),
-                                              ),
-                                            ),
-                                            Text(
-                                              status['description'] as String,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 11,
-                                                color: const Color(0xFF64748B),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: isSelected
-                                                ? status['color'] as Color
-                                                : const Color(0xFFCBD5E1),
-                                            width: 2,
-                                          ),
-                                          color: isSelected ? status['color'] as Color : Colors.transparent,
-                                        ),
-                                        child: isSelected
-                                            ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
-                                            : null,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
     );
+  }
+
+  Widget _buildCurrentStepContent() {
+    switch (_currentStep) {
+      case 0:
+        return _buildStep0BasicInfo();
+      case 1:
+        return _buildStep1CategoryAndLocation();
+      case 2:
+        return _buildStep2ScheduleAndProducts();
+      case 3:
+      default:
+        return _buildStep3PhotoAndStatus();
+    }
+  }
+
+  // ----------------------------------------------------
+  // STEP 0: BASIC INFORMATION & MARKET MAP LOCATION
+  // ----------------------------------------------------
+  Widget _buildStep0BasicInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFormCard(
+          title: 'Basic Information',
+          subtitle: 'Stall business name and physical address / number',
+          icon: Icons.storefront_rounded,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildFieldLabel('Stall Name', isRequired: true),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _nameController,
+                textAlignVertical: TextAlignVertical.center,
+                style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
+                decoration: _buildFieldDecoration(
+                  hintText: "e.g. 4E'S LLOBET MEATSHOP",
+                  prefixIcon: Icons.store_rounded,
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Stall name is required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildFieldLabel('Stall Number & Full Address', isRequired: true),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _stallNumberController,
+                textAlignVertical: TextAlignVertical.center,
+                style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
+                decoration: _buildFieldDecoration(
+                  hintText: 'e.g. STALL #1 MEAT SECTION MARKET SITE, BAGUMBAYAN',
+                  prefixIcon: Icons.location_on_outlined,
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Stall address is required';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildMapLocationCard(),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------
+  // STEP 1: CATEGORY & BUILDING LOCATION
+  // ----------------------------------------------------
+  Widget _buildStep1CategoryAndLocation() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Primary Category Card
+        _buildFormCard(
+          title: 'Primary Category',
+          subtitle: 'Main commodity classification for map coloring and directory search',
+          icon: Icons.category_rounded,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildFieldLabel('Primary Category', isRequired: true),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _categoryList.map((cat) {
+                  final isSelected = _selectedCategoryKey == cat['key'];
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        if (isSelected) {
+                          _selectedCategoryKey = null;
+                          _selectedSubcategories.clear();
+                          _selectedTags.clear();
+                          _isSubcategoriesExpanded = false;
+                        } else {
+                          _selectedCategoryKey = cat['key'] as String;
+                          _selectedSubcategories.clear();
+                          _selectedTags.clear();
+                          _isSubcategoriesExpanded = true;
+                          _loadSubcategoriesForCategory(_selectedCategoryKey!);
+                        }
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primary : AppColors.border,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            cat['icon'] as IconData,
+                            size: 15,
+                            color: isSelected
+                                ? Colors.white
+                                : (cat['color'] as Color? ?? AppColors.primary),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            cat['label'] as String,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected ? Colors.white : AppColors.ink,
+                            ),
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 5),
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 13,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              if (_finalPrimaryCategoryName.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.verified_rounded, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Selected: $_finalPrimaryCategoryName',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Market Section & Building Card (Searchable Dropdown)
+        _buildFormCard(
+          title: 'Market Section & Building',
+          subtitle: 'Physical architectural wing in Ligao Public Market (optional)',
+          icon: Icons.account_balance_rounded,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildFieldLabel('Market Section & Building'),
+              const SizedBox(height: 8),
+              AdminMarketSectionPicker(
+                selectedSectionId: _selectedSection,
+                onSectionChanged: (newSecId) {
+                  setState(() => _selectedSection = newSecId);
+                },
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Subcategories & Tags Card (Collapsed by default)
+        _buildSubcategoriesExpandable(),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------
+  // STEP 2: OPERATING SCHEDULE & INVENTORY
+  // ----------------------------------------------------
+  Widget _buildStep2ScheduleAndProducts() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Operating Schedule
+        _buildFormCard(
+          title: 'Operating Hours & Schedule',
+          subtitle: 'Service times and active days in the week',
+          icon: Icons.schedule_rounded,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildFieldLabel('Operating Hours', isRequired: true),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTimePickerTile(
+                      label: 'Open Time',
+                      controller: _openTimeController,
+                      icon: Icons.wb_sunny_outlined,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildTimePickerTile(
+                      label: 'Close Time',
+                      controller: _closeTimeController,
+                      icon: Icons.nightlight_outlined,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildFieldLabel('Operating Days', isRequired: true),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildDayPresetButton('Mon - Fri', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']),
+                  const SizedBox(width: 8),
+                  _buildDayPresetButton('Mon - Sat', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']),
+                  const SizedBox(width: 8),
+                  _buildDayPresetButton('Everyday', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: _days.map((day) {
+                  final isSelected = _selectedDays.contains(day['value']);
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedDays.remove(day['value']);
+                          } else {
+                            _selectedDays.add(day['value']!);
+                          }
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primary : AppColors.border,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            day['label']!,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected ? Colors.white : AppColors.inkMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Products & Inventory
+        _buildFormCard(
+          title: 'Products & Inventory',
+          subtitle: 'Items and goods sold at this stall (optional)',
+          icon: Icons.shopping_basket_rounded,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_productSuggestions.isNotEmpty) ...[
+                Text(
+                  'POPULAR SUGGESTIONS',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.inkMuted,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _productSuggestions.take(8).map((s) {
+                      return GestureDetector(
+                        onTap: () => _addProduct(s),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppColors.canvas,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.add_rounded, size: 13, color: AppColors.inkMuted),
+                              const SizedBox(width: 4),
+                              Text(
+                                s,
+                                style: GoogleFonts.poppins(fontSize: 11.5, color: AppColors.ink),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (_products.isNotEmpty) ...[
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _products.map((p) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            p,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          GestureDetector(
+                            onTap: () => _removeProduct(p),
+                            child: const Icon(Icons.close_rounded, size: 13, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _productController,
+                      focusNode: _productFocusNode,
+                      style: GoogleFonts.poppins(fontSize: 13, color: AppColors.ink),
+                      decoration: _buildFieldDecoration(
+                        hintText: 'Add product (e.g. Pork Liempo, Adobo)',
+                        prefixIcon: Icons.add_shopping_cart_rounded,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _addProduct(_productController.text),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => _addProduct(_productController.text),
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------
+  // STEP 3: PHOTO & OPERATIONAL STATUS
+  // ----------------------------------------------------
+  Widget _buildStep3PhotoAndStatus() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Stall Operational Status
+        _buildFormCard(
+          title: 'Stall Operational Status',
+          subtitle: 'Current operational state shown in the public directory',
+          icon: Icons.toggle_on_rounded,
+          child: Column(
+            children: _statusOptions.map((status) {
+              final isSelected = _stallStatus == status['value'];
+              return GestureDetector(
+                onTap: () => setState(() => _stallStatus = status['value'] as String),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? (status['bgColor'] as Color) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? (status['color'] as Color)
+                          : AppColors.border,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (status['color'] as Color).withValues(alpha: 0.15)
+                              : AppColors.canvas,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          status['icon'] as IconData,
+                          size: 18,
+                          color: isSelected ? status['color'] as Color : AppColors.inkMuted,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              status['label'] as String,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isSelected ? status['color'] as Color : AppColors.ink,
+                              ),
+                            ),
+                            Text(
+                              status['description'] as String,
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? status['color'] as Color
+                                : AppColors.border,
+                            width: 2,
+                          ),
+                          color: isSelected ? status['color'] as Color : Colors.transparent,
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Stall Photo Card (Optional)
+        _buildFormCard(
+          title: 'Stall Photo',
+          subtitle: 'Upload a clear front-facing photo of this stall (optional)',
+          icon: Icons.photo_camera_rounded,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildPhotoSection(),
+              if (_selectedImageBytes != null ||
+                  (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty)) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppColors.primary),
+                        label: Text('Change Photo', style: GoogleFonts.poppins(fontSize: 12, color: AppColors.primary)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.primary),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: _pickImage,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.error),
+                      label: Text('Remove', style: GoogleFonts.poppins(fontSize: 12, color: AppColors.error)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.error),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _selectedImageBytes = null;
+                          _existingPhotoUrl = null;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Review Summary Card
+        _buildReviewSummaryCard(),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------
+  // SUB-COMPONENTS: EXPANDABLE SUBCATEGORIES & SUMMARY
+  // ----------------------------------------------------
+  Widget _buildSubcategoriesExpandable() {
+    if (_selectedCategoryKey == null) {
+      return _buildFormCard(
+        title: 'Subcategories',
+        subtitle: 'Select a primary category above to view required subcategories',
+        icon: Icons.tune_rounded,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.canvas,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.inkMuted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Select a Primary Category above to view and assign required subcategories.',
+                  style: GoogleFonts.poppins(fontSize: 12, color: AppColors.inkMuted),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final subcategories = _getCurrentSubcategories(_selectedCategoryKey!);
+    final count = _selectedSubcategories.length;
+
+    return _buildFormCard(
+      title: 'Subcategories',
+      subtitle: 'Assign at least one subcategory classification (required)',
+      icon: Icons.tune_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Material(
+            color: AppColors.canvas,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () {
+                setState(() => _isSubcategoriesExpanded = !_isSubcategoriesExpanded);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: count > 0 ? AppColors.primary : AppColors.border,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        Icons.subdirectory_arrow_right_rounded,
+                        size: 14,
+                        color: count > 0 ? Colors.white : AppColors.inkMuted,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                count > 0
+                                    ? '$count Subcategories Selected'
+                                    : 'Subcategories',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '*',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            _isSubcategoriesExpanded
+                                ? 'Tap to collapse'
+                                : (count > 0
+                                    ? 'Tap to edit assigned subcategories'
+                                    : 'Tap to expand & select required subcategories'),
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: count > 0 ? AppColors.primary : AppColors.inkMuted,
+                              fontWeight: count > 0 ? FontWeight.w500 : FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _isSubcategoriesExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.inkMuted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_isSubcategoriesExpanded) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Subcategories for $_finalPrimaryCategoryName *',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: _showAddSubcategoryDialog,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.add_rounded, size: 14, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Add',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _showManageSubcategoriesDialog,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.canvas,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.tune_rounded, size: 14, color: AppColors.inkMuted),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Manage',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (_selectedSubcategories.length == subcategories.length) {
+                            _selectedSubcategories.clear();
+                          } else {
+                            _selectedSubcategories.addAll(subcategories);
+                          }
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        child: Text(
+                          _selectedSubcategories.length == subcategories.length ? 'Clear' : 'Select All',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDim,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: _isLoadingSubcategories
+                  ? const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                            strokeWidth: 2.5,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        ...subcategories.map((subValue) {
+                          final isSubSelected = _selectedSubcategories.contains(subValue);
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isSubSelected) {
+                                  _selectedSubcategories.remove(subValue);
+                                } else {
+                                  _selectedSubcategories.add(subValue);
+                                }
+                              });
+                            },
+                            onLongPress: () => _showSubcategoryActionSheet(subValue),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: isSubSelected ? AppColors.primary : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSubSelected ? AppColors.primary : AppColors.border,
+                                  width: isSubSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isSubSelected
+                                        ? Icons.check_circle_rounded
+                                        : Icons.add_circle_outline_rounded,
+                                    size: 15,
+                                    color: isSubSelected ? Colors.white : AppColors.inkSubtle,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    subValue,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      height: 1.25,
+                                      letterSpacing: 0.1,
+                                      fontWeight: isSubSelected ? FontWeight.w600 : FontWeight.w500,
+                                      color: isSubSelected ? Colors.white : AppColors.ink,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        GestureDetector(
+                          onTap: _showAddSubcategoryDialog,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.primary),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Add Subcategory',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewSummaryCard() {
+    final catItem = MarketCategories.findCategory(_selectedCategoryKey);
+    final secItem = MarketSections.findSection(_selectedSection);
+    final hasMapLoc = _selectedPhysicalStallId != null && _selectedPhysicalStallId!.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.fact_check_outlined, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Review Stall Summary',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildSummaryRow(
+            'Name',
+            _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'Not provided',
+          ),
+          _buildSummaryRow(
+            'Category',
+            catItem?.displayName ?? (_finalPrimaryCategoryName.isNotEmpty ? _finalPrimaryCategoryName : 'Not selected'),
+          ),
+          if (_selectedSubcategories.isNotEmpty)
+            _buildSummaryRow(
+              'Subcategories',
+              _selectedSubcategories.join(', '),
+            ),
+          _buildSummaryRow(
+            'Section',
+            secItem?.label ?? (_selectedSection ?? 'Unassigned'),
+          ),
+          _buildSummaryRow(
+            'Map Slot',
+            hasMapLoc ? _selectedPhysicalStallId! : 'No vector map location',
+          ),
+          _buildSummaryRow(
+            'Hours',
+            '${_openTimeController.text} - ${_closeTimeController.text}',
+          ),
+          _buildSummaryRow(
+            'Days',
+            _selectedDays.join(', '),
+          ),
+          _buildSummaryRow(
+            'Status',
+            _stallStatus.toUpperCase(),
+          ),
+          if (_products.isNotEmpty)
+            _buildSummaryRow(
+              'Products',
+              '${_products.length} items',
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 96,
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkMuted,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------
+  // STEPPER HEADER & BOTTOM NAVIGATION
+  // ----------------------------------------------------
+  Widget _buildStepperHeader() {
+    final steps = [
+      ('Basic Info', Icons.storefront_rounded),
+      ('Category & Location', Icons.category_rounded),
+      ('Schedule & Products', Icons.schedule_rounded),
+      ('Photo & Status', Icons.photo_camera_rounded),
+    ];
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < steps.length; i++) ...[
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _goToStep(i),
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 30,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              if (i > 0)
+                                Expanded(
+                                  child: Container(
+                                    height: 2,
+                                    color: i <= _currentStep
+                                        ? AppColors.primary
+                                        : AppColors.border,
+                                  ),
+                                )
+                              else
+                                const Spacer(),
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: i < _currentStep
+                                      ? AppColors.primary
+                                      : (i == _currentStep
+                                          ? AppColors.primary
+                                          : AppColors.canvas),
+                                  border: Border.all(
+                                    color: i <= _currentStep
+                                        ? AppColors.primary
+                                        : AppColors.border,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: i < _currentStep
+                                      ? const Icon(
+                                          Icons.check_rounded,
+                                          size: 16,
+                                          color: Colors.white,
+                                        )
+                                      : Text(
+                                          '${i + 1}',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: i == _currentStep
+                                                ? Colors.white
+                                                : AppColors.inkMuted,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              if (i < steps.length - 1)
+                                Expanded(
+                                  child: Container(
+                                    height: 2,
+                                    color: i < _currentStep
+                                        ? AppColors.primary
+                                        : AppColors.border,
+                                  ),
+                                )
+                              else
+                                const Spacer(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          height: 28,
+                          child: Text(
+                            steps[i].$1,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              height: 1.15,
+                              fontWeight: i == _currentStep
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: i == _currentStep
+                                  ? AppColors.primary
+                                  : AppColors.inkMuted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Step ${_currentStep + 1} of 4: ',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+                Text(
+                  steps[_currentStep].$1,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(bool isDesktop) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: isDesktop ? 24 : 16,
+        right: isDesktop ? 24 : 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom > 0
+            ? MediaQuery.of(context).padding.bottom + 8
+            : 16,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: AppColors.border, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: isDesktop ? 120 : 96,
+            height: 50,
+            child: OutlinedButton.icon(
+              icon: Icon(
+                _currentStep == 0 ? Icons.close_rounded : Icons.arrow_back_rounded,
+                size: 16,
+                color: AppColors.inkMuted,
+              ),
+              label: Text(
+                _currentStep == 0 ? 'Cancel' : 'Back',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkMuted,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                side: const BorderSide(color: AppColors.border, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _prevStep,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _nextStep,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: Text(
+                                _currentStep < 3
+                                    ? (_currentStep == 0
+                                        ? 'Next: Category & Location'
+                                        : (_currentStep == 1
+                                            ? 'Next: Schedule & Products'
+                                            : 'Next: Photo & Status'))
+                                    : (widget.stallId != null ? 'Save Stall Changes' : 'Create Stall'),
+                                maxLines: 1,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            _currentStep < 3
+                                ? Icons.arrow_forward_rounded
+                                : Icons.check_circle_outline_rounded,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------
+  // STEPPER NAVIGATION & VALIDATION
+  // ----------------------------------------------------
+  bool _validateCurrentStep() {
+    if (_currentStep == 0) {
+      final name = _nameController.text.trim();
+      final address = _stallNumberController.text.trim();
+      if (name.isEmpty) {
+        _showValidationWarning('Please enter a stall name.');
+        return false;
+      }
+      if (address.isEmpty) {
+        _showValidationWarning('Please enter stall number and address.');
+        return false;
+      }
+      return _formKey.currentState?.validate() ?? true;
+    } else if (_currentStep == 1) {
+      if (_selectedCategoryKey == null || _selectedCategoryKey!.isEmpty) {
+        _showValidationWarning('Please select a primary category.');
+        return false;
+      }
+      final availableSubs = _getCurrentSubcategories(_selectedCategoryKey!);
+      if (availableSubs.isNotEmpty && _selectedSubcategories.isEmpty) {
+        setState(() => _isSubcategoriesExpanded = true);
+        _showValidationWarning('Please select at least one subcategory for $_finalPrimaryCategoryName.');
+        return false;
+      }
+      return true;
+    } else if (_currentStep == 2) {
+      if (_openTimeController.text.trim().isEmpty || _closeTimeController.text.trim().isEmpty) {
+        _showValidationWarning('Please set operating hours.');
+        return false;
+      }
+      if (_selectedDays.isEmpty) {
+        _showValidationWarning('Please select at least one operating day.');
+        return false;
+      }
+      return true;
+    }
+    return true;
+  }
+
+  void _showValidationWarning(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w500),
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _goToStep(int step) {
+    if (step < _currentStep) {
+      setState(() => _currentStep = step);
+      _scrollToTop();
+    } else if (step > _currentStep) {
+      if (_validateCurrentStep()) {
+        setState(() => _currentStep = step);
+        _scrollToTop();
+      }
+    }
+  }
+
+  void _nextStep() {
+    if (_validateCurrentStep()) {
+      if (_currentStep < 3) {
+        setState(() => _currentStep++);
+        _scrollToTop();
+      } else {
+        _saveStall();
+      }
+    }
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+      _scrollToTop();
+    } else {
+      context.pop();
+    }
+  }
+
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Future<void> _openMapLocationPicker() async {
@@ -2808,13 +3243,6 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2893,6 +3321,8 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
       prefixIcon: Icon(prefixIcon, size: 18, color: const Color(0xFF64748B)),
+      prefixIconConstraints: const BoxConstraints(minWidth: 46, minHeight: 46),
+      isDense: true,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -2905,7 +3335,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: Color(0xFF1B5E20), width: 1.8),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }
 

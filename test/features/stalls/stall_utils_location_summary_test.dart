@@ -117,4 +117,38 @@ void main() {
       );
     });
   });
+
+  group('StallUtils.formatOperatingDays Tests', () {
+    test('Sorts jumbled days chronologically', () {
+      expect(
+        StallUtils.formatOperatingDays('Mon, Sun, Wed, Fri'),
+        equals('Mon, Wed, Fri, Sun'),
+      );
+      expect(
+        StallUtils.formatOperatingDays('Sunday, Monday, Friday, Wednesday'),
+        equals('Mon, Wed, Fri, Sun'),
+      );
+    });
+
+    test('Formats 7 days as Daily (Mon – Sun)', () {
+      expect(
+        StallUtils.formatOperatingDays(
+          'Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday',
+        ),
+        equals('Daily (Mon – Sun)'),
+      );
+    });
+
+    test('Formats standard ranges', () {
+      expect(
+        StallUtils.formatOperatingDays('Monday, Tuesday, Wednesday, Thursday, Friday'),
+        equals('Mon – Fri (Weekdays)'),
+      );
+      expect(
+        StallUtils.formatOperatingDays('Saturday, Sunday'),
+        equals('Sat – Sun (Weekends)'),
+      );
+    });
+  });
 }
+

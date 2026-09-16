@@ -44,7 +44,7 @@ void main() {
     debugPrint('Clamped scale when set to 5.0: $clampedMaxScale');
     expect(clampedMaxScale, closeTo(3.5, 0.01));
 
-    // Test clamp when translated past boundary edge (100px padding)
+    // Test clamp when translated past boundary edge (0px padding - zero white edges)
     controller.value = Matrix4.identity()
       ..scaleByVector3(Vector3(0.25, 0.25, 0.25))
       ..setTranslation(Vector3(-10000.0, -10000.0, 0.0));
@@ -52,11 +52,10 @@ void main() {
     final clampedTx = controller.value.storage[12];
     final clampedTy = controller.value.storage[13];
     debugPrint('Clamped translation at edge: tx=$clampedTx, ty=$clampedTy');
-    // At scale 0.25, map width is 8004 * 0.25 = 2001. Boundary is (8004 + 100) * 0.25 = 2026.
-    // Viewport width is 400. Minimum tx is 400 - (8004 + 100) * 0.25 = 400 - 2026 = -1626.
-    // Viewport height is 600 (Scaffold body). Minimum ty is 600 - (8000 + 100) * 0.25 = 600 - 2025 = -1425.
-    expect(clampedTx, closeTo(-1626.0, 2.0));
-    expect(clampedTy, closeTo(-1425.0, 2.0));
+    // At scale 0.25, map width is 8004 * 0.25 = 2001. Viewport width is 400. Minimum tx is 400 - 2001 = -1601.
+    // Viewport height is 600 (Scaffold body). Minimum ty is 600 - (8000 * 0.25) = 600 - 2000 = -1400.
+    expect(clampedTx, closeTo(-1601.0, 2.0));
+    expect(clampedTy, closeTo(-1400.0, 2.0));
 
     // Pan back towards center from the edge
     controller.value = controller.value.clone()

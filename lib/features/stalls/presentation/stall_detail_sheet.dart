@@ -648,57 +648,97 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
 
                     // 4. Schedule & Status Card
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Row 1: Status Pill + Operating Hours
+                          // Row 1: Operating Hours (Left) + Status Pill (Right)
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(5.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.schedule_rounded,
+                                      size: 15,
+                                      color: Color(0xFF475569),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Operating Hours',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      Text(
+                                        stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
+                                            ? '${stall.openTime} – ${stall.closeTime}'
+                                            : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not specified'),
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3.5,
+                                  horizontal: 9,
+                                  vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
                                   color: statusInfo['bgColor'] as Color,
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: (statusInfo['borderColor'] as Color)
-                                        .withValues(alpha: 0.6),
-                                    width: 0.8,
+                                        .withValues(alpha: 0.8),
+                                    width: 1,
                                   ),
                                 ),
-                                child: Text(
-                                  statusInfo['label'] as String,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: statusInfo['color'] as Color,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Icon(
-                                Icons.schedule_rounded,
-                                size: 14,
-                                color: Color(0xFF64748B),
-                              ),
-                              const SizedBox(width: 5),
-                              Expanded(
-                                child: Text(
-                                  stall.openTime.isNotEmpty && stall.closeTime.isNotEmpty
-                                      ? '${stall.openTime} – ${stall.closeTime}'
-                                      : (stall.openTime.isNotEmpty ? stall.openTime : 'Hours not specified'),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF334155),
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: statusInfo['color'] as Color,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      statusInfo['label'] as String,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: statusInfo['color'] as Color,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -711,23 +751,44 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                               color: Color(0xFFE2E8F0),
                             ),
                             const SizedBox(height: 10),
-                            // Row 2: Schedule Days
+                            // Row 2: Operating Days
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.event_available_rounded,
-                                  size: 14,
-                                  color: Color(0xFF64748B),
+                                Container(
+                                  padding: const EdgeInsets.all(5.5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.calendar_month_rounded,
+                                    size: 15,
+                                    color: Color(0xFF475569),
+                                  ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 8),
                                 Expanded(
-                                  child: Text(
-                                    'Schedule: ${StallUtils.formatOperatingDays(stall.daysOpen.join(', '))}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: const Color(0xFF475569),
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Operating Days',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      Text(
+                                        StallUtils.formatOperatingDays(stall.daysOpen.join(', ')),
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: const Color(0xFF334155),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],

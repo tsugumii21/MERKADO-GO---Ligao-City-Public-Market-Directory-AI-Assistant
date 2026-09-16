@@ -404,6 +404,13 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   }
 
   List<String> _getDaysOpenArray() {
+    const Map<String, int> dayOrder = {
+      'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7,
+      'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7,
+    };
+    final sorted = List<String>.from(_selectedDays)
+      ..sort((a, b) => (dayOrder[a] ?? 99).compareTo(dayOrder[b] ?? 99));
+
     final Map<String, String> dayMap = {
       'Mon': 'Monday',
       'Tue': 'Tuesday',
@@ -413,7 +420,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       'Sat': 'Saturday',
       'Sun': 'Sunday',
     };
-    return _selectedDays.map((d) => dayMap[d] ?? d).toList();
+    return sorted.map((d) => dayMap[d] ?? d).toList();
   }
 
   TimeOfDay _parseTimeOfDay(String timeStr) {
@@ -1253,6 +1260,166 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   // SAVE STALL & FORM HANDLING
   // =========================================================================
 
+  Future<void> _showSuccessDialog({
+    required bool isUpdate,
+    required String stallName,
+    required String category,
+    required String address,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Success Icon Badge
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFA7F3D0),
+                      width: 2,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF059669),
+                      size: 36,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Title
+                Text(
+                  isUpdate
+                      ? 'Stall Updated Successfully'
+                      : 'Stall Created Successfully',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Subtitle
+                Text(
+                  isUpdate
+                      ? 'Changes to "$stallName" have been saved and are now live on the market directory.'
+                      : '"$stallName" has been registered and is now live on the market directory.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    color: const Color(0xFF64748B),
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Stall Summary Card Preview inside Dialog
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.storefront_rounded,
+                            size: 16,
+                            color: Color(0xFF1B5E20),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              stallName,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (category.isNotEmpty || address.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          [
+                            if (category.isNotEmpty) category,
+                            if (address.isNotEmpty) address,
+                          ].join(' • '),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+
+                // Action Button: "Done"
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(dialogCtx).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1B5E20),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Done',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _saveStall() async {
     // 1. Form Field Validation
     if (!_formKey.currentState!.validate()) {
@@ -1438,27 +1605,16 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  widget.stallId != null
-                      ? 'Stall "$stallNameText" updated successfully!'
-                      : 'Stall "$stallNameText" created successfully!',
-                  style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF1B5E20),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
-          ),
+        final isEdit = widget.stallId != null && widget.stallId!.isNotEmpty;
+        await _showSuccessDialog(
+          isUpdate: isEdit,
+          stallName: stallNameText,
+          category: _finalPrimaryCategoryName,
+          address: addressText,
         );
-        context.pop();
+        if (mounted) {
+          context.pop();
+        }
       }
     } catch (e) {
       if (mounted) {

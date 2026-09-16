@@ -140,13 +140,6 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   static const double _minScale = 0.15;
   static const double _maxScale = 3.5;
   static const Offset _marketCenter = Offset(3850, 3650);
-  static const double _boundaryPadding = 100.0;
-  static const Rect _mapBoundaryRect = Rect.fromLTRB(
-    -_boundaryPadding,
-    -_boundaryPadding,
-    _svgWidth + _boundaryPadding,
-    _svgHeight + _boundaryPadding,
-  );
 
   // Calibrated coordinate offsets between node space and SVG canvas space (0.0000 diff across 112 markers)
   static const double _nodeOffsetX = 7823.47;
@@ -361,7 +354,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     final currentMatrix = _transformController.value;
     final clampedMatrix = _computeClampedMatrix(currentMatrix, viewportSize);
 
-    if (clampedMatrix != currentMatrix) {
+    if (!_matricesEqual(clampedMatrix, currentMatrix)) {
       _isClamping = true;
       try {
         _transformController.value = clampedMatrix;
@@ -371,14 +364,31 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
     }
   }
 
+  bool _matricesEqual(Matrix4 a, Matrix4 b) {
+    for (int i = 0; i < 16; i++) {
+      if ((a.storage[i] - b.storage[i]).abs() > 0.0001) return false;
+    }
+    return true;
+  }
+
   Matrix4 _computeClampedMatrix(Matrix4 matrix, Size viewportSize) {
     final s = matrix.storage;
     final scale = math.sqrt(s[0] * s[0] + s[1] * s[1]);
+    if (scale < 1e-6) return matrix;
+
     Matrix4 m = matrix.clone();
 
-    // 1. Clamp scale to [_minScale, _maxScale] around viewport center
-    if (scale < _minScale || scale > _maxScale) {
-      final clampedScale = scale.clamp(_minScale, _maxScale);
+    final cosT = s[0] / scale;
+    final sinT = s[1] / scale;
+
+    // 1. Dynamic scale lower bound: ensure map always covers viewport at current rotation
+    final reqWidthInMap = (viewportSize.width * cosT.abs() + viewportSize.height * sinT.abs());
+    final reqHeightInMap = (viewportSize.width * sinT.abs() + viewportSize.height * cosT.abs());
+    final reqMinScale = math.max(reqWidthInMap / _svgWidth, reqHeightInMap / _svgHeight);
+    final effectiveMinScale = math.max(_minScale, reqMinScale);
+
+    if (scale < effectiveMinScale || scale > _maxScale) {
+      final clampedScale = scale.clamp(effectiveMinScale, _maxScale);
       final factor = clampedScale / scale;
       final cx = viewportSize.width / 2;
       final cy = viewportSize.height / 2;
@@ -389,47 +399,54 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
         ..multiply(m);
     }
 
-    // 2. Project 4 boundary corners into viewport/screen space
-    final p0 = m.transform3(Vector3(_mapBoundaryRect.left, _mapBoundaryRect.top, 0.0));
-    final p1 = m.transform3(Vector3(_mapBoundaryRect.right, _mapBoundaryRect.top, 0.0));
-    final p2 = m.transform3(Vector3(_mapBoundaryRect.right, _mapBoundaryRect.bottom, 0.0));
-    final p3 = m.transform3(Vector3(_mapBoundaryRect.left, _mapBoundaryRect.bottom, 0.0));
-
-    final minX = math.min(math.min(p0.x, p1.x), math.min(p2.x, p3.x));
-    final maxX = math.max(math.max(p0.x, p1.x), math.max(p2.x, p3.x));
-    final minY = math.min(math.min(p0.y, p1.y), math.min(p2.y, p3.y));
-    final maxY = math.max(math.max(p0.y, p1.y), math.max(p2.y, p3.y));
-
-    final spanX = maxX - minX;
-    final spanY = maxY - minY;
-
-    double deltaX = 0.0;
-    if (spanX <= viewportSize.width) {
-      final targetMinX = (viewportSize.width - spanX) / 2;
-      deltaX = targetMinX - minX;
-    } else {
-      if (minX > 0.0) {
-        deltaX = -minX;
-      } else if (maxX < viewportSize.width) {
-        deltaX = viewportSize.width - maxX;
-      }
+    // 2. Project 4 viewport corners into map space via inverted matrix
+    final inv = Matrix4.identity();
+    try {
+      inv.copyInverse(m);
+    } catch (_) {
+      return m;
     }
 
-    double deltaY = 0.0;
-    if (spanY <= viewportSize.height) {
-      final targetMinY = (viewportSize.height - spanY) / 2;
-      deltaY = targetMinY - minY;
-    } else {
-      if (minY > 0.0) {
-        deltaY = -minY;
-      } else if (maxY < viewportSize.height) {
-        deltaY = viewportSize.height - maxY;
+    final p0 = inv.transform3(Vector3(0.0, 0.0, 0.0));
+    final p1 = inv.transform3(Vector3(viewportSize.width, 0.0, 0.0));
+    final p2 = inv.transform3(Vector3(viewportSize.width, viewportSize.height, 0.0));
+    final p3 = inv.transform3(Vector3(0.0, viewportSize.height, 0.0));
+
+    final uMin = math.min(math.min(p0.x, p1.x), math.min(p2.x, p3.x));
+    final uMax = math.max(math.max(p0.x, p1.x), math.max(p2.x, p3.x));
+    final vMin = math.min(math.min(p0.y, p1.y), math.min(p2.y, p3.y));
+    final vMax = math.max(math.max(p0.y, p1.y), math.max(p2.y, p3.y));
+
+    final spanU = uMax - uMin;
+    final spanV = vMax - vMin;
+
+    double deltaU = 0.0;
+    if (spanU <= _svgWidth) {
+      if (uMin < 0.0) {
+        deltaU = -uMin;
+      } else if (uMax > _svgWidth) {
+        deltaU = _svgWidth - uMax;
       }
+    } else {
+      deltaU = (_svgWidth - spanU) / 2 - uMin;
     }
 
-    if (deltaX.abs() > 0.0001 || deltaY.abs() > 0.0001) {
-      m.storage[12] += deltaX;
-      m.storage[13] += deltaY;
+    double deltaV = 0.0;
+    if (spanV <= _svgHeight) {
+      if (vMin < 0.0) {
+        deltaV = -vMin;
+      } else if (vMax > _svgHeight) {
+        deltaV = _svgHeight - vMax;
+      }
+    } else {
+      deltaV = (_svgHeight - spanV) / 2 - vMin;
+    }
+
+    if (deltaU.abs() > 0.0001 || deltaV.abs() > 0.0001) {
+      final deltaTx = -(m.storage[0] * deltaU + m.storage[4] * deltaV);
+      final deltaTy = -(m.storage[1] * deltaU + m.storage[5] * deltaV);
+      m.storage[12] += deltaTx;
+      m.storage[13] += deltaTy;
     }
 
     return m;
@@ -917,7 +934,7 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
               transformationController: _transformController,
               minScale: _minScale,
               maxScale: _maxScale,
-              // Boundary clamping is enforced smoothly by _clampTransform (_boundaryPadding = 100.0).
+              // Viewport-in-map containment is enforced smoothly by _clampTransform (zero white edges).
               // Setting double.infinity avoids Flutter issue #57698 where finite boundaryMargin locks up
               // translation and gets stuck at the map edges when rotated or zoomed.
               boundaryMargin: const EdgeInsets.all(double.infinity),
@@ -1416,97 +1433,294 @@ class RouteOverlayPainter extends CustomPainter {
           ? (walkProgress * (totalLength / 45.0)) * 2 * math.pi
           : 0.0;
       final double legAngle = isWalking ? math.sin(strideCycle) * 0.42 : 0.0;
+      final double armAngle = isWalking ? -legAngle * 0.75 : 0.0;
 
-      // Ground Shadow Pulse
+      // 1. Dual-Layer Ground Contact Shadow Pulse
       final double shadowScale = isWalking
           ? 1.0 + 0.12 * math.cos(strideCycle * 2)
           : 1.0;
+      // Outer diffuse ambient shadow
       canvas.drawOval(
         Rect.fromCenter(
           center: const Offset(0, 36),
-          width: 32.0 * shadowScale,
-          height: 10.0 * shadowScale,
+          width: 38.0 * shadowScale,
+          height: 12.0 * shadowScale,
         ),
-        Paint()..color = Colors.black.withValues(alpha: 0.24),
+        Paint()..color = Colors.black.withValues(alpha: 0.14),
+      );
+      // Inner contact core shadow
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: const Offset(0, 36),
+          width: 24.0 * shadowScale,
+          height: 7.0 * shadowScale,
+        ),
+        Paint()..color = Colors.black.withValues(alpha: 0.26),
       );
 
-      // Limbs: Dark Denim Pants (#1A237E) with warm skin shoes (#E0A96D)
-      final legPaint = Paint()
-        ..color = const Color(0xFF1A237E)
-        ..strokeWidth = 4.8
-        ..strokeCap = StrokeCap.round;
-
-      // Left Leg
+      // 2. Back Arm (swings opposite to front leg)
       canvas.save();
-      canvas.translate(-4, 14);
+      canvas.translate(-4.0, -9.0);
+      canvas.rotate(armAngle);
+      // Sleeve (Dark Emerald Polo #15803D)
+      canvas.drawLine(
+        Offset.zero,
+        const Offset(-3.0, 11.0),
+        Paint()
+          ..color = const Color(0xFF15803D)
+          ..strokeWidth = 5.5
+          ..strokeCap = StrokeCap.round,
+      );
+      // Forearm & Hand (Warm Skin Shadow Tone)
+      canvas.drawLine(
+        const Offset(-3.0, 11.0),
+        const Offset(-5.0, 19.0),
+        Paint()
+          ..color = const Color(0xFFCD915A)
+          ..strokeWidth = 4.2
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawCircle(const Offset(-5.0, 19.0), 2.5, Paint()..color = const Color(0xFFCD915A));
+      canvas.restore();
+
+      // 3. Back Leg (Dark Charcoal Slate Pants #1E293B for depth)
+      canvas.save();
+      canvas.translate(-4.0, 9.0);
       canvas.rotate(-legAngle);
-      canvas.drawLine(Offset.zero, const Offset(0, 22), legPaint);
-      canvas.drawCircle(const Offset(0, 22), 2.8, Paint()..color = const Color(0xFFE0A96D));
+      // Thigh & Calf
+      canvas.drawLine(
+        Offset.zero,
+        const Offset(-3.0, 13.0),
+        Paint()
+          ..color = const Color(0xFF1E293B)
+          ..strokeWidth = 7.5
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+        const Offset(-3.0, 13.0),
+        const Offset(-5.0, 24.0),
+        Paint()
+          ..color = const Color(0xFF1E293B)
+          ..strokeWidth = 6.2
+          ..strokeCap = StrokeCap.round,
+      );
+      // Back Sneaker Upper
+      final backShoePath = Path()
+        ..moveTo(-10.0, 23.0)
+        ..lineTo(2.0, 23.0)
+        ..lineTo(4.5, 26.5)
+        ..lineTo(-11.0, 26.5)
+        ..close();
+      canvas.drawPath(backShoePath, Paint()..color = const Color(0xFF0F172A));
+      // Back Sneaker White Sole Plate
+      final backSolePath = Path()
+        ..moveTo(-11.5, 26.5)
+        ..lineTo(5.0, 26.5)
+        ..lineTo(5.0, 29.0)
+        ..lineTo(-11.5, 29.0)
+        ..close();
+      canvas.drawPath(backSolePath, Paint()..color = Colors.white);
       canvas.restore();
 
-      // Right Leg
-      canvas.save();
-      canvas.translate(4, 14);
-      canvas.rotate(legAngle);
-      canvas.drawLine(Offset.zero, const Offset(0, 22), legPaint);
-      canvas.drawCircle(const Offset(0, 22), 2.8, Paint()..color = const Color(0xFFE0A96D));
-      canvas.restore();
+      // 4. Torso & Upper Body
+      // Tapered Athletic Torso (#16A34A Emerald)
+      final torsoPath = Path()
+        ..moveTo(-11.5, -13.0)
+        ..lineTo(11.5, -13.0)
+        ..lineTo(9.0, 9.0)
+        ..lineTo(-8.5, 9.0)
+        ..close();
+      canvas.drawPath(torsoPath, Paint()..color = const Color(0xFF16A34A));
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(0, -13.0), width: 23.0, height: 7.0),
+        Paint()..color = const Color(0xFF16A34A),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(0.25, 9.0), width: 17.5, height: 6.0),
+        Paint()..color = const Color(0xFF16A34A),
+      );
+      // Subtle torso side shadow (#15803D)
+      final torsoShadowPath = Path()
+        ..moveTo(-11.5, -13.0)
+        ..lineTo(-5.0, -13.0)
+        ..lineTo(-4.5, 9.0)
+        ..lineTo(-8.5, 9.0)
+        ..close();
+      canvas.drawPath(torsoShadowPath, Paint()..color = const Color(0xFF15803D));
 
-      // Torso: Forest Green Civic Polo (#2E7D32)
-      final poloPaint = Paint()..color = const Color(0xFF2E7D32);
+      // White Athletic Polo Collar
+      final collarPath = Path()
+        ..moveTo(-5.5, -15.0)
+        ..lineTo(0.0, -10.0)
+        ..lineTo(5.5, -15.0)
+        ..lineTo(0.0, -12.0)
+        ..close();
+      canvas.drawPath(collarPath, Paint()..color = Colors.white);
+
+      // Modern Crossbody Webbing Strap (#334155) & Metallic Buckle
+      canvas.drawLine(
+        const Offset(-7.5, -14.0),
+        const Offset(7.0, 4.5),
+        Paint()
+          ..color = const Color(0xFF334155)
+          ..strokeWidth = 2.2
+          ..strokeCap = StrokeCap.round,
+      );
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: const Offset(0, -2), width: 22, height: 28),
-          const Radius.circular(5),
+          Rect.fromCenter(center: const Offset(1.0, -5.0), width: 3.5, height: 4.0),
+          const Radius.circular(1.0),
         ),
-        poloPaint,
-      );
-      // White collar trim
-      canvas.drawLine(
-        const Offset(-5, -16),
-        const Offset(5, -16),
-        Paint()..color = Colors.white..strokeWidth = 2.0,
+        Paint()..color = const Color(0xFFCBD5E1),
       );
 
-      // Crimson Market Tote Bag (#E53935)
+      // Crimson Market Tote Bag (#E11D48) with handle
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: const Offset(6, 3), width: 12, height: 15),
-          const Radius.circular(2),
+          Rect.fromLTWH(3.5, -2.0, 11.0, 15.0),
+          const Radius.circular(3.0),
         ),
-        Paint()..color = const Color(0xFFE53935),
+        Paint()..color = const Color(0xFFE11D48),
       );
-      // Tote shoulder strap
-      canvas.drawLine(
-        const Offset(-4, -14),
-        const Offset(6, -4),
-        Paint()..color = Colors.white..strokeWidth = 1.5,
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(3.5, -2.0, 11.0, 15.0),
+          const Radius.circular(3.0),
+        ),
+        Paint()
+          ..color = const Color(0xFFBE123C)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0,
       );
-
-      // Head: Warm skin (#E0A96D)
-      canvas.drawCircle(const Offset(0, -22), 8.5, Paint()..color = const Color(0xFFE0A96D));
-
-      // Visor Cap: Forest Green (#1B5E20)
+      // Tote handle arc
       canvas.drawArc(
-        Rect.fromCenter(center: const Offset(0, -25), width: 19, height: 14),
+        Rect.fromLTWH(6.5, -6.5, 5.0, 7.0),
+        math.pi,
+        math.pi,
+        false,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4,
+      );
+
+      // 5. Front Leg (Bright Blue Denim #2563EB)
+      canvas.save();
+      canvas.translate(3.5, 9.0);
+      canvas.rotate(legAngle);
+      // Thigh & Calf
+      canvas.drawLine(
+        Offset.zero,
+        const Offset(3.0, 13.0),
+        Paint()
+          ..color = const Color(0xFF2563EB)
+          ..strokeWidth = 8.0
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+        const Offset(3.0, 13.0),
+        const Offset(5.0, 24.0),
+        Paint()
+          ..color = const Color(0xFF2563EB)
+          ..strokeWidth = 6.8
+          ..strokeCap = StrokeCap.round,
+      );
+      // Knee articulation joint
+      canvas.drawCircle(const Offset(3.0, 13.0), 3.5, Paint()..color = const Color(0xFF2563EB));
+      // Front Sneaker Upper
+      final frontShoePath = Path()
+        ..moveTo(-5.5, 23.0)
+        ..lineTo(7.0, 23.0)
+        ..lineTo(10.0, 26.5)
+        ..lineTo(-6.5, 26.5)
+        ..close();
+      canvas.drawPath(frontShoePath, Paint()..color = const Color(0xFF18202F));
+      // Front Sneaker White Chunky Sole
+      final frontSolePath = Path()
+        ..moveTo(-7.0, 26.5)
+        ..lineTo(10.5, 26.5)
+        ..lineTo(10.5, 29.2)
+        ..lineTo(-7.0, 29.2)
+        ..close();
+      canvas.drawPath(frontSolePath, Paint()..color = Colors.white);
+      canvas.restore();
+
+      // 6. Front Arm & Hand (swings opposite to front leg)
+      canvas.save();
+      canvas.translate(4.5, -9.0);
+      canvas.rotate(-armAngle);
+      // Sleeve (#16A34A Emerald)
+      canvas.drawLine(
+        Offset.zero,
+        const Offset(2.5, 11.0),
+        Paint()
+          ..color = const Color(0xFF16A34A)
+          ..strokeWidth = 6.0
+          ..strokeCap = StrokeCap.round,
+      );
+      // White sleeve cuff
+      canvas.drawLine(
+        const Offset(1.0, 11.0),
+        const Offset(4.0, 11.0),
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 1.8,
+      );
+      // Forearm & Hand (Warm Skin Tone #EBB27A)
+      canvas.drawLine(
+        const Offset(2.5, 11.0),
+        const Offset(4.5, 19.0),
+        Paint()
+          ..color = const Color(0xFFEBB27A)
+          ..strokeWidth = 4.5
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawCircle(const Offset(4.5, 19.0), 2.8, Paint()..color = const Color(0xFFEBB27A));
+      canvas.restore();
+
+      // 7. Neck, Head & Sporty Cap
+      // Neck
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: const Offset(0, -14.5), width: 6.0, height: 5.0),
+          const Radius.circular(2.0),
+        ),
+        Paint()..color = const Color(0xFFCD915A),
+      );
+      // Hair contour at back of head
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(-5.5, -21.0), width: 7.0, height: 10.0),
+        Paint()..color = const Color(0xFF321E14),
+      );
+      // Face (#EBB27A)
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(0.0, -21.0), width: 15.0, height: 16.0),
+        Paint()..color = const Color(0xFFEBB27A),
+      );
+      // Cap Crown (#15803D)
+      canvas.drawArc(
+        Rect.fromCenter(center: const Offset(0.0, -23.5), width: 17.0, height: 15.0),
         math.pi,
         math.pi,
         true,
-        Paint()..color = const Color(0xFF1B5E20),
+        Paint()..color = const Color(0xFF15803D),
       );
-      // Athletic white sweatband trim
+      // Cap top button
+      canvas.drawCircle(const Offset(0.0, -31.0), 1.5, Paint()..color = const Color(0xFF0F5A2A));
+      // Curved Visor Bill
+      final visorPath = Path()
+        ..moveTo(1.0, -23.5)
+        ..lineTo(14.0, -21.0)
+        ..lineTo(13.0, -18.0)
+        ..lineTo(0.0, -20.5)
+        ..close();
+      canvas.drawPath(visorPath, Paint()..color = const Color(0xFF15803D));
       canvas.drawLine(
-        const Offset(-9, -24),
-        const Offset(9, -24),
-        Paint()..color = Colors.white..strokeWidth = 1.8,
-      );
-      // Cap visor bill
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, -24, 11, 3.5),
-          const Radius.circular(1.5),
-        ),
-        Paint()..color = const Color(0xFF1B5E20),
+        const Offset(0.0, -20.5),
+        const Offset(13.0, -18.0),
+        Paint()
+          ..color = const Color(0xFF0F5A2A)
+          ..strokeWidth = 1.5,
       );
 
       canvas.restore();
@@ -1559,8 +1773,8 @@ class RouteOverlayPainter extends CustomPainter {
       final bubbleSpan = TextSpan(
         text: announcementText,
         style: const TextStyle(
-          fontSize: 13.0,
-          fontWeight: FontWeight.w800,
+          fontSize: 24.0,
+          fontWeight: FontWeight.w900,
           color: Color(0xFF1B5E20),
           letterSpacing: 0.2,
         ),
@@ -1568,11 +1782,15 @@ class RouteOverlayPainter extends CustomPainter {
       final bubblePainter = TextPainter(
         text: bubbleSpan,
         textDirection: TextDirection.ltr,
-      )..layout(maxWidth: 240.0);
+      )..layout(maxWidth: 320.0);
 
-      final double bubbleWidth = bubblePainter.width + 24.0;
-      const double bubbleHeight = 28.0;
-      const double bubbleY = -72.0;
+      const double iconSize = 22.0;
+      const double iconGap = 10.0;
+      const double horizontalPadding = 18.0;
+      final double bubbleWidth =
+          bubblePainter.width + iconSize + iconGap + (horizontalPadding * 2);
+      const double bubbleHeight = 44.0;
+      const double bubbleY = -92.0;
 
       final bubbleRRect = RRect.fromRectAndRadius(
         Rect.fromCenter(
@@ -1580,41 +1798,137 @@ class RouteOverlayPainter extends CustomPainter {
           width: bubbleWidth,
           height: bubbleHeight,
         ),
-        const Radius.circular(14.0),
+        const Radius.circular(22.0),
       );
 
       // Bubble drop shadow
-      canvas.drawShadow(Path()..addRRect(bubbleRRect), Colors.black, 4.0, false);
+      canvas.drawShadow(
+        Path()..addRRect(bubbleRRect),
+        Colors.black.withValues(alpha: 0.35),
+        8.0,
+        false,
+      );
 
       // Bubble background & border
       canvas.drawRRect(bubbleRRect, Paint()..color = Colors.white..style = PaintingStyle.fill);
       canvas.drawRRect(
         bubbleRRect,
         Paint()
-          ..color = const Color(0xFF2E7D32)
+          ..color = const Color(0xFF1B5E20)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0,
+          ..strokeWidth = 2.5,
       );
 
       // Downward pointer tail
       final tailPath = Path()
-        ..moveTo(-6, bubbleY + bubbleHeight / 2)
-        ..lineTo(6, bubbleY + bubbleHeight / 2)
-        ..lineTo(0, bubbleY + bubbleHeight / 2 + 7)
+        ..moveTo(-8.0, bubbleY + bubbleHeight / 2)
+        ..lineTo(8.0, bubbleY + bubbleHeight / 2)
+        ..lineTo(0.0, bubbleY + bubbleHeight / 2 + 10.0)
         ..close();
       canvas.drawPath(tailPath, Paint()..color = Colors.white..style = PaintingStyle.fill);
       canvas.drawPath(
         tailPath,
         Paint()
-          ..color = const Color(0xFF2E7D32)
+          ..color = const Color(0xFF1B5E20)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
+          ..strokeWidth = 2.5
+          ..strokeJoin = StrokeJoin.round,
+      );
+      // Seamless seam cover
+      canvas.drawLine(
+        Offset(-7.0, bubbleY + bubbleHeight / 2),
+        Offset(7.0, bubbleY + bubbleHeight / 2),
+        Paint()..color = Colors.white..strokeWidth = 3.5,
       );
 
+      // Vector Directional Turn Icon
+      final double contentStartX = -bubbleWidth / 2 + horizontalPadding;
+      final double iconCenterX = contentStartX + iconSize / 2;
+      final double iconCenterY = bubbleY;
+
+      final iconStroke = Paint()
+        ..color = const Color(0xFF16A34A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.8
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+      final iconFill = Paint()
+        ..color = const Color(0xFF16A34A)
+        ..style = PaintingStyle.fill;
+
+      if (announcementText.contains('right')) {
+        final p = Path()
+          ..moveTo(iconCenterX - 5.5, iconCenterY + 6.0)
+          ..lineTo(iconCenterX - 5.5, iconCenterY - 3.5)
+          ..lineTo(iconCenterX + 4.5, iconCenterY - 3.5);
+        canvas.drawPath(p, iconStroke);
+        final head = Path()
+          ..moveTo(iconCenterX + 2.5, iconCenterY - 7.5)
+          ..lineTo(iconCenterX + 8.0, iconCenterY - 3.5)
+          ..lineTo(iconCenterX + 2.5, iconCenterY + 0.5)
+          ..close();
+        canvas.drawPath(head, iconFill);
+      } else if (announcementText.contains('left')) {
+        final p = Path()
+          ..moveTo(iconCenterX + 5.5, iconCenterY + 6.0)
+          ..lineTo(iconCenterX + 5.5, iconCenterY - 3.5)
+          ..lineTo(iconCenterX - 4.5, iconCenterY - 3.5);
+        canvas.drawPath(p, iconStroke);
+        final head = Path()
+          ..moveTo(iconCenterX - 2.5, iconCenterY - 7.5)
+          ..lineTo(iconCenterX - 8.0, iconCenterY - 3.5)
+          ..lineTo(iconCenterX - 2.5, iconCenterY + 0.5)
+          ..close();
+        canvas.drawPath(head, iconFill);
+      } else if (announcementText.contains('U-turn')) {
+        final p = Path()
+          ..moveTo(iconCenterX - 5.0, iconCenterY + 6.0)
+          ..lineTo(iconCenterX - 5.0, iconCenterY - 2.0)
+          ..arcToPoint(
+            Offset(iconCenterX + 5.0, iconCenterY - 2.0),
+            radius: const Radius.circular(5.0),
+            clockwise: true,
+          )
+          ..lineTo(iconCenterX + 5.0, iconCenterY + 3.0);
+        canvas.drawPath(p, iconStroke);
+        final head = Path()
+          ..moveTo(iconCenterX + 1.5, iconCenterY + 1.0)
+          ..lineTo(iconCenterX + 5.0, iconCenterY + 6.5)
+          ..lineTo(iconCenterX + 8.5, iconCenterY + 1.0)
+          ..close();
+        canvas.drawPath(head, iconFill);
+      } else if (announcementText == 'Arrived') {
+        final check = Path()
+          ..moveTo(iconCenterX - 7.0, iconCenterY + 0.5)
+          ..lineTo(iconCenterX - 2.0, iconCenterY + 6.0)
+          ..lineTo(iconCenterX + 7.5, iconCenterY - 5.5);
+        canvas.drawPath(check, iconStroke..strokeWidth = 3.2);
+      } else if (announcementText == 'Start') {
+        final startHead = Path()
+          ..moveTo(iconCenterX - 5.0, iconCenterY - 6.5)
+          ..lineTo(iconCenterX + 6.5, iconCenterY)
+          ..lineTo(iconCenterX - 5.0, iconCenterY + 6.5)
+          ..close();
+        canvas.drawPath(startHead, iconFill);
+      } else {
+        // Go straight
+        final p = Path()
+          ..moveTo(iconCenterX, iconCenterY + 6.5)
+          ..lineTo(iconCenterX, iconCenterY - 3.5);
+        canvas.drawPath(p, iconStroke);
+        final head = Path()
+          ..moveTo(iconCenterX - 5.5, iconCenterY - 2.0)
+          ..lineTo(iconCenterX, iconCenterY - 8.0)
+          ..lineTo(iconCenterX + 5.5, iconCenterY - 2.0)
+          ..close();
+        canvas.drawPath(head, iconFill);
+      }
+
       // Bubble text
+      final double textStartX = contentStartX + iconSize + iconGap;
       bubblePainter.paint(
         canvas,
-        Offset(-bubblePainter.width / 2, bubbleY - bubblePainter.height / 2),
+        Offset(textStartX, bubbleY - bubblePainter.height / 2),
       );
 
       canvas.restore();

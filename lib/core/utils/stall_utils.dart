@@ -485,6 +485,40 @@ class StallUtils {
       return 'Sat – Sun (Weekends)';
     }
 
+    // Sort days chronologically (Mon -> Sun) for consistent display
+    const Map<String, int> weekdayOrder = {
+      'mon': 1,
+      'tue': 2,
+      'wed': 3,
+      'thu': 4,
+      'fri': 5,
+      'sat': 6,
+      'sun': 7,
+    };
+
+    final uniqueDays = <String, String>{};
+    for (final p in parts) {
+      final key = p.toLowerCase();
+      if (weekdayOrder.containsKey(key) && !uniqueDays.containsKey(key)) {
+        final formatted = p.length >= 3
+            ? p[0].toUpperCase() + p.substring(1, 3).toLowerCase()
+            : p;
+        uniqueDays[key] = formatted;
+      } else if (!uniqueDays.containsKey(key)) {
+        uniqueDays[key] = p;
+      }
+    }
+
+    if (uniqueDays.isNotEmpty) {
+      final sortedEntries = uniqueDays.entries.toList()
+        ..sort((a, b) {
+          final orderA = weekdayOrder[a.key] ?? 99;
+          final orderB = weekdayOrder[b.key] ?? 99;
+          return orderA.compareTo(orderB);
+        });
+      return sortedEntries.map((e) => e.value).join(', ');
+    }
+
     return parts.join(', ');
   }
 

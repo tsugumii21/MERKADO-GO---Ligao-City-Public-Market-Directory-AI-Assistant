@@ -50,14 +50,13 @@ class DefaultFirebaseOptions {
   }
 
   static FirebaseOptions get web => FirebaseOptions(
-    apiKey: AppSecrets.firebaseWebApiKey.isNotEmpty
-        ? AppSecrets.firebaseWebApiKey
-        : AppSecrets.firebaseAndroidApiKey,
+    apiKey: AppSecrets.firebaseWebApiKey,
     appId: '1:25184120050:web:a4fc524db9f7d15b5ef46b',
     messagingSenderId: '25184120050',
     projectId: 'merkado-go',
     authDomain: 'merkado-go.firebaseapp.com',
     storageBucket: 'merkado-go.firebasestorage.app',
+    measurementId: 'G-74NRG5GHMP',
   );
 
   static FirebaseOptions get android => FirebaseOptions(

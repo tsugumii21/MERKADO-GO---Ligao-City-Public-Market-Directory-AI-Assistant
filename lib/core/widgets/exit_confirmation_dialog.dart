@@ -74,7 +74,7 @@ class ExitConfirmationDialog extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // 4. Action button pair (Min 48px touch targets)
+              // 4. Action button pair (Min 48px touch targets, balanced padding & centered alignment)
               Row(
                 children: [
                   // Secondary Action: Exit
@@ -83,18 +83,25 @@ class ExitConfirmationDialog extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(true),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        alignment: Alignment.center,
                         side: const BorderSide(color: AppColors.border, width: 1.2),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         foregroundColor: AppColors.error,
                       ),
-                      child: Text(
-                        'Exit',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.error,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Exit',
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.error,
+                          ),
                         ),
                       ),
                     ),
@@ -107,6 +114,8 @@ class ExitConfirmationDialog extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(false),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        alignment: Alignment.center,
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
@@ -114,12 +123,17 @@ class ExitConfirmationDialog extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
-                        'Stay in App',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Stay in App',
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),

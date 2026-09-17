@@ -24,4 +24,5 @@ class RouteNames {
   static const String adminAddStall = '/admin/stalls/add';
   static const String adminEditStall = '/admin/stalls/:id/edit';
   static const String adminReports = '/admin/reports';
+  static const String adminEntrances = '/admin/entrances';
 }

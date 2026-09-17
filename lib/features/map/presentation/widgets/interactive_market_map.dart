@@ -12,6 +12,8 @@ import '../../domain/navigation_models.dart';
 import '../../domain/zone_palette.dart';
 import '../../services/stall_svg_parser.dart';
 import '../../constants/map_constants.dart';
+import '../painters/pedestrian_avatar_painter.dart';
+import '../painters/turn_bubble_hud_painter.dart';
 
 /// Predefined market zones for quick-focus navigation
 class MarketZoneArea {
@@ -191,6 +193,10 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   late AnimationController _walkController;
   bool _isWalking = false;
 
+  late AnimationController _arrivalHopController;
+  late AnimationController _waveController;
+  double _avatarFacingSign = 1.0;
+
   @override
   void initState() {
     super.initState();
@@ -216,12 +222,23 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
         }
       });
 
+    _arrivalHopController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+
     _walkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 7000),
     )
       ..addListener(() {
         if (_isWalking && mounted) {
+          _updateFacingSign();
           _trackAvatarCamera();
         }
       })
@@ -233,6 +250,8 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
           if (_cameraFollowsAvatar) {
             _autoFrameRoute();
           }
+          _arrivalHopController.forward(from: 0.0);
+          _waveController.repeat(reverse: true);
           widget.onTraversalCompleted?.call();
         }
       });
@@ -268,10 +287,45 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
         _cachedRouteMetrics.fold(0.0, (acc, m) => acc + m.length);
   }
 
+  void _updateFacingSign() {
+    final tangent = _getRouteTangent(_walkController.value);
+    if (tangent == null) return;
+    final dxLayer = tangent.vector.dx;
+    final dyLayer = tangent.vector.dy;
+    final rad = _currentRotation;
+    final screenDx =
+        dxLayer * math.cos(rad) - dyLayer * math.sin(rad);
+    if (screenDx < -0.8) {
+      _avatarFacingSign = -1.0;
+    } else if (screenDx > 0.8) {
+      _avatarFacingSign = 1.0;
+    }
+  }
+
   void _startWalkingTraversal() {
     if (widget.activeRoute == null || widget.activeRoute!.nodes.isEmpty) return;
     _recomputeCachedRoute();
+    final bool disableAnimations =
+        mounted && (MediaQuery.maybeOf(context)?.disableAnimations ?? false);
+    if (disableAnimations) {
+      _walkController.value = 1.0;
+      _arrivalHopController.value = 1.0;
+      _waveController.value = 1.0;
+      _updateFacingSign();
+      if (mounted) {
+        setState(() {
+          _isWalking = false;
+          _cameraFollowsAvatar = false;
+        });
+        _autoFrameRoute();
+      }
+      widget.onTraversalCompleted?.call();
+      return;
+    }
     _walkController.stop();
+    _arrivalHopController.reset();
+    _waveController.reset();
+    _updateFacingSign();
     final stepsCount = widget.activeRoute!.steps.length;
     // Slower, calmer redirection speed: ~800ms per step, minimum 6.0s, max 14.0s
     final calculatedDuration = (stepsCount * 800).clamp(6000, 14000);
@@ -289,6 +343,9 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   void skipWalkingTraversal() {
     _walkController.stop();
     _walkController.value = 1.0;
+    _updateFacingSign();
+    _arrivalHopController.forward(from: 0.0);
+    _waveController.repeat(reverse: true);
     if (mounted) {
       setState(() {
         _isWalking = false;
@@ -515,6 +572,10 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
       } else {
         _isWalking = false;
         _walkController.stop();
+        _arrivalHopController.stop();
+        _arrivalHopController.reset();
+        _waveController.stop();
+        _waveController.reset();
       }
     }
   }
@@ -523,6 +584,8 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
   void dispose() {
     _transformController.removeListener(_onTransformChanged);
     _walkController.dispose();
+    _arrivalHopController.dispose();
+    _waveController.dispose();
     _zoomAnimationController.dispose();
     _pulseController.dispose();
     if (widget.transformationController == null) {
@@ -1008,7 +1071,12 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                     if (widget.activeRoute != null &&
                         widget.activeRoute!.nodes.isNotEmpty)
                       AnimatedBuilder(
-                        animation: Listenable.merge([_pulseAnimation, _walkController]),
+                        animation: Listenable.merge([
+                          _pulseAnimation,
+                          _walkController,
+                          _arrivalHopController,
+                          _waveController,
+                        ]),
                         builder: (context, _) {
                           return CustomPaint(
                             size: const Size(_svgWidth, _svgHeight),
@@ -1027,6 +1095,9 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                               cachedMetrics: _cachedRouteMetrics,
                               cachedLength: _cachedRouteLength,
                               mapRotationRadians: _currentRotation,
+                              avatarFacingSign: _avatarFacingSign,
+                              arrivalHopProgress: _arrivalHopController.value,
+                              waveProgress: _waveController.value,
                             ),
                           );
                         },
@@ -1270,6 +1341,9 @@ class RouteOverlayPainter extends CustomPainter {
   final List<ui.PathMetric> cachedMetrics;
   final double cachedLength;
   final double mapRotationRadians;
+  final double? avatarFacingSign;
+  final double arrivalHopProgress;
+  final double waveProgress;
 
   RouteOverlayPainter({
     required this.route,
@@ -1286,6 +1360,9 @@ class RouteOverlayPainter extends CustomPainter {
     this.cachedMetrics = const [],
     this.cachedLength = 0.0,
     this.mapRotationRadians = 0.0,
+    this.avatarFacingSign,
+    this.arrivalHopProgress = 0.0,
+    this.waveProgress = 0.0,
   });
 
   @override
@@ -1410,7 +1487,7 @@ class RouteOverlayPainter extends CustomPainter {
     canvas.drawCircle(startPt, 28.0, startPaint);
     canvas.drawCircle(startPt, 12.0, startInner);
 
-    // 4. ARTICULATED VECTOR WALKING PEDESTRIAN AVATAR (MD §4, §8, Fix 13.8)
+    // 4. ARTICULATED VECTOR WALKING PEDESTRIAN AVATAR & SPEECH BUBBLE HUD
     if (tangent != null) {
       final avatarPos = tangent.position;
       final double dxLayer = tangent.vector.dx;
@@ -1419,316 +1496,38 @@ class RouteOverlayPainter extends CustomPainter {
       // Screen-space facing projection: Δx_screen = Δx*cos(R) - Δy*sin(R) with 0.8 deadband
       final double screenDx =
           dxLayer * math.cos(mapRotationRadians) - dyLayer * math.sin(mapRotationRadians);
-      final double facingSign = screenDx < -0.8 ? -1.0 : (screenDx > 0.8 ? 1.0 : 1.0);
+      final double facingSign = avatarFacingSign ??
+          (screenDx < -0.8 ? -1.0 : (screenDx > 0.8 ? 1.0 : 1.0));
+
+      final bool isArrived = !isWalking || walkProgress >= 0.98;
+
+      // Stride swing cycle calculation (0.0 to 1.0)
+      final double walkCycleProgress = isWalking
+          ? ((walkProgress * (totalLength / 45.0)) % 1.0)
+          : 0.0;
+
+      const double avatarScale = 1.8;
 
       canvas.save();
       canvas.translate(avatarPos.dx, avatarPos.dy);
-      // DYNAMIC BILLBOARDING: Counter-rotate avatar by -R so cap is always upright on mobile
+      // DYNAMIC BILLBOARDING: Counter-rotate container by -R so avatar and bubble are always upright
       canvas.rotate(-mapRotationRadians);
-      canvas.scale(facingSign, 1.0);
-      canvas.scale(1.8, 1.8); // 1.8x scale for mobile corridor visibility
 
-      // Stride swing cycle calculation: animate when walking, stationary resting when arrived/stopped
-      final double strideCycle = isWalking
-          ? (walkProgress * (totalLength / 45.0)) * 2 * math.pi
-          : 0.0;
-      final double legAngle = isWalking ? math.sin(strideCycle) * 0.42 : 0.0;
-      final double armAngle = isWalking ? -legAngle * 0.75 : 0.0;
+      // 4.1 Paint Articulated Pedestrian Avatar
+      final avatarPainter = PedestrianAvatarPainter(
+        walkCycleProgress: walkCycleProgress,
+        arrivalHopProgress: arrivalHopProgress,
+        waveProgress: waveProgress,
+        isArrived: isArrived,
+        facingSign: facingSign,
+        scale: avatarScale,
+      );
+      avatarPainter.paint(canvas, Size.zero);
 
-      // 1. Dual-Layer Ground Contact Shadow Pulse
-      final double shadowScale = isWalking
-          ? 1.0 + 0.12 * math.cos(strideCycle * 2)
-          : 1.0;
-      // Outer diffuse ambient shadow
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: const Offset(0, 36),
-          width: 38.0 * shadowScale,
-          height: 12.0 * shadowScale,
-        ),
-        Paint()..color = Colors.black.withValues(alpha: 0.14),
-      );
-      // Inner contact core shadow
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: const Offset(0, 36),
-          width: 24.0 * shadowScale,
-          height: 7.0 * shadowScale,
-        ),
-        Paint()..color = Colors.black.withValues(alpha: 0.26),
-      );
-
-      // 2. Back Arm (swings opposite to front leg)
-      canvas.save();
-      canvas.translate(-4.0, -9.0);
-      canvas.rotate(armAngle);
-      // Sleeve (Dark Emerald Polo #15803D)
-      canvas.drawLine(
-        Offset.zero,
-        const Offset(-3.0, 11.0),
-        Paint()
-          ..color = const Color(0xFF15803D)
-          ..strokeWidth = 5.5
-          ..strokeCap = StrokeCap.round,
-      );
-      // Forearm & Hand (Warm Skin Shadow Tone)
-      canvas.drawLine(
-        const Offset(-3.0, 11.0),
-        const Offset(-5.0, 19.0),
-        Paint()
-          ..color = const Color(0xFFCD915A)
-          ..strokeWidth = 4.2
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawCircle(const Offset(-5.0, 19.0), 2.5, Paint()..color = const Color(0xFFCD915A));
-      canvas.restore();
-
-      // 3. Back Leg (Dark Charcoal Slate Pants #1E293B for depth)
-      canvas.save();
-      canvas.translate(-4.0, 9.0);
-      canvas.rotate(-legAngle);
-      // Thigh & Calf
-      canvas.drawLine(
-        Offset.zero,
-        const Offset(-3.0, 13.0),
-        Paint()
-          ..color = const Color(0xFF1E293B)
-          ..strokeWidth = 7.5
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawLine(
-        const Offset(-3.0, 13.0),
-        const Offset(-5.0, 24.0),
-        Paint()
-          ..color = const Color(0xFF1E293B)
-          ..strokeWidth = 6.2
-          ..strokeCap = StrokeCap.round,
-      );
-      // Back Sneaker Upper
-      final backShoePath = Path()
-        ..moveTo(-10.0, 23.0)
-        ..lineTo(2.0, 23.0)
-        ..lineTo(4.5, 26.5)
-        ..lineTo(-11.0, 26.5)
-        ..close();
-      canvas.drawPath(backShoePath, Paint()..color = const Color(0xFF0F172A));
-      // Back Sneaker White Sole Plate
-      final backSolePath = Path()
-        ..moveTo(-11.5, 26.5)
-        ..lineTo(5.0, 26.5)
-        ..lineTo(5.0, 29.0)
-        ..lineTo(-11.5, 29.0)
-        ..close();
-      canvas.drawPath(backSolePath, Paint()..color = Colors.white);
-      canvas.restore();
-
-      // 4. Torso & Upper Body
-      // Tapered Athletic Torso (#16A34A Emerald)
-      final torsoPath = Path()
-        ..moveTo(-11.5, -13.0)
-        ..lineTo(11.5, -13.0)
-        ..lineTo(9.0, 9.0)
-        ..lineTo(-8.5, 9.0)
-        ..close();
-      canvas.drawPath(torsoPath, Paint()..color = const Color(0xFF16A34A));
-      canvas.drawOval(
-        Rect.fromCenter(center: const Offset(0, -13.0), width: 23.0, height: 7.0),
-        Paint()..color = const Color(0xFF16A34A),
-      );
-      canvas.drawOval(
-        Rect.fromCenter(center: const Offset(0.25, 9.0), width: 17.5, height: 6.0),
-        Paint()..color = const Color(0xFF16A34A),
-      );
-      // Subtle torso side shadow (#15803D)
-      final torsoShadowPath = Path()
-        ..moveTo(-11.5, -13.0)
-        ..lineTo(-5.0, -13.0)
-        ..lineTo(-4.5, 9.0)
-        ..lineTo(-8.5, 9.0)
-        ..close();
-      canvas.drawPath(torsoShadowPath, Paint()..color = const Color(0xFF15803D));
-
-      // White Athletic Polo Collar
-      final collarPath = Path()
-        ..moveTo(-5.5, -15.0)
-        ..lineTo(0.0, -10.0)
-        ..lineTo(5.5, -15.0)
-        ..lineTo(0.0, -12.0)
-        ..close();
-      canvas.drawPath(collarPath, Paint()..color = Colors.white);
-
-      // Modern Crossbody Webbing Strap (#334155) & Metallic Buckle
-      canvas.drawLine(
-        const Offset(-7.5, -14.0),
-        const Offset(7.0, 4.5),
-        Paint()
-          ..color = const Color(0xFF334155)
-          ..strokeWidth = 2.2
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: const Offset(1.0, -5.0), width: 3.5, height: 4.0),
-          const Radius.circular(1.0),
-        ),
-        Paint()..color = const Color(0xFFCBD5E1),
-      );
-
-      // Crimson Market Tote Bag (#E11D48) with handle
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(3.5, -2.0, 11.0, 15.0),
-          const Radius.circular(3.0),
-        ),
-        Paint()..color = const Color(0xFFE11D48),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(3.5, -2.0, 11.0, 15.0),
-          const Radius.circular(3.0),
-        ),
-        Paint()
-          ..color = const Color(0xFFBE123C)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0,
-      );
-      // Tote handle arc
-      canvas.drawArc(
-        Rect.fromLTWH(6.5, -6.5, 5.0, 7.0),
-        math.pi,
-        math.pi,
-        false,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.4,
-      );
-
-      // 5. Front Leg (Bright Blue Denim #2563EB)
-      canvas.save();
-      canvas.translate(3.5, 9.0);
-      canvas.rotate(legAngle);
-      // Thigh & Calf
-      canvas.drawLine(
-        Offset.zero,
-        const Offset(3.0, 13.0),
-        Paint()
-          ..color = const Color(0xFF2563EB)
-          ..strokeWidth = 8.0
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawLine(
-        const Offset(3.0, 13.0),
-        const Offset(5.0, 24.0),
-        Paint()
-          ..color = const Color(0xFF2563EB)
-          ..strokeWidth = 6.8
-          ..strokeCap = StrokeCap.round,
-      );
-      // Knee articulation joint
-      canvas.drawCircle(const Offset(3.0, 13.0), 3.5, Paint()..color = const Color(0xFF2563EB));
-      // Front Sneaker Upper
-      final frontShoePath = Path()
-        ..moveTo(-5.5, 23.0)
-        ..lineTo(7.0, 23.0)
-        ..lineTo(10.0, 26.5)
-        ..lineTo(-6.5, 26.5)
-        ..close();
-      canvas.drawPath(frontShoePath, Paint()..color = const Color(0xFF18202F));
-      // Front Sneaker White Chunky Sole
-      final frontSolePath = Path()
-        ..moveTo(-7.0, 26.5)
-        ..lineTo(10.5, 26.5)
-        ..lineTo(10.5, 29.2)
-        ..lineTo(-7.0, 29.2)
-        ..close();
-      canvas.drawPath(frontSolePath, Paint()..color = Colors.white);
-      canvas.restore();
-
-      // 6. Front Arm & Hand (swings opposite to front leg)
-      canvas.save();
-      canvas.translate(4.5, -9.0);
-      canvas.rotate(-armAngle);
-      // Sleeve (#16A34A Emerald)
-      canvas.drawLine(
-        Offset.zero,
-        const Offset(2.5, 11.0),
-        Paint()
-          ..color = const Color(0xFF16A34A)
-          ..strokeWidth = 6.0
-          ..strokeCap = StrokeCap.round,
-      );
-      // White sleeve cuff
-      canvas.drawLine(
-        const Offset(1.0, 11.0),
-        const Offset(4.0, 11.0),
-        Paint()
-          ..color = Colors.white
-          ..strokeWidth = 1.8,
-      );
-      // Forearm & Hand (Warm Skin Tone #EBB27A)
-      canvas.drawLine(
-        const Offset(2.5, 11.0),
-        const Offset(4.5, 19.0),
-        Paint()
-          ..color = const Color(0xFFEBB27A)
-          ..strokeWidth = 4.5
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawCircle(const Offset(4.5, 19.0), 2.8, Paint()..color = const Color(0xFFEBB27A));
-      canvas.restore();
-
-      // 7. Neck, Head & Sporty Cap
-      // Neck
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: const Offset(0, -14.5), width: 6.0, height: 5.0),
-          const Radius.circular(2.0),
-        ),
-        Paint()..color = const Color(0xFFCD915A),
-      );
-      // Hair contour at back of head
-      canvas.drawOval(
-        Rect.fromCenter(center: const Offset(-5.5, -21.0), width: 7.0, height: 10.0),
-        Paint()..color = const Color(0xFF321E14),
-      );
-      // Face (#EBB27A)
-      canvas.drawOval(
-        Rect.fromCenter(center: const Offset(0.0, -21.0), width: 15.0, height: 16.0),
-        Paint()..color = const Color(0xFFEBB27A),
-      );
-      // Cap Crown (#15803D)
-      canvas.drawArc(
-        Rect.fromCenter(center: const Offset(0.0, -23.5), width: 17.0, height: 15.0),
-        math.pi,
-        math.pi,
-        true,
-        Paint()..color = const Color(0xFF15803D),
-      );
-      // Cap top button
-      canvas.drawCircle(const Offset(0.0, -31.0), 1.5, Paint()..color = const Color(0xFF0F5A2A));
-      // Curved Visor Bill
-      final visorPath = Path()
-        ..moveTo(1.0, -23.5)
-        ..lineTo(14.0, -21.0)
-        ..lineTo(13.0, -18.0)
-        ..lineTo(0.0, -20.5)
-        ..close();
-      canvas.drawPath(visorPath, Paint()..color = const Color(0xFF15803D));
-      canvas.drawLine(
-        const Offset(0.0, -20.5),
-        const Offset(13.0, -18.0),
-        Paint()
-          ..color = const Color(0xFF0F5A2A)
-          ..strokeWidth = 1.5,
-      );
-
-      canvas.restore();
-
-      // 5. FLOATING TURN ANNOUNCEMENT SPEECH BUBBLE HUD (MD §5, §13.9)
+      // 4.2 Announcement text calculation
       final String announcementText;
-      if (!isWalking || walkProgress >= 0.98) {
-        announcementText = 'Arrived';
+      if (isArrived) {
+        announcementText = 'Arrived!';
       } else if (walkProgress < 0.03) {
         announcementText = 'Start';
       } else if (route.steps.isNotEmpty) {
@@ -1766,170 +1565,15 @@ class RouteOverlayPainter extends CustomPainter {
         announcementText = 'Go straight';
       }
 
+      // 4.3 Paint Floating Speech Bubble HUD (scaled to match avatar scale, but not flipped horizontally)
       canvas.save();
-      canvas.translate(avatarPos.dx, avatarPos.dy);
-      canvas.rotate(-mapRotationRadians); // Dynamic Billboarding: upright speech bubble
-
-      final bubbleSpan = TextSpan(
+      canvas.scale(avatarScale, avatarScale);
+      final bubblePainter = TurnBubbleHudPainter(
         text: announcementText,
-        style: const TextStyle(
-          fontSize: 24.0,
-          fontWeight: FontWeight.w900,
-          color: Color(0xFF1B5E20),
-          letterSpacing: 0.2,
-        ),
+        isArrival: isArrived,
       );
-      final bubblePainter = TextPainter(
-        text: bubbleSpan,
-        textDirection: TextDirection.ltr,
-      )..layout(maxWidth: 320.0);
-
-      const double iconSize = 22.0;
-      const double iconGap = 10.0;
-      const double horizontalPadding = 18.0;
-      final double bubbleWidth =
-          bubblePainter.width + iconSize + iconGap + (horizontalPadding * 2);
-      const double bubbleHeight = 44.0;
-      const double bubbleY = -92.0;
-
-      final bubbleRRect = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: const Offset(0, bubbleY),
-          width: bubbleWidth,
-          height: bubbleHeight,
-        ),
-        const Radius.circular(22.0),
-      );
-
-      // Bubble drop shadow
-      canvas.drawShadow(
-        Path()..addRRect(bubbleRRect),
-        Colors.black.withValues(alpha: 0.35),
-        8.0,
-        false,
-      );
-
-      // Bubble background & border
-      canvas.drawRRect(bubbleRRect, Paint()..color = Colors.white..style = PaintingStyle.fill);
-      canvas.drawRRect(
-        bubbleRRect,
-        Paint()
-          ..color = const Color(0xFF1B5E20)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5,
-      );
-
-      // Downward pointer tail
-      final tailPath = Path()
-        ..moveTo(-8.0, bubbleY + bubbleHeight / 2)
-        ..lineTo(8.0, bubbleY + bubbleHeight / 2)
-        ..lineTo(0.0, bubbleY + bubbleHeight / 2 + 10.0)
-        ..close();
-      canvas.drawPath(tailPath, Paint()..color = Colors.white..style = PaintingStyle.fill);
-      canvas.drawPath(
-        tailPath,
-        Paint()
-          ..color = const Color(0xFF1B5E20)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5
-          ..strokeJoin = StrokeJoin.round,
-      );
-      // Seamless seam cover
-      canvas.drawLine(
-        Offset(-7.0, bubbleY + bubbleHeight / 2),
-        Offset(7.0, bubbleY + bubbleHeight / 2),
-        Paint()..color = Colors.white..strokeWidth = 3.5,
-      );
-
-      // Vector Directional Turn Icon
-      final double contentStartX = -bubbleWidth / 2 + horizontalPadding;
-      final double iconCenterX = contentStartX + iconSize / 2;
-      final double iconCenterY = bubbleY;
-
-      final iconStroke = Paint()
-        ..color = const Color(0xFF16A34A)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.8
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round;
-      final iconFill = Paint()
-        ..color = const Color(0xFF16A34A)
-        ..style = PaintingStyle.fill;
-
-      if (announcementText.contains('right')) {
-        final p = Path()
-          ..moveTo(iconCenterX - 5.5, iconCenterY + 6.0)
-          ..lineTo(iconCenterX - 5.5, iconCenterY - 3.5)
-          ..lineTo(iconCenterX + 4.5, iconCenterY - 3.5);
-        canvas.drawPath(p, iconStroke);
-        final head = Path()
-          ..moveTo(iconCenterX + 2.5, iconCenterY - 7.5)
-          ..lineTo(iconCenterX + 8.0, iconCenterY - 3.5)
-          ..lineTo(iconCenterX + 2.5, iconCenterY + 0.5)
-          ..close();
-        canvas.drawPath(head, iconFill);
-      } else if (announcementText.contains('left')) {
-        final p = Path()
-          ..moveTo(iconCenterX + 5.5, iconCenterY + 6.0)
-          ..lineTo(iconCenterX + 5.5, iconCenterY - 3.5)
-          ..lineTo(iconCenterX - 4.5, iconCenterY - 3.5);
-        canvas.drawPath(p, iconStroke);
-        final head = Path()
-          ..moveTo(iconCenterX - 2.5, iconCenterY - 7.5)
-          ..lineTo(iconCenterX - 8.0, iconCenterY - 3.5)
-          ..lineTo(iconCenterX - 2.5, iconCenterY + 0.5)
-          ..close();
-        canvas.drawPath(head, iconFill);
-      } else if (announcementText.contains('U-turn')) {
-        final p = Path()
-          ..moveTo(iconCenterX - 5.0, iconCenterY + 6.0)
-          ..lineTo(iconCenterX - 5.0, iconCenterY - 2.0)
-          ..arcToPoint(
-            Offset(iconCenterX + 5.0, iconCenterY - 2.0),
-            radius: const Radius.circular(5.0),
-            clockwise: true,
-          )
-          ..lineTo(iconCenterX + 5.0, iconCenterY + 3.0);
-        canvas.drawPath(p, iconStroke);
-        final head = Path()
-          ..moveTo(iconCenterX + 1.5, iconCenterY + 1.0)
-          ..lineTo(iconCenterX + 5.0, iconCenterY + 6.5)
-          ..lineTo(iconCenterX + 8.5, iconCenterY + 1.0)
-          ..close();
-        canvas.drawPath(head, iconFill);
-      } else if (announcementText == 'Arrived') {
-        final check = Path()
-          ..moveTo(iconCenterX - 7.0, iconCenterY + 0.5)
-          ..lineTo(iconCenterX - 2.0, iconCenterY + 6.0)
-          ..lineTo(iconCenterX + 7.5, iconCenterY - 5.5);
-        canvas.drawPath(check, iconStroke..strokeWidth = 3.2);
-      } else if (announcementText == 'Start') {
-        final startHead = Path()
-          ..moveTo(iconCenterX - 5.0, iconCenterY - 6.5)
-          ..lineTo(iconCenterX + 6.5, iconCenterY)
-          ..lineTo(iconCenterX - 5.0, iconCenterY + 6.5)
-          ..close();
-        canvas.drawPath(startHead, iconFill);
-      } else {
-        // Go straight
-        final p = Path()
-          ..moveTo(iconCenterX, iconCenterY + 6.5)
-          ..lineTo(iconCenterX, iconCenterY - 3.5);
-        canvas.drawPath(p, iconStroke);
-        final head = Path()
-          ..moveTo(iconCenterX - 5.5, iconCenterY - 2.0)
-          ..lineTo(iconCenterX, iconCenterY - 8.0)
-          ..lineTo(iconCenterX + 5.5, iconCenterY - 2.0)
-          ..close();
-        canvas.drawPath(head, iconFill);
-      }
-
-      // Bubble text
-      final double textStartX = contentStartX + iconSize + iconGap;
-      bubblePainter.paint(
-        canvas,
-        Offset(textStartX, bubbleY - bubblePainter.height / 2),
-      );
+      bubblePainter.paint(canvas, Size.zero);
+      canvas.restore();
 
       canvas.restore();
     }
@@ -1969,7 +1613,7 @@ class RouteOverlayPainter extends CustomPainter {
       case TurnDirection.uTurn:
         return 'Make U-turn';
       case TurnDirection.arrive:
-        return 'Arrived';
+        return 'Arrived!';
     }
   }
 
@@ -1979,10 +1623,16 @@ class RouteOverlayPainter extends CustomPainter {
         oldDelegate.pulseScale != pulseScale ||
         oldDelegate.originStallCenter != originStallCenter ||
         oldDelegate.destinationStallCenter != destinationStallCenter ||
+        oldDelegate.originStallBounds != originStallBounds ||
+        oldDelegate.destinationStallBounds != destinationStallBounds ||
         oldDelegate.walkProgress != walkProgress ||
         oldDelegate.isWalking != isWalking ||
+        oldDelegate.mapRotationRadians != mapRotationRadians ||
+        oldDelegate.avatarFacingSign != avatarFacingSign ||
+        oldDelegate.arrivalHopProgress != arrivalHopProgress ||
+        oldDelegate.waveProgress != waveProgress ||
         oldDelegate.cachedPath != cachedPath ||
-        oldDelegate.mapRotationRadians != mapRotationRadians;
+        oldDelegate.cachedLength != cachedLength;
   }
 }
 

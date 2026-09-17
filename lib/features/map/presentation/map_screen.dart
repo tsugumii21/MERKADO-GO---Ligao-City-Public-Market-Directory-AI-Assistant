@@ -14,7 +14,9 @@ import '../../chat/presentation/aling_suki_chat_screen.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
 import '../domain/navigation_models.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/entrance_provider.dart';
 import '../providers/search_provider.dart';
+import 'widgets/entrance_detail_sheet.dart';
 import 'widgets/entrance_selector_sheet.dart';
 import 'widgets/interactive_market_map.dart';
 import 'widgets/map_search_dropdown.dart';
@@ -94,7 +96,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final stallsAsync = ref.watch(allStallsProvider);
     final activeRoute = ref.watch(activeRouteProvider);
     final selectedEntrance = ref.watch(selectedEntranceProvider);
-    final entryPoints = ref.watch(entryPointsProvider);
+    final entryPoints = ref.watch(marketEntrancesProvider);
     final traversalTrigger = ref.watch(routeTraversalTriggerProvider);
     final skipTrigger = ref.watch(routeSkipTraversalTriggerProvider);
     final pickingOriginTargetStall = ref.watch(pickingOriginTargetStallProvider);
@@ -157,39 +159,23 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   setState(() => _selectedStall = stall);
                   await StallDetailSheet.show(context, stall);
                 },
-                onEntranceTapped: (entrance) {
-                  final current = ref.read(selectedEntranceProvider);
-                  HapticFeedback.selectionClick();
+                onEntranceTapped: (entrance) async {
+                  unawaited(HapticFeedback.selectionClick());
                   if (_isPickingEntranceOnMap) {
                     ref.read(selectedEntranceProvider.notifier).state = entrance;
                     setState(() => _isPickingEntranceOnMap = false);
                     final activeRoute = ref.read(activeRouteProvider);
                     if (activeRoute != null) {
-                      ref.read(activeRouteProvider.notifier).navigateToStall(
+                      unawaited(ref.read(activeRouteProvider.notifier).navigateToStall(
                             stallId: activeRoute.destinationStallId,
                             entranceOverride: entrance,
-                          );
+                          ));
                     }
                     return;
                   }
-                  if (current?.entranceId == entrance.entranceId) {
-                    // Gate pressed again: unchoose/deselect it
-                    ref.read(selectedEntranceProvider.notifier).state = null;
-                    final activeRoute = ref.read(activeRouteProvider);
-                    if (activeRoute != null) {
-                      ref.read(activeRouteProvider.notifier).clearRoute();
-                    }
-                  } else {
-                    // Gate chosen: select it and recalculate active route if navigating
-                    ref.read(selectedEntranceProvider.notifier).state = entrance;
-                    final activeRoute = ref.read(activeRouteProvider);
-                    if (activeRoute != null) {
-                      ref.read(activeRouteProvider.notifier).navigateToStall(
-                            stallId: activeRoute.destinationStallId,
-                            entranceOverride: entrance,
-                          );
-                    }
-                  }
+
+                  // Open entrance details modal
+                  await EntranceDetailSheet.show(context, entrance);
                 },
                 onMapTapped: () {
                   if (_isSearchDropdownOpen) {

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -342,6 +342,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                               'Inspect and edit stall marker coordinates',
                                           onTap: () => context.go(
                                               RouteNames.adminMap),
+                                        ),
+
+                                        const SizedBox(height: 12),
+
+                                        // Action 4: Manage Entrances
+                                        _buildActionCard(
+                                          icon: Icons.location_on_rounded,
+                                          iconColor:
+                                              const Color(0xFF0D9488),
+                                          iconBgColor:
+                                              const Color(0xFFCCFBF1),
+                                          title: 'Manage Entrances',
+                                          subtitle:
+                                              'Update entrance photos, landmarks, and gate details',
+                                          onTap: () => context.push(
+                                              RouteNames.adminEntrances),
                                         ),
 
                                         const SizedBox(height: 28),

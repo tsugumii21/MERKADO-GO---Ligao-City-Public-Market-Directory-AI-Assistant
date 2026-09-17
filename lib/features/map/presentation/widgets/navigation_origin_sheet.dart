@@ -180,7 +180,7 @@ class NavigationOriginSheet extends StatelessWidget {
           // Option 2: Enter from an entrance gate
           _buildOptionCard(
             context: context,
-            icon: Icons.door_sliding_rounded,
+            icon: Icons.location_on_rounded,
             title: 'Enter from a gate',
             subtitle: "I'm arriving from outside the market",
             onTap: (ctx) async {

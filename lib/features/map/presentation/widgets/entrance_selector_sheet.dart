@@ -9,6 +9,8 @@ import '../../../../models/stall_model.dart';
 import '../../../../providers/stall_provider.dart';
 import '../../domain/navigation_models.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/entrance_provider.dart';
+import 'entrance_detail_sheet.dart';
 import 'interactive_market_map.dart';
 
 /// Available selection modes in the EntranceSelectorSheet
@@ -157,7 +159,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final entryPoints = ref.watch(entryPointsProvider);
+    final entryPoints = ref.watch(marketEntrancesProvider);
     final service = ref.watch(pathfindingServiceProvider);
     final stallsAsync = ref.watch(allStallsProvider);
     final stalls = stallsAsync.value ?? const [];
@@ -722,6 +724,23 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                       ],
                                     ),
                                   ),
+
+                                  // Info Details Button
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.info_outline_rounded,
+                                      size: 20,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    tooltip: 'Entrance details',
+                                    visualDensity: VisualDensity.compact,
+                                    splashRadius: 18,
+                                    onPressed: () {
+                                      HapticFeedback.selectionClick();
+                                      EntranceDetailSheet.show(context, entrance);
+                                    },
+                                  ),
+                                  const SizedBox(width: 4),
 
                                   // Selection radio indicator
                                   Icon(

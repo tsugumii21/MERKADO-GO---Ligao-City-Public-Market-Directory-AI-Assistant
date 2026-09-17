@@ -93,6 +93,20 @@ class CloudinaryService {
     );
   }
 
+  /// Upload entrance gate image bytes to Cloudinary
+  static Future<String?> uploadEntranceImageBytes(
+    Uint8List bytes, {
+    required int entranceId,
+    Function(int sent, int total)? onProgress,
+  }) async {
+    return uploadImageBytes(
+      bytes,
+      folder: 'merkadogo/entrances',
+      publicId: 'entry_$entranceId',
+      onProgress: onProgress,
+    );
+  }
+
   /// Upload multiple stall images as bytes
   static Future<List<String>> uploadMultipleStallImagesBytes(
     List<Uint8List> imageBytesList, {

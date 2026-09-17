@@ -41,25 +41,108 @@ class GraphNode {
   String toString() => 'GraphNode($id, x: $x, y: $y, neighbors: ${neighbors.length})';
 }
 
-/// Physical entrance point from `market_entry_points.json`
+/// Physical entrance point from `market_entry_points.json` and Firestore
 class MarketEntryPoint {
   final int entranceId;
   final String nodeId;
   final String description;
+  final String? imageUrl;
+  final String? landmark;
+  final String? title;
+  final DateTime? updatedAt;
 
   const MarketEntryPoint({
     required this.entranceId,
     required this.nodeId,
     required this.description,
+    this.imageUrl,
+    this.landmark,
+    this.title,
+    this.updatedAt,
   });
+
+  String get displayName {
+    if (title != null && title!.trim().isNotEmpty) {
+      return title!.trim();
+    }
+    return 'Gate $entranceId';
+  }
+
+  String get effectiveDescription => description.trim();
+
+  String get effectiveLandmark {
+    if (landmark != null && landmark!.trim().isNotEmpty) {
+      return landmark!.trim();
+    }
+    return description.trim();
+  }
+
+  MarketEntryPoint copyWith({
+    int? entranceId,
+    String? nodeId,
+    String? description,
+    String? imageUrl,
+    String? landmark,
+    String? title,
+    DateTime? updatedAt,
+  }) {
+    return MarketEntryPoint(
+      entranceId: entranceId ?? this.entranceId,
+      nodeId: nodeId ?? this.nodeId,
+      description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
+      landmark: landmark ?? this.landmark,
+      title: title ?? this.title,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   factory MarketEntryPoint.fromJson(Map<String, dynamic> json) {
     return MarketEntryPoint(
-      entranceId: (json['entrance_id'] as num?)?.toInt() ?? 0,
-      nodeId: (json['node_id'] as String? ?? '').trim(),
+      entranceId: (json['entrance_id'] ?? json['entranceId'] as num?)?.toInt() ?? 0,
+      nodeId: (json['node_id'] ?? json['nodeId'] as String? ?? '').trim(),
       description: (json['description'] as String? ?? '').trim(),
+      imageUrl: (json['image_url'] ?? json['imageUrl'] as String?)?.trim(),
+      landmark: (json['landmark'] as String?)?.trim(),
+      title: (json['title'] as String?)?.trim(),
+      updatedAt: json['updated_at'] != null
+          ? (json['updated_at'] is DateTime
+              ? json['updated_at'] as DateTime
+              : DateTime.tryParse(json['updated_at'].toString()))
+          : null,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'entrance_id': entranceId,
+      'node_id': nodeId,
+      'description': description,
+      if (imageUrl != null) 'image_url': imageUrl,
+      if (landmark != null) 'landmark': landmark,
+      if (title != null) 'title': title,
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MarketEntryPoint &&
+          runtimeType == other.runtimeType &&
+          entranceId == other.entranceId &&
+          nodeId == other.nodeId &&
+          imageUrl == other.imageUrl &&
+          title == other.title &&
+          landmark == other.landmark;
+
+  @override
+  int get hashCode =>
+      entranceId.hashCode ^
+      nodeId.hashCode ^
+      imageUrl.hashCode ^
+      title.hashCode ^
+      landmark.hashCode;
 
   @override
   String toString() => 'MarketEntryPoint(#$entranceId: $description -> $nodeId)';

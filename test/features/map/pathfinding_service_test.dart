@@ -587,6 +587,36 @@ void main() {
       expect(route.nodeIds.last, 'node_wm_t26');
       expect(route.nodeIds.length, greaterThan(1));
     });
+
+    test('Zone-aware: Route from north stall to RED ROS STORE uses direct interior Wet Market central corridor instead of perimeter detour', () {
+      // id_157 (test stall 01 / Marixon Fruits and Vegetables) to id_208 (RED ROS STORE)
+      final route = service.findStallToStallRoute(
+        originStallId: 'id_157',
+        destinationStallId: 'id_208',
+        originName: 'test stall 01',
+        destinationName: 'RED ROS STORE',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+
+      // Must traverse through the central Wet Market corridor
+      expect(route.nodeIds.first, 'node_ex_n3');
+      expect(route.nodeIds.last, 'node_wm_x1');
+      expect(route.nodeIds.contains('node_ex_x1'), isTrue);
+      expect(route.nodeIds.contains('node_wm_x39'), isTrue);
+      expect(route.nodeIds.contains('node_wm_x3'), isTrue);
+
+      // Must not take western perimeter detour (node_ex_t7..node_ex_t13)
+      expect(route.nodeIds.contains('node_ex_t9'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t10'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t11'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t12'), isFalse);
+      expect(route.nodeIds.contains('node_ex_t13'), isFalse);
+
+      // Direct corridor distance is ~1,148 px, far shorter than perimeter detour (>2,600 px)
+      expect(route.totalDistance, lessThan(1200.0));
+    });
   });
 }
 

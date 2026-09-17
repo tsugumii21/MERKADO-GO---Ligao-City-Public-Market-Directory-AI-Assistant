@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merkado_go/features/map/domain/navigation_models.dart';
+import 'package:merkado_go/features/map/presentation/painters/pedestrian_avatar_painter.dart';
+import 'package:merkado_go/features/map/presentation/painters/turn_bubble_hud_painter.dart';
 import 'package:merkado_go/features/map/presentation/widgets/interactive_market_map.dart';
 
 void main() {
@@ -71,6 +73,9 @@ void main() {
                 walkProgress: 0.45,
                 isWalking: true,
                 mapRotationRadians: 0.0,
+                avatarFacingSign: 1.0,
+                arrivalHopProgress: 0.0,
+                waveProgress: 0.0,
               ),
             ),
           ),
@@ -80,7 +85,8 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('RouteOverlayPainter paints arrival state without errors', (tester) async {
+    testWidgets('RouteOverlayPainter paints arrival state with wave and hop without errors',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -94,6 +100,9 @@ void main() {
                 walkProgress: 1.0,
                 isWalking: false,
                 mapRotationRadians: 0.5,
+                avatarFacingSign: -1.0,
+                arrivalHopProgress: 0.35,
+                waveProgress: 0.75,
               ),
             ),
           ),
@@ -101,6 +110,106 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('PedestrianAvatarPainter renders walking and arrival poses cleanly',
+        (tester) async {
+      // Walking pose
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomPaint(
+              size: const Size(100.0, 100.0),
+              painter: const PedestrianAvatarPainter(
+                walkCycleProgress: 0.25,
+                arrivalHopProgress: 0.0,
+                waveProgress: 0.0,
+                isArrived: false,
+                facingSign: 1.0,
+                scale: 1.8,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+
+      // Arrival greeting pose with left facing and hop apex
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomPaint(
+              size: const Size(100.0, 100.0),
+              painter: const PedestrianAvatarPainter(
+                walkCycleProgress: 0.0,
+                arrivalHopProgress: 0.35,
+                waveProgress: 0.5,
+                isArrived: true,
+                facingSign: -1.0,
+                scale: 2.0,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('TurnBubbleHudPainter renders turn directions and arrival pin cleanly',
+        (tester) async {
+      // Turn direction text
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomPaint(
+              size: const Size(200.0, 100.0),
+              painter: const TurnBubbleHudPainter(
+                text: 'Turn left into Fish Alley',
+                isArrival: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+
+      // Arrival pill with vector red pin
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomPaint(
+              size: const Size(200.0, 100.0),
+              painter: const TurnBubbleHudPainter(
+                text: 'Arrived!',
+                isArrival: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    test('PedestrianAvatarPainter and TurnBubbleHudPainter shouldRepaint triggers correctly', () {
+      const avatarP1 = PedestrianAvatarPainter(
+        walkCycleProgress: 0.1,
+        arrivalHopProgress: 0.0,
+        waveProgress: 0.0,
+        isArrived: false,
+      );
+      const avatarP2 = PedestrianAvatarPainter(
+        walkCycleProgress: 0.2,
+        arrivalHopProgress: 0.0,
+        waveProgress: 0.0,
+        isArrived: false,
+      );
+      expect(avatarP1.shouldRepaint(avatarP2), isTrue);
+      expect(avatarP1.shouldRepaint(avatarP1), isFalse);
+
+      const bubbleP1 = TurnBubbleHudPainter(text: 'Go straight', isArrival: false);
+      const bubbleP2 = TurnBubbleHudPainter(text: 'Arrived!', isArrival: true);
+      expect(bubbleP1.shouldRepaint(bubbleP2), isTrue);
+      expect(bubbleP1.shouldRepaint(bubbleP1), isFalse);
     });
   });
 }

@@ -22,6 +22,7 @@ import '../../features/admin/presentation/admin_map_screen.dart';
 import '../../features/admin/presentation/manage_stalls_screen.dart';
 import '../../features/admin/presentation/add_edit_stall_screen.dart';
 import '../../features/admin/presentation/reports_screen.dart';
+import '../../features/admin/presentation/admin_manage_entrances_screen.dart';
 import 'route_names.dart';
 
 // Import GlobalKeys for page state management
@@ -187,6 +188,10 @@ class AppRouter {
         GoRoute(
           path: RouteNames.adminReports,
           builder: (context, state) => const ReportsScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.adminEntrances,
+          builder: (context, state) => const AdminManageEntrancesScreen(),
         ),
       ],
       redirect: (context, state) async {

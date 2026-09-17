@@ -82,6 +82,7 @@ class MarketEntryPoint {
     String? nodeId,
     String? description,
     String? imageUrl,
+    bool clearImageUrl = false,
     String? landmark,
     String? title,
     DateTime? updatedAt,
@@ -90,7 +91,7 @@ class MarketEntryPoint {
       entranceId: entranceId ?? this.entranceId,
       nodeId: nodeId ?? this.nodeId,
       description: description ?? this.description,
-      imageUrl: imageUrl ?? this.imageUrl,
+      imageUrl: clearImageUrl ? null : (imageUrl ?? this.imageUrl),
       landmark: landmark ?? this.landmark,
       title: title ?? this.title,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -98,27 +99,51 @@ class MarketEntryPoint {
   }
 
   factory MarketEntryPoint.fromJson(Map<String, dynamic> json) {
+    final photoRemoved =
+        json['photo_removed'] == true || json['has_photo'] == false;
+    final rawUrl = (json['image_url'] ??
+            json['imageUrl'] ??
+            json['photo_url'] ??
+            json['photoUrl'] as String?)
+        ?.trim();
+    final effectiveImageUrl =
+        photoRemoved ? null : (rawUrl != null && rawUrl.isNotEmpty ? rawUrl : null);
+
+    DateTime? resolvedUpdatedAt;
+    final rawUpdatedAt = json['updated_at'] ?? json['updatedAt'];
+    if (rawUpdatedAt != null) {
+      if (rawUpdatedAt is DateTime) {
+        resolvedUpdatedAt = rawUpdatedAt;
+      } else {
+        try {
+          resolvedUpdatedAt = (rawUpdatedAt as dynamic).toDate() as DateTime?;
+        } catch (_) {
+          resolvedUpdatedAt = DateTime.tryParse(rawUpdatedAt.toString());
+        }
+      }
+    }
+
     return MarketEntryPoint(
-      entranceId: (json['entrance_id'] ?? json['entranceId'] as num?)?.toInt() ?? 0,
+      entranceId:
+          (json['entrance_id'] ?? json['entranceId'] as num?)?.toInt() ?? 0,
       nodeId: (json['node_id'] ?? json['nodeId'] as String? ?? '').trim(),
       description: (json['description'] as String? ?? '').trim(),
-      imageUrl: (json['image_url'] ?? json['imageUrl'] as String?)?.trim(),
+      imageUrl: effectiveImageUrl,
       landmark: (json['landmark'] as String?)?.trim(),
       title: (json['title'] as String?)?.trim(),
-      updatedAt: json['updated_at'] != null
-          ? (json['updated_at'] is DateTime
-              ? json['updated_at'] as DateTime
-              : DateTime.tryParse(json['updated_at'].toString()))
-          : null,
+      updatedAt: resolvedUpdatedAt,
     );
   }
 
   Map<String, dynamic> toMap() {
+    final hasPhoto = imageUrl != null && imageUrl!.trim().isNotEmpty;
     return {
       'entrance_id': entranceId,
       'node_id': nodeId,
       'description': description,
-      if (imageUrl != null) 'image_url': imageUrl,
+      'has_photo': hasPhoto,
+      'photo_removed': !hasPhoto,
+      if (hasPhoto) 'image_url': imageUrl!.trim(),
       if (landmark != null) 'landmark': landmark,
       if (title != null) 'title': title,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),

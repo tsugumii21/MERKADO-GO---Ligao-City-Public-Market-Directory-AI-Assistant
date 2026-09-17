@@ -55,8 +55,15 @@ class _AdminEditEntranceSheetState
   late final TextEditingController _landmarkController;
 
   Uint8List? _pickedImageBytes;
+  bool _isImageRemoved = false;
   bool _isSaving = false;
   String? _errorMessage;
+
+  bool get _hasImage =>
+      _pickedImageBytes != null ||
+      (!_isImageRemoved &&
+          widget.entrance.imageUrl != null &&
+          widget.entrance.imageUrl!.trim().isNotEmpty);
 
   @override
   void initState() {
@@ -94,6 +101,7 @@ class _AdminEditEntranceSheetState
         final bytes = await pickedFile.readAsBytes();
         setState(() {
           _pickedImageBytes = bytes;
+          _isImageRemoved = false;
           _errorMessage = null;
         });
       }
@@ -102,6 +110,15 @@ class _AdminEditEntranceSheetState
         _errorMessage = 'Failed to select image: $e';
       });
     }
+  }
+
+  void _removeImage() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _pickedImageBytes = null;
+      _isImageRemoved = true;
+      _errorMessage = null;
+    });
   }
 
   Future<void> _saveChanges() async {
@@ -125,11 +142,22 @@ class _AdminEditEntranceSheetState
       final repository = ref.read(entranceRepositoryProvider);
       String? photoUrl = widget.entrance.imageUrl;
 
-      if (_pickedImageBytes != null) {
+      if (_isImageRemoved) {
+        photoUrl = null;
+      } else if (_pickedImageBytes != null) {
         photoUrl = await repository.uploadEntranceImage(
           entranceId: widget.entrance.entranceId,
           imageBytes: _pickedImageBytes!,
         );
+      }
+
+      if (_isImageRemoved &&
+          widget.entrance.imageUrl != null &&
+          widget.entrance.imageUrl!.trim().isNotEmpty) {
+        try {
+          await CachedNetworkImage.evictFromCache(
+              widget.entrance.imageUrl!.trim());
+        } catch (_) {}
       }
 
       final updated = widget.entrance.copyWith(
@@ -137,12 +165,15 @@ class _AdminEditEntranceSheetState
         description: description,
         landmark: landmark.isNotEmpty ? landmark : description,
         imageUrl: photoUrl,
+        clearImageUrl: _isImageRemoved || photoUrl == null,
         updatedAt: DateTime.now(),
       );
 
       await repository.saveEntrance(updated);
 
       if (mounted) {
+        ref.invalidate(firestoreEntrancesStreamProvider);
+        ref.invalidate(marketEntrancesProvider);
         unawaited(HapticFeedback.lightImpact());
         Navigator.of(context).pop();
         widget.onSaved?.call();
@@ -315,6 +346,37 @@ class _AdminEditEntranceSheetState
                       ],
                     ),
 
+                    if (_hasImage) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _isSaving ? null : _removeImage,
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: Color(0xFFDC2626),
+                        ),
+                        label: Text(
+                          'Remove Photo',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFDC2626),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFEF2F2),
+                          side: const BorderSide(
+                            color: Color(0xFFFECACA),
+                            width: 1.0,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ],
+
                     if (_errorMessage != null) ...[
                       const SizedBox(height: 12),
                       Container(
@@ -401,45 +463,6 @@ class _AdminEditEntranceSheetState
                       decoration: _inputDecoration('e.g. Near Legazpi St. Entrance'),
                     ),
 
-                    const SizedBox(height: 14),
-
-                    // Snap Node (Read Only)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.alt_route_rounded,
-                            size: 16,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Vector Pathway Snap Node: ',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                          Text(
-                            widget.entrance.nodeId,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0F172A),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
                     const SizedBox(height: 24),
 
                     // Save Button
@@ -485,6 +508,10 @@ class _AdminEditEntranceSheetState
   }
 
   Widget _buildImageWidget() {
+    if (_isImageRemoved) {
+      return _buildPlaceholderGraphic();
+    }
+
     if (_pickedImageBytes != null) {
       return Stack(
         fit: StackFit.expand,
@@ -495,7 +522,7 @@ class _AdminEditEntranceSheetState
           ),
           Positioned(
             top: 8,
-            right: 8,
+            left: 8,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
@@ -512,22 +539,67 @@ class _AdminEditEntranceSheetState
               ),
             ),
           ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.65),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _isSaving ? null : _removeImage,
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       );
     }
 
     if (widget.entrance.imageUrl != null &&
         widget.entrance.imageUrl!.trim().isNotEmpty) {
-      return CachedNetworkImage(
-        imageUrl: widget.entrance.imageUrl!.trim(),
-        fit: BoxFit.cover,
-        placeholder: (context, url) => const Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(
+            imageUrl: widget.entrance.imageUrl!.trim(),
+            fit: BoxFit.cover,
+            placeholder: (context, url) => const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+              ),
+            ),
+            errorWidget: (context, url, error) => _buildPlaceholderGraphic(),
           ),
-        ),
-        errorWidget: (context, url, error) => _buildPlaceholderGraphic(),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.65),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _isSaving ? null : _removeImage,
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 

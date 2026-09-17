@@ -55,6 +55,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   String _stallStatus = 'open';
   Uint8List? _selectedImageBytes;
   String? _existingPhotoUrl;
+  bool _isPhotoRemoved = false;
   bool _isLoading = false;
   bool _isSaving = false;
   String? _actualDocumentId;
@@ -241,6 +242,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         setState(() {
           _selectedImageBytes = bytes;
           _existingPhotoUrl = null;
+          _isPhotoRemoved = false;
         });
       }
     } catch (e) {
@@ -254,6 +256,19 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
       }
     }
   }
+
+  void _removePhoto() {
+    setState(() {
+      _selectedImageBytes = null;
+      _existingPhotoUrl = null;
+      _isPhotoRemoved = true;
+    });
+  }
+
+  bool get _hasPhoto =>
+      !_isPhotoRemoved &&
+      (_selectedImageBytes != null ||
+          (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty));
 
   Future<void> _loadStallData() async {
     setState(() => _isLoading = true);
@@ -1398,16 +1413,20 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                       backgroundColor: const Color(0xFF1B5E20),
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      'Done',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    child: Center(
+                      child: Text(
+                        'Done',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -1495,7 +1514,10 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     setState(() => _isSaving = true);
 
     try {
-      String? photoUrl = _existingPhotoUrl;
+      String? photoUrl;
+      if (!_isPhotoRemoved && _selectedImageBytes == null) {
+        photoUrl = _existingPhotoUrl;
+      }
 
       // Upload newly selected image to Cloudinary if picked
       if (_selectedImageBytes != null) {
@@ -1552,16 +1574,16 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         'address': addressText,
         'stallNumber': addressText,
         'stall_number': addressText,
-        'photoUrls': photoUrl != null
+        'photoUrls': photoUrl != null && photoUrl.isNotEmpty
             ? [photoUrl]
-            : (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty
-                ? [_existingPhotoUrl!]
-                : <String>[]),
-        'photo_urls': photoUrl != null
+            : <String>[],
+        'photo_urls': photoUrl != null && photoUrl.isNotEmpty
             ? [photoUrl]
-            : (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty
-                ? [_existingPhotoUrl!]
-                : <String>[]),
+            : <String>[],
+        if (_isPhotoRemoved && photoUrl == null) ...{
+          'photoUrl': FieldValue.delete(),
+          'photo_url': FieldValue.delete(),
+        },
         'openTime': openTimeText,
         'open_time': openTimeText,
         'closeTime': closeTimeText,
@@ -2268,36 +2290,49 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildPhotoSection(),
-              if (_selectedImageBytes != null ||
-                  (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty)) ...[
-                const SizedBox(height: 10),
+              if (_hasPhoto) ...[
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppColors.primary),
-                        label: Text('Change Photo', style: GoogleFonts.poppins(fontSize: 12, color: AppColors.primary)),
+                        label: Text(
+                          'Change Photo',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: AppColors.primary),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
                         ),
-                        onPressed: _pickImage,
+                        onPressed: _isSaving ? null : _pickImage,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.error),
-                      label: Text('Remove', style: GoogleFonts.poppins(fontSize: 12, color: AppColors.error)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.error),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+                        label: Text(
+                          'Remove Photo',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: const Color(0xFFDC2626),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFEF2F2),
+                          side: const BorderSide(color: Color(0xFFFECACA), width: 1.0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                        ),
+                        onPressed: _isSaving ? null : _removePhoto,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _selectedImageBytes = null;
-                          _existingPhotoUrl = null;
-                        });
-                      },
                     ),
                   ],
                 ),
@@ -3582,30 +3617,79 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   }
 
   Widget _buildPhotoSection() {
-    if (_selectedImageBytes != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.memory(
-          _selectedImageBytes!,
-          width: double.infinity,
-          height: 180,
-          fit: BoxFit.cover,
-        ),
+    if (_hasPhoto && _selectedImageBytes != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              _selectedImageBytes!,
+              width: double.infinity,
+              height: 180,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.65),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _isSaving ? null : _removePhoto,
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
-    if (_existingPhotoUrl != null &&
+    if (_hasPhoto &&
+        _existingPhotoUrl != null &&
         _existingPhotoUrl!.isNotEmpty &&
         _existingPhotoUrl!.startsWith('http')) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          _existingPhotoUrl!,
-          width: double.infinity,
-          height: 180,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildPhotoPlaceholder(),
-        ),
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              _existingPhotoUrl!,
+              width: double.infinity,
+              height: 180,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildPhotoPlaceholder(),
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.65),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _isSaving ? null : _removePhoto,
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 

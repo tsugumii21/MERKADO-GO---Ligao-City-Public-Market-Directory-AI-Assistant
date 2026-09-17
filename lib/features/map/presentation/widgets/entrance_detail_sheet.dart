@@ -17,6 +17,8 @@ class EntranceDetailSheet extends ConsumerWidget {
   final VoidCallback onClose;
   final bool isAdmin;
   final VoidCallback? onEdit;
+  final VoidCallback? onStartRoute;
+  final VoidCallback? onClearSelection;
 
   const EntranceDetailSheet({
     super.key,
@@ -24,6 +26,8 @@ class EntranceDetailSheet extends ConsumerWidget {
     required this.onClose,
     this.isAdmin = false,
     this.onEdit,
+    this.onStartRoute,
+    this.onClearSelection,
   });
 
   static Future<void> show(
@@ -31,6 +35,8 @@ class EntranceDetailSheet extends ConsumerWidget {
     MarketEntryPoint entrance, {
     bool isAdmin = false,
     VoidCallback? onEdit,
+    VoidCallback? onStartRoute,
+    VoidCallback? onClearSelection,
   }) {
     bool effectiveAdmin = isAdmin;
     if (!effectiveAdmin) {
@@ -58,6 +64,8 @@ class EntranceDetailSheet extends ConsumerWidget {
         onClose: () => Navigator.of(ctx).pop(),
         isAdmin: effectiveAdmin,
         onEdit: onEdit,
+        onStartRoute: onStartRoute,
+        onClearSelection: onClearSelection,
       ),
     );
   }
@@ -73,6 +81,8 @@ class EntranceDetailSheet extends ConsumerWidget {
             entranceOverride: entrance,
           );
     }
+
+    onStartRoute?.call();
 
     Navigator.of(context).pop();
 
@@ -95,6 +105,38 @@ class EntranceDetailSheet extends ConsumerWidget {
     );
   }
 
+  void _handleClearSelection(BuildContext context, WidgetRef ref) {
+    HapticFeedback.selectionClick();
+    ref.read(selectedEntranceProvider.notifier).state = null;
+
+    final activeRoute = ref.read(activeRouteProvider);
+    if (activeRoute != null && activeRoute.destinationStallId.isNotEmpty) {
+      ref.read(activeRouteProvider.notifier).clearRoute();
+    }
+
+    onClearSelection?.call();
+
+    Navigator.of(context).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Starting entrance selection cleared',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: const Color(0xFF334155),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch for live updates from firestore/entrances provider
@@ -106,6 +148,8 @@ class EntranceDetailSheet extends ConsumerWidget {
 
     final currentUser = ref.watch(userDataStreamProvider).value;
     final userIsAdmin = isAdmin || (currentUser?.role == 'admin');
+    final selectedEntrance = ref.watch(selectedEntranceProvider);
+    final isSelected = selectedEntrance?.entranceId == liveEntrance.entranceId;
     final mediaQuery = MediaQuery.of(context);
 
     return Container(
@@ -143,44 +187,20 @@ class EntranceDetailSheet extends ConsumerWidget {
               ),
             ),
 
-            // Header Bar with Gate Badge & Close Button
+            // Header Bar with Clean Sheet Title & Close Button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              padding: const EdgeInsets.fromLTRB(20, 4, 12, 6),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4.5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF86EFAC),
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.location_on_rounded,
-                          size: 16,
-                          color: Color(0xFF166534),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Gate ${liveEntrance.entranceId}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF166534),
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'Entrance Details',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
                     ),
                   ),
-                  const Spacer(),
                   IconButton(
                     onPressed: onClose,
                     visualDensity: VisualDensity.compact,
@@ -243,67 +263,152 @@ class EntranceDetailSheet extends ConsumerWidget {
 
                     const SizedBox(height: 16),
 
-                    // Entrance Title & Description
-                    Text(
-                      liveEntrance.displayName,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0F172A),
-                        height: 1.25,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      liveEntrance.effectiveDescription,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF475569),
-                        height: 1.4,
-                      ),
-                    ),
+                    // Entrance Title & Gate Pill
+                    Builder(
+                      builder: (context) {
+                        final hasCustomTitle = liveEntrance.title != null &&
+                            liveEntrance.title!.trim().isNotEmpty &&
+                            liveEntrance.title!.trim().toLowerCase() !=
+                                'gate ${liveEntrance.entranceId}';
 
-                    const SizedBox(height: 14),
+                        final hasDistinctDescription = liveEntrance
+                                .effectiveDescription.isNotEmpty &&
+                            liveEntrance.effectiveDescription
+                                    .toLowerCase()
+                                    .trim() !=
+                                liveEntrance.effectiveLandmark
+                                    .toLowerCase()
+                                    .trim() &&
+                            liveEntrance.effectiveDescription
+                                    .toLowerCase()
+                                    .trim() !=
+                                liveEntrance.displayName.toLowerCase().trim();
 
-                    // Information Chips Row
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildInfoChip(
-                          icon: Icons.near_me_rounded,
-                          label: liveEntrance.effectiveLandmark,
-                          iconColor: const Color(0xFF2563EB),
-                          bgColor: const Color(0xFFEFF6FF),
-                          borderColor: const Color(0xFFBFDBFE),
-                        ),
-                      ],
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (hasCustomTitle) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  _buildGatePill(liveEntrance.entranceId),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      liveEntrance.displayName,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF0F172A),
+                                        height: 1.25,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else ...[
+                              Text(
+                                liveEntrance.displayName,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF0F172A),
+                                  letterSpacing: -0.3,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 10),
+
+                            // Information Chips Row
+                            if (liveEntrance.effectiveLandmark.isNotEmpty)
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _buildInfoChip(
+                                    icon: Icons.location_on_rounded,
+                                    label: liveEntrance.effectiveLandmark,
+                                    iconColor: const Color(0xFF166534),
+                                    bgColor: const Color(0xFFDCFCE7),
+                                    borderColor: const Color(0xFF86EFAC),
+                                  ),
+                                ],
+                              ),
+
+                            // Description Text (only when distinct from landmark & title)
+                            if (hasDistinctDescription) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                liveEntrance.effectiveDescription,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF475569),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 20),
 
-                    // Primary Action: Set as Origin / Start Route
-                    ElevatedButton.icon(
-                      onPressed: () => _handleStartRoute(context, ref),
-                      icon: const Icon(Icons.directions_walk_rounded, size: 20),
-                      label: Text(
-                        'Start Route From Here',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                    // Primary Action: Set as Origin / Start Route OR Clear Selection
+                    if (isSelected) ...[
+                      OutlinedButton.icon(
+                        onPressed: () => _handleClearSelection(context, ref),
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          size: 20,
+                          color: Color(0xFFDC2626),
+                        ),
+                        label: Text(
+                          'Clear Selection',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFDC2626),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFEF2F2),
+                          side: const BorderSide(
+                            color: Color(0xFFFECACA),
+                            width: 1.2,
+                          ),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                    ] else ...[
+                      ElevatedButton.icon(
+                        onPressed: () => _handleStartRoute(context, ref),
+                        icon: const Icon(Icons.directions_walk_rounded, size: 20),
+                        label: Text(
+                          'Start Route From Here',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
 
                     // Admin Quick Action (if applicable)
                     if (userIsAdmin) ...[
@@ -314,7 +419,14 @@ class EntranceDetailSheet extends ConsumerWidget {
                           if (onEdit != null) {
                             onEdit!();
                           } else {
-                            AdminEditEntranceSheet.show(context, liveEntrance);
+                            AdminEditEntranceSheet.show(
+                              context,
+                              liveEntrance,
+                              onSaved: () {
+                                ref.invalidate(firestoreEntrancesStreamProvider);
+                                ref.invalidate(marketEntrancesProvider);
+                              },
+                            );
                           }
                         },
                         icon: const Icon(Icons.edit_note_rounded,
@@ -344,6 +456,39 @@ class EntranceDetailSheet extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGatePill(int entranceId) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDCFCE7),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFF86EFAC),
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.location_on_rounded,
+            size: 14,
+            color: Color(0xFF166534),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Gate $entranceId',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF166534),
+            ),
+          ),
+        ],
       ),
     );
   }

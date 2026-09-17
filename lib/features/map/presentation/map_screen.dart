@@ -161,21 +161,20 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 },
                 onEntranceTapped: (entrance) async {
                   unawaited(HapticFeedback.selectionClick());
-                  if (_isPickingEntranceOnMap) {
-                    ref.read(selectedEntranceProvider.notifier).state = entrance;
-                    setState(() => _isPickingEntranceOnMap = false);
-                    final activeRoute = ref.read(activeRouteProvider);
-                    if (activeRoute != null) {
-                      unawaited(ref.read(activeRouteProvider.notifier).navigateToStall(
-                            stallId: activeRoute.destinationStallId,
-                            entranceOverride: entrance,
-                          ));
-                    }
-                    return;
-                  }
-
-                  // Open entrance details modal
-                  await EntranceDetailSheet.show(context, entrance);
+                  await EntranceDetailSheet.show(
+                    context,
+                    entrance,
+                    onStartRoute: () {
+                      if (_isPickingEntranceOnMap) {
+                        setState(() => _isPickingEntranceOnMap = false);
+                      }
+                    },
+                    onClearSelection: () {
+                      if (_isPickingEntranceOnMap) {
+                        setState(() => _isPickingEntranceOnMap = false);
+                      }
+                    },
+                  );
                 },
                 onMapTapped: () {
                   if (_isSearchDropdownOpen) {

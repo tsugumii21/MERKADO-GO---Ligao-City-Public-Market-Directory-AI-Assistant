@@ -10,7 +10,6 @@ import '../../../core/router/route_names.dart';
 import '../../../core/utils/stall_utils.dart';
 import '../../../core/constants/market_categories.dart';
 import '../../../core/widgets/market_category_icon.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../stalls/presentation/stall_detail_sheet.dart';
 
 /// Modern Admin Stall Management Screen for Merkado Go
@@ -30,13 +29,12 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
   String _selectedCategory = 'All';
   String? _selectedSubcategory;
 
-  // Sort & Filter state variables (Matching User Stalls Directory)
-  String? sortAlpha; // 'az' | 'za' | null
-  TimeOfDay? filterOpenTime;
-  TimeOfDay? filterCloseTime;
-  String? selectedDay; // 'Monday' | 'Tuesday' | ... | null
-  bool showOpenOnDay = true;
-  bool _filterOpenOnly = false; // Open now only toggle
+  // Sort & Filter state variables (Admin Optimized)
+  String? _sortOption; // 'az' | 'za' | 'section' | 'updated' | null
+  String _mapFilter = 'all'; // 'all' | 'assigned' | 'unassigned'
+  String _statusFilter = 'all'; // 'all' | 'open' | 'closed'
+  String _photoFilter = 'all'; // 'all' | 'has_photo' | 'needs_photo'
+  String? _selectedDay; // 'Mon' | 'Tue' | ... | null
 
   List<String> get _categories => MarketCategories.directoryFilterNames.where((c) => c != 'Favorites').toList();
 
@@ -49,44 +47,23 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
   int getActiveFilterCount() {
     int count = 0;
-    if (sortAlpha != null) count++;
-    if (filterOpenTime != null || filterCloseTime != null) count++;
-    if (selectedDay != null) count++;
-    if (_filterOpenOnly) count++;
+    if (_sortOption != null) count++;
+    if (_mapFilter != 'all') count++;
+    if (_statusFilter != 'all') count++;
+    if (_photoFilter != 'all') count++;
+    if (_selectedDay != null) count++;
     return count;
   }
 
   void resetAllFilters() {
     setState(() {
-      sortAlpha = null;
-      filterOpenTime = null;
-      filterCloseTime = null;
-      selectedDay = null;
-      showOpenOnDay = true;
-      _filterOpenOnly = false;
+      _sortOption = null;
+      _mapFilter = 'all';
+      _statusFilter = 'all';
+      _photoFilter = 'all';
+      _selectedDay = null;
       _selectedSubcategory = null;
     });
-  }
-
-  TimeOfDay? _parseTimeOfDay(String timeStr) {
-    try {
-      final clean = timeStr.trim().toUpperCase();
-      final isPM = clean.contains('PM');
-      final isAM = clean.contains('AM');
-      final numPart = clean.replaceAll(RegExp(r'[^\d:]'), '');
-      final parts = numPart.split(':');
-      if (parts.isEmpty) return null;
-
-      var hour = int.parse(parts[0]);
-      final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
-
-      if (isPM && hour < 12) hour += 12;
-      if (isAM && hour == 12) hour = 0;
-
-      return TimeOfDay(hour: hour, minute: minute);
-    } catch (_) {
-      return null;
-    }
   }
 
   // Visual metadata for stall categories
@@ -158,10 +135,16 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
             stall.products.any((p) => p.toLowerCase().contains(query));
         final matchesTags =
             stall.tags.any((t) => t.toLowerCase().contains(query));
+        final matchesAddress = stall.address.toLowerCase().contains(query);
+        final matchesSection = (stall.section ?? '').toLowerCase().contains(query);
+        final matchesSlot = (stall.physicalStallId ?? '').toLowerCase().contains(query);
         if (!matchesName &&
             !matchesCategory &&
             !matchesProduct &&
-            !matchesTags) {
+            !matchesTags &&
+            !matchesAddress &&
+            !matchesSection &&
+            !matchesSlot) {
           return false;
         }
       }
@@ -171,56 +154,62 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
         return false;
       }
 
-      // 3. Open Now Only
-      if (_filterOpenOnly) {
-        if (!StallUtils.isStallOpenNow(stall)) return false;
+      // 3. Map Location Filter (Admin)
+      if (_mapFilter == 'assigned' && !stall.hasMapLocation) {
+        return false;
+      }
+      if (_mapFilter == 'unassigned' && stall.hasMapLocation) {
+        return false;
       }
 
-      // 4. Day & Status Filter
-      if (selectedDay != null) {
+      // 4. Operating Status Filter
+      if (_statusFilter == 'open') {
+        if (!StallUtils.isStallOpenNow(stall)) return false;
+      } else if (_statusFilter == 'closed') {
+        if (StallUtils.isStallOpenNow(stall)) return false;
+      }
+
+      // 5. Photo Filter (Admin)
+      if (_photoFilter == 'has_photo' && stall.photoUrls.isEmpty) {
+        return false;
+      }
+      if (_photoFilter == 'needs_photo' && stall.photoUrls.isNotEmpty) {
+        return false;
+      }
+
+      // 6. Day of Week Filter
+      if (_selectedDay != null) {
         final isOpenOnDay = stall.daysOpen.any((day) {
           final d = day.trim().toLowerCase();
-          final target = selectedDay!.toLowerCase();
+          final target = _selectedDay!.toLowerCase();
           return d == target ||
               d.startsWith(target.substring(0, 3)) ||
               d == 'daily' ||
               d == 'everyday';
         });
-        if (showOpenOnDay && !isOpenOnDay) return false;
-        if (!showOpenOnDay && isOpenOnDay) return false;
-      }
-
-      // 5. Time Range Filter
-      if (filterOpenTime != null && filterCloseTime != null) {
-        if (stall.openTime.isEmpty || stall.closeTime.isEmpty) return false;
-        final stallOpen = _parseTimeOfDay(stall.openTime);
-        final stallClose = _parseTimeOfDay(stall.closeTime);
-
-        if (stallOpen != null && stallClose != null) {
-          final filterOpenMinutes =
-              filterOpenTime!.hour * 60 + filterOpenTime!.minute;
-          final filterCloseMinutes =
-              filterCloseTime!.hour * 60 + filterCloseTime!.minute;
-          final stallOpenMinutes = stallOpen.hour * 60 + stallOpen.minute;
-          final stallCloseMinutes = stallClose.hour * 60 + stallClose.minute;
-
-          if (stallOpenMinutes > filterOpenMinutes ||
-              stallCloseMinutes < filterCloseMinutes) {
-            return false;
-          }
-        }
+        if (!isOpenOnDay) return false;
       }
 
       return true;
     }).toList();
 
-    // 6. Alphabetical Sorting
-    if (sortAlpha == 'az') {
+    // 7. Sorting
+    if (_sortOption == 'az') {
       result.sort((a, b) =>
           a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    } else if (sortAlpha == 'za') {
+    } else if (_sortOption == 'za') {
       result.sort((a, b) =>
           b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+    } else if (_sortOption == 'section') {
+      result.sort((a, b) {
+        final aSec = (a.section ?? a.address).toLowerCase();
+        final bSec = (b.section ?? b.address).toLowerCase();
+        final cmp = aSec.compareTo(bSec);
+        if (cmp != 0) return cmp;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    } else if (_sortOption == 'updated') {
+      result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     }
 
     return result;
@@ -359,27 +348,22 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _SortFilterModal(
-        sortAlpha: sortAlpha,
-        filterOpenTime: filterOpenTime,
-        filterCloseTime: filterCloseTime,
-        selectedDay: selectedDay,
-        showOpenOnDay: showOpenOnDay,
-        filterOpenOnly: _filterOpenOnly,
-        onApply: (newSort, newOpenTime, newCloseTime, newDay, newShowOpen,
-            newFilterOpenOnly) {
+      builder: (ctx) => AdminSortFilterModal(
+        sortOption: _sortOption,
+        mapFilter: _mapFilter,
+        statusFilter: _statusFilter,
+        photoFilter: _photoFilter,
+        selectedDay: _selectedDay,
+        onApply: (newSort, newMap, newStatus, newPhoto, newDay) {
           setState(() {
-            sortAlpha = newSort;
-            filterOpenTime = newOpenTime;
-            filterCloseTime = newCloseTime;
-            selectedDay = newDay;
-            showOpenOnDay = newShowOpen;
-            _filterOpenOnly = newFilterOpenOnly;
+            _sortOption = newSort;
+            _mapFilter = newMap;
+            _statusFilter = newStatus;
+            _photoFilter = newPhoto;
+            _selectedDay = newDay;
           });
         },
-        onReset: () {
-          resetAllFilters();
-        },
+        onReset: resetAllFilters,
       ),
     );
   }
@@ -1319,105 +1303,98 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
 
 }
 
-/// 4-Section Sort & Filter Modal (Matching User Stall Directory)
-class _SortFilterModal extends StatefulWidget {
-  final String? sortAlpha;
-  final TimeOfDay? filterOpenTime;
-  final TimeOfDay? filterCloseTime;
+/// Admin-Optimized Sort & Filter Modal
+class AdminSortFilterModal extends StatefulWidget {
+  final String? sortOption;
+  final String mapFilter;
+  final String statusFilter;
+  final String photoFilter;
   final String? selectedDay;
-  final bool showOpenOnDay;
-  final bool filterOpenOnly;
 
   final Function(
-    String? sortAlpha,
-    TimeOfDay? filterOpenTime,
-    TimeOfDay? filterCloseTime,
+    String? sortOption,
+    String mapFilter,
+    String statusFilter,
+    String photoFilter,
     String? selectedDay,
-    bool showOpenOnDay,
-    bool filterOpenOnly,
   ) onApply;
   final VoidCallback onReset;
 
-  const _SortFilterModal({
-    required this.sortAlpha,
-    required this.filterOpenTime,
-    required this.filterCloseTime,
+  const AdminSortFilterModal({
+    super.key,
+    required this.sortOption,
+    required this.mapFilter,
+    required this.statusFilter,
+    required this.photoFilter,
     required this.selectedDay,
-    required this.showOpenOnDay,
-    required this.filterOpenOnly,
     required this.onApply,
     required this.onReset,
   });
 
   @override
-  State<_SortFilterModal> createState() => _SortFilterModalState();
+  State<AdminSortFilterModal> createState() => _AdminSortFilterModalState();
 }
 
-class _SortFilterModalState extends State<_SortFilterModal> {
-  late String? _sortAlpha;
-  late TimeOfDay? _filterOpenTime;
-  late TimeOfDay? _filterCloseTime;
+class _AdminSortFilterModalState extends State<AdminSortFilterModal> {
+  late String? _sortOption;
+  late String _mapFilter;
+  late String _statusFilter;
+  late String _photoFilter;
   late String? _selectedDay;
-  late bool _showOpenOnDay;
-  late bool _filterOpenOnly;
 
   final List<String> _days = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
   ];
 
   @override
   void initState() {
     super.initState();
-    _sortAlpha = widget.sortAlpha;
-    _filterOpenTime = widget.filterOpenTime;
-    _filterCloseTime = widget.filterCloseTime;
+    _sortOption = widget.sortOption;
+    _mapFilter = widget.mapFilter;
+    _statusFilter = widget.statusFilter;
+    _photoFilter = widget.photoFilter;
     _selectedDay = widget.selectedDay;
-    _showOpenOnDay = widget.showOpenOnDay;
-    _filterOpenOnly = widget.filterOpenOnly;
   }
 
-  Future<void> _selectTime(bool isOpenTime) async {
-    final initial = isOpenTime
-        ? (_filterOpenTime ?? const TimeOfDay(hour: 6, minute: 0))
-        : (_filterCloseTime ?? const TimeOfDay(hour: 18, minute: 0));
+  int get _activeCount {
+    int count = 0;
+    if (_sortOption != null) count++;
+    if (_mapFilter != 'all') count++;
+    if (_statusFilter != 'all') count++;
+    if (_photoFilter != 'all') count++;
+    if (_selectedDay != null) count++;
+    return count;
+  }
 
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: initial,
-      builder: AppTheme.buildTimePickerTheme,
-    );
-
-    if (picked != null) {
-      setState(() {
-        if (isOpenTime) {
-          _filterOpenTime = picked;
-        } else {
-          _filterCloseTime = picked;
-        }
-      });
-    }
+  void _handleReset() {
+    setState(() {
+      _sortOption = null;
+      _mapFilter = 'all';
+      _statusFilter = 'all';
+      _photoFilter = 'all';
+      _selectedDay = null;
+    });
+    widget.onReset();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.88,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.only(
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
+      child: SafeArea(
+        top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1425,286 +1402,282 @@ class _SortFilterModalState extends State<_SortFilterModal> {
             // Modal Handle Bar
             Center(
               child: Container(
-                width: 40,
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 38,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
+                  color: const Color(0xFFCBD5E1),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
 
-            // Header Title & Reset Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Sort & Filter Stalls',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1F2937),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _sortAlpha = null;
-                      _filterOpenTime = null;
-                      _filterCloseTime = null;
-                      _selectedDay = null;
-                      _showOpenOnDay = true;
-                      _filterOpenOnly = false;
-                    });
-                    widget.onReset();
-                  },
-                  child: Text(
-                    'Reset All',
+            // Header Title & Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 12, 10),
+              child: Row(
+                children: [
+                  Text(
+                    'Sort & Filter Stalls',
                     style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFDC2626),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // 01. Alphabetical Sorting
-            Text(
-              '01  SORT ALPHABETICALLY',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF6B7280),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildChoiceChip(
-                    label: 'A to Z',
-                    selected: _sortAlpha == 'az',
-                    onTap: () {
-                      setState(() {
-                        _sortAlpha = _sortAlpha == 'az' ? null : 'az';
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildChoiceChip(
-                    label: 'Z to A',
-                    selected: _sortAlpha == 'za',
-                    onTap: () {
-                      setState(() {
-                        _sortAlpha = _sortAlpha == 'za' ? null : 'za';
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // 02. Quick Filter: Open Now Only
-            Text(
-              '02  STATUS FILTER',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF6B7280),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.schedule_rounded,
-                        size: 18,
-                        color: Color(0xFF1B5E20),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _handleReset,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: Text(
+                      'Reset All',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFDC2626),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Open Now Only',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1F2937),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                  Switch(
-                    value: _filterOpenOnly,
-                    activeThumbColor: const Color(0xFF1B5E20),
-                    activeTrackColor: const Color(0xFF86EFAC),
-                    onChanged: (val) {
-                      setState(() => _filterOpenOnly = val);
-                    },
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF64748B)),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
             ),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
-            const SizedBox(height: 20),
+            // Filter Options Body
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 01. Sort By
+                    _buildSectionHeader(
+                      icon: Icons.sort_rounded,
+                      title: 'SORT BY',
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildFilterChip(
+                          label: 'Name (A to Z)',
+                          selected: _sortOption == 'az',
+                          onTap: () {
+                            setState(() {
+                              _sortOption = _sortOption == 'az' ? null : 'az';
+                            });
+                          },
+                        ),
+                        _buildFilterChip(
+                          label: 'Name (Z to A)',
+                          selected: _sortOption == 'za',
+                          onTap: () {
+                            setState(() {
+                              _sortOption = _sortOption == 'za' ? null : 'za';
+                            });
+                          },
+                        ),
+                        _buildFilterChip(
+                          label: 'Section / Slot',
+                          selected: _sortOption == 'section',
+                          onTap: () {
+                            setState(() {
+                              _sortOption = _sortOption == 'section' ? null : 'section';
+                            });
+                          },
+                        ),
+                        _buildFilterChip(
+                          label: 'Recently Updated',
+                          selected: _sortOption == 'updated',
+                          onTap: () {
+                            setState(() {
+                              _sortOption = _sortOption == 'updated' ? null : 'updated';
+                            });
+                          },
+                        ),
+                      ],
+                    ),
 
-            // 03. Time Range Picker
-            Text(
-              '03  OPERATING HOURS RANGE',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF6B7280),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _selectTime(true),
-                    icon: const Icon(Icons.wb_sunny_outlined, size: 16),
-                    label: Text(
-                      _filterOpenTime != null
-                          ? 'Opens: ${_filterOpenTime!.format(context)}'
-                          : 'Opens From',
-                      style: GoogleFonts.poppins(fontSize: 12),
+                    const SizedBox(height: 20),
+
+                    // 02. Map Location Assignment
+                    _buildSectionHeader(
+                      icon: Icons.map_outlined,
+                      title: 'MAP ASSIGNMENT',
                     ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _filterOpenTime != null
-                          ? const Color(0xFF1B5E20)
-                          : const Color(0xFF4B5563),
-                      side: BorderSide(
-                        color: _filterOpenTime != null
-                            ? const Color(0xFF1B5E20)
-                            : const Color(0xFFE5E7EB),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildFilterChip(
+                          label: 'All Stalls',
+                          selected: _mapFilter == 'all',
+                          onTap: () => setState(() => _mapFilter = 'all'),
+                        ),
+                        _buildFilterChip(
+                          label: 'Assigned on Map',
+                          icon: Icons.pin_drop_rounded,
+                          selected: _mapFilter == 'assigned',
+                          onTap: () => setState(() => _mapFilter = 'assigned'),
+                        ),
+                        _buildFilterChip(
+                          label: 'Missing Map Pin',
+                          icon: Icons.location_off_outlined,
+                          selected: _mapFilter == 'unassigned',
+                          onTap: () => setState(() => _mapFilter = 'unassigned'),
+                        ),
+                      ],
                     ),
-                  ),
+
+                    const SizedBox(height: 20),
+
+                    // 03. Operating Status
+                    _buildSectionHeader(
+                      icon: Icons.storefront_outlined,
+                      title: 'OPERATING STATUS',
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildFilterChip(
+                          label: 'All Statuses',
+                          selected: _statusFilter == 'all',
+                          onTap: () => setState(() => _statusFilter = 'all'),
+                        ),
+                        _buildFilterChip(
+                          label: 'Open Now',
+                          icon: Icons.check_circle_outline_rounded,
+                          selected: _statusFilter == 'open',
+                          onTap: () => setState(() => _statusFilter = 'open'),
+                        ),
+                        _buildFilterChip(
+                          label: 'Closed',
+                          icon: Icons.schedule_rounded,
+                          selected: _statusFilter == 'closed',
+                          onTap: () => setState(() => _statusFilter = 'closed'),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // 04. Stall Photo
+                    _buildSectionHeader(
+                      icon: Icons.photo_camera_outlined,
+                      title: 'STALL PHOTO',
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildFilterChip(
+                          label: 'All Stalls',
+                          selected: _photoFilter == 'all',
+                          onTap: () => setState(() => _photoFilter = 'all'),
+                        ),
+                        _buildFilterChip(
+                          label: 'Has Photo',
+                          icon: Icons.image_rounded,
+                          selected: _photoFilter == 'has_photo',
+                          onTap: () => setState(() => _photoFilter = 'has_photo'),
+                        ),
+                        _buildFilterChip(
+                          label: 'Missing Photo',
+                          icon: Icons.hide_image_outlined,
+                          selected: _photoFilter == 'needs_photo',
+                          onTap: () => setState(() => _photoFilter = 'needs_photo'),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // 05. Operating Days
+                    _buildSectionHeader(
+                      icon: Icons.calendar_today_outlined,
+                      title: 'OPERATING DAY',
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _days.map((day) {
+                        final isSelected = _selectedDay == day;
+                        return _buildFilterChip(
+                          label: day,
+                          selected: isSelected,
+                          onTap: () {
+                            setState(() {
+                              _selectedDay = isSelected ? null : day;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _selectTime(false),
-                    icon: const Icon(Icons.nightlight_outlined, size: 16),
-                    label: Text(
-                      _filterCloseTime != null
-                          ? 'Closes: ${_filterCloseTime!.format(context)}'
-                          : 'Closes By',
-                      style: GoogleFonts.poppins(fontSize: 12),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _filterCloseTime != null
-                          ? const Color(0xFF1B5E20)
-                          : const Color(0xFF4B5563),
-                      side: BorderSide(
-                        color: _filterCloseTime != null
-                            ? const Color(0xFF1B5E20)
-                            : const Color(0xFFE5E7EB),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // 04. Day & Status
-            Text(
-              '04  DAY OF THE WEEK',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF6B7280),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _days.map((day) {
-                  final isSelected = _selectedDay == day;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ChoiceChip(
-                      label: Text(day.substring(0, 3)),
-                      selected: isSelected,
-                      selectedColor: const Color(0xFF1B5E20),
-                      labelStyle: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : const Color(0xFF4B5563),
-                      ),
-                      onSelected: (selected) {
-                        setState(() {
-                          _selectedDay = selected ? day : null;
-                        });
-                      },
-                    ),
-                  );
-                }).toList(),
               ),
             ),
 
-            const SizedBox(height: 24),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
             // Apply Button
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  widget.onApply(
-                    _sortAlpha,
-                    _filterOpenTime,
-                    _filterCloseTime,
-                    _selectedDay,
-                    _showOpenOnDay,
-                    _filterOpenOnly,
-                  );
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1B5E20),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                12,
+                20,
+                MediaQuery.of(context).viewInsets.bottom + 14,
+              ),
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    unawaited(HapticFeedback.lightImpact());
+                    widget.onApply(
+                      _sortOption,
+                      _mapFilter,
+                      _statusFilter,
+                      _photoFilter,
+                      _selectedDay,
+                    );
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B5E20),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                ),
-                child: Text(
-                  'Apply Filters',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.bold,
+                  child: Center(
+                    child: Text(
+                      _activeCount > 0
+                          ? 'Apply Filters ($_activeCount)'
+                          : 'Apply Filters',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1715,35 +1688,78 @@ class _SortFilterModalState extends State<_SortFilterModal> {
     );
   }
 
-  Widget _buildChoiceChip({
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 15,
+          color: const Color(0xFF1B5E20),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF475569),
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip({
     required String label,
     required bool selected,
     required VoidCallback onTap,
+    IconData? icon,
   }) {
     return Material(
-      color: selected ? const Color(0xFF1B5E20) : const Color(0xFFF9FAFB),
-      borderRadius: BorderRadius.circular(12),
+      color: selected ? const Color(0xFF1B5E20) : const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          unawaited(HapticFeedback.selectionClick());
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: selected
                   ? const Color(0xFF1B5E20)
-                  : const Color(0xFFE5E7EB),
+                  : const Color(0xFFE2E8F0),
+              width: 1.0,
             ),
           ),
-          child: Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : const Color(0xFF4B5563),
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 13.5,
+                  color: selected ? Colors.white : const Color(0xFF64748B),
+                ),
+                const SizedBox(width: 5),
+              ],
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: selected ? Colors.white : const Color(0xFF334155),
+                ),
+              ),
+            ],
           ),
         ),
       ),

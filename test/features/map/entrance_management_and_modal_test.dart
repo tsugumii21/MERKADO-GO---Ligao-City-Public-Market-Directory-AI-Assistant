@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merkado_go/features/admin/presentation/admin_manage_entrances_screen.dart';
+import 'package:merkado_go/features/admin/presentation/widgets/admin_edit_entrance_sheet.dart';
 import 'package:merkado_go/features/map/domain/navigation_models.dart';
 import 'package:merkado_go/features/map/presentation/widgets/entrance_detail_sheet.dart';
 import 'package:merkado_go/features/map/providers/entrance_provider.dart';
@@ -75,6 +76,45 @@ void main() {
       expect(updated.description, equals('Rice Section From Wet Market'));
       expect(updated.imageUrl, equals('https://res.cloudinary.com/test/image/upload/gate5.jpg'));
       expect(updated.landmark, equals('Wet Market corner'));
+    });
+
+    test('photo_removed and has_photo flags properly clear imageUrl in fromJson', () {
+      final jsonWithDeletedPhoto = {
+        'entrance_id': 1,
+        'node_id': 'node_ex_1',
+        'description': 'Straight From Church',
+        'image_url': 'https://res.cloudinary.com/test/image/upload/gate1.jpg',
+        'photo_removed': true,
+        'has_photo': false,
+      };
+
+      final parsed = MarketEntryPoint.fromJson(jsonWithDeletedPhoto);
+      expect(parsed.imageUrl, isNull);
+    });
+
+    test('toMap emits has_photo and photo_removed flags', () {
+      const entryWithoutPhoto = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+      );
+
+      final map = entryWithoutPhoto.toMap();
+      expect(map['has_photo'], isFalse);
+      expect(map['photo_removed'], isTrue);
+      expect(map.containsKey('image_url'), isFalse);
+
+      const entryWithPhoto = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+        imageUrl: 'https://test/gate1.jpg',
+      );
+
+      final mapWithPhoto = entryWithPhoto.toMap();
+      expect(mapWithPhoto['has_photo'], isTrue);
+      expect(mapWithPhoto['photo_removed'], isFalse);
+      expect(mapWithPhoto['image_url'], equals('https://test/gate1.jpg'));
     });
   });
 
@@ -164,6 +204,42 @@ void main() {
       expect(find.text('Start Route From Here'), findsOneWidget);
     });
 
+    testWidgets(
+        'default gate renders Gate X title and landmark without duplicate text',
+        (tester) async {
+      const defaultGate = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            marketEntrancesProvider.overrideWithValue([defaultGate]),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: EntranceDetailSheet(
+                entrance: defaultGate,
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Gate 1 appears exactly ONCE as the prominent title
+      expect(find.text('Gate 1'), findsOneWidget);
+      // 'Straight From Church' appears exactly ONCE in the landmark chip
+      expect(find.text('Straight From Church'), findsOneWidget);
+      // Sheet header
+      expect(find.text('Entrance Details'), findsOneWidget);
+      expect(find.text('Start Route From Here'), findsOneWidget);
+    });
+
     testWidgets('tapping Start Route From Here updates selectedEntranceProvider',
         (tester) async {
       const testGate = MarketEntryPoint(
@@ -202,6 +278,171 @@ void main() {
       // Selected entrance should now be testGate
       final selected = container.read(selectedEntranceProvider);
       expect(selected?.entranceId, equals(4));
+    });
+
+    testWidgets('tapping Start Route From Here triggers onStartRoute callback',
+        (tester) async {
+      const testGate = MarketEntryPoint(
+        entranceId: 5,
+        nodeId: 'node_ex_t4',
+        description: 'Rice Section From Wet Market',
+      );
+
+      bool startRouteCalled = false;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            marketEntrancesProvider.overrideWithValue([testGate]),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: EntranceDetailSheet(
+                entrance: testGate,
+                onClose: () {},
+                onStartRoute: () {
+                  startRouteCalled = true;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Start Route From Here'));
+      await tester.pumpAndSettle();
+
+      expect(startRouteCalled, isTrue);
+    });
+
+    testWidgets('closing sheet via close button does not trigger onStartRoute',
+        (tester) async {
+      const testGate = MarketEntryPoint(
+        entranceId: 2,
+        nodeId: 'node_ex_2',
+        description: 'The Back of LCC',
+      );
+
+      bool startRouteCalled = false;
+      bool closeCalled = false;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            marketEntrancesProvider.overrideWithValue([testGate]),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: EntranceDetailSheet(
+                entrance: testGate,
+                onClose: () {
+                  closeCalled = true;
+                },
+                onStartRoute: () {
+                  startRouteCalled = true;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Tap close icon button
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
+
+      expect(closeCalled, isTrue);
+      expect(startRouteCalled, isFalse);
+    });
+
+    testWidgets(
+        'when entrance is currently selected, button displays Clear Selection instead of Start Route From Here',
+        (tester) async {
+      const testGate = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([testGate]),
+          selectedEntranceProvider.overrideWith((ref) => testGate),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: EntranceDetailSheet(
+                entrance: testGate,
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Should display Clear Selection button
+      expect(find.text('Clear Selection'), findsOneWidget);
+      expect(find.text('Start Route From Here'), findsNothing);
+      expect(find.byIcon(Icons.clear_rounded), findsOneWidget);
+    });
+
+    testWidgets(
+        'tapping Clear Selection resets selectedEntranceProvider and triggers onClearSelection',
+        (tester) async {
+      const testGate = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([testGate]),
+          selectedEntranceProvider.overrideWith((ref) => testGate),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      bool clearCalled = false;
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: EntranceDetailSheet(
+                entrance: testGate,
+                onClose: () {},
+                onClearSelection: () {
+                  clearCalled = true;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Tap 'Clear Selection'
+      await tester.tap(find.text('Clear Selection'));
+      await tester.pumpAndSettle();
+
+      expect(clearCalled, isTrue);
+      // selectedEntranceProvider should now be null
+      expect(container.read(selectedEntranceProvider), isNull);
     });
   });
 
@@ -248,6 +489,118 @@ void main() {
       expect(find.text('1 ENTRANCES'), findsOneWidget);
       expect(find.text('Gate 1 - Church Entrance'), findsOneWidget);
       expect(find.text('Gate 2 - LCC Rear'), findsNothing);
+    });
+
+    testWidgets(
+        'does not render preview eye button or pathway snap node IDs in entrance cards',
+        (tester) async {
+      final sampleGates = [
+        const MarketEntryPoint(
+          entranceId: 1,
+          nodeId: 'node_ex_1',
+          description: 'Straight From Church',
+          title: 'Gate 1 - Church Entrance',
+          landmark: 'Legazpi St. Entrance',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            marketEntrancesProvider.overrideWithValue(sampleGates),
+          ],
+          child: const MaterialApp(
+            home: AdminManageEntrancesScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Eye button must NOT exist
+      expect(find.byIcon(Icons.visibility_outlined), findsNothing);
+      // Snap node ID must NOT exist in the card
+      expect(find.text('node_ex_1'), findsNothing);
+      // Edit button must exist
+      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+    });
+
+    testWidgets('renders RefreshIndicator with clamping scroll physics',
+        (tester) async {
+      final sampleGates = [
+        const MarketEntryPoint(
+          entranceId: 1,
+          nodeId: 'node_ex_1',
+          description: 'Straight From Church',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            marketEntrancesProvider.overrideWithValue(sampleGates),
+          ],
+          child: const MaterialApp(
+            home: AdminManageEntrancesScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+
+      final listView = tester.widget<ListView>(find.byType(ListView));
+      expect(listView.physics, isA<AlwaysScrollableScrollPhysics>());
+      final physics = listView.physics as AlwaysScrollableScrollPhysics;
+      expect(physics.parent, isA<ClampingScrollPhysics>());
+    });
+  });
+
+  group('AdminEditEntranceSheet Widget Tests', () {
+    testWidgets(
+        'does not render Vector Pathway Snap Node and provides Remove Photo button when photo exists',
+        (tester) async {
+      const gateWithPhoto = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+        title: 'Gate 1',
+        landmark: 'Legazpi St. Entrance',
+        imageUrl: 'https://res.cloudinary.com/test/image/upload/gate1.jpg',
+      );
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: AdminEditEntranceSheet(
+                entrance: gateWithPhoto,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Vector pathway snap node must NOT exist
+      expect(find.textContaining('Vector Pathway Snap Node'), findsNothing);
+      expect(find.text('node_ex_1'), findsNothing);
+
+      // Remove Photo button must exist because photo is present
+      expect(find.text('Remove Photo'), findsOneWidget);
+
+      // Tap Remove Photo
+      await tester.tap(find.text('Remove Photo'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Remove Photo button disappears
+      expect(find.text('Remove Photo'), findsNothing);
+      // Placeholder graphic is now shown
+      expect(find.text('No Photo Configured'), findsOneWidget);
     });
   });
 }

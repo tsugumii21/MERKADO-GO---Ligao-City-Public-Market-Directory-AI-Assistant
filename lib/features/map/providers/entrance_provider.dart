@@ -49,7 +49,7 @@ final marketEntrancesProvider = Provider<List<MarketEntryPoint>>((ref) {
 
     final effectiveImage = (remote.imageUrl != null && remote.imageUrl!.trim().isNotEmpty)
         ? remote.imageUrl!.trim()
-        : CloudinaryService.getEntrancePhotoUrl(baseline.entranceId);
+        : null;
 
     return baseline.copyWith(
       title: remote.title ?? baseline.title,
@@ -58,6 +58,7 @@ final marketEntrancesProvider = Provider<List<MarketEntryPoint>>((ref) {
           : baseline.description,
       landmark: remote.landmark ?? baseline.landmark,
       imageUrl: effectiveImage,
+      clearImageUrl: effectiveImage == null,
       updatedAt: remote.updatedAt ?? baseline.updatedAt,
     );
   }).toList();
@@ -88,11 +89,41 @@ class EntranceRepository {
 
   /// Save entrance metadata and image URL to Firestore
   Future<void> saveEntrance(MarketEntryPoint entrance) async {
-    final docRef = _firestore.collection('entrances').doc('entrance_${entrance.entranceId}');
+    final docRef = _firestore
+        .collection('entrances')
+        .doc('entrance_${entrance.entranceId}');
     final data = entrance.toMap();
+    final hasPhoto =
+        entrance.imageUrl != null && entrance.imageUrl!.trim().isNotEmpty;
+
+    if (!hasPhoto) {
+      data['image_url'] = FieldValue.delete();
+      data['imageUrl'] = FieldValue.delete();
+      data['photo_url'] = FieldValue.delete();
+      data['photoUrl'] = FieldValue.delete();
+      data['has_photo'] = false;
+      data['photo_removed'] = true;
+    } else {
+      data['has_photo'] = true;
+      data['photo_removed'] = false;
+      data['image_url'] = entrance.imageUrl!.trim();
+    }
     data['updated_at'] = FieldValue.serverTimestamp();
 
     await docRef.set(data, SetOptions(merge: true));
+
+    // Also sanitize duplicate documents for this entrance ID in 'entrances' collection
+    try {
+      final duplicates = await _firestore
+          .collection('entrances')
+          .where('entrance_id', isEqualTo: entrance.entranceId)
+          .get();
+      for (final doc in duplicates.docs) {
+        if (doc.id != 'entrance_${entrance.entranceId}') {
+          await doc.reference.set(data, SetOptions(merge: true));
+        }
+      }
+    } catch (_) {}
   }
 }
 

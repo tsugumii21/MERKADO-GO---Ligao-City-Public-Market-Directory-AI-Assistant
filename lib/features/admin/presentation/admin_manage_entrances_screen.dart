@@ -6,7 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../map/domain/navigation_models.dart';
 import '../../map/providers/entrance_provider.dart';
-import '../../map/presentation/widgets/entrance_detail_sheet.dart';
 import 'widgets/admin_edit_entrance_sheet.dart';
 
 /// Administrative screen for inspecting and updating photos and details for all market entrances.
@@ -150,49 +149,80 @@ class _AdminManageEntrancesScreenState
 
           // Gate Cards List
           Expanded(
-            child: filteredEntrances.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.search_off_rounded,
-                          size: 48,
-                          color: Color(0xFFCBD5E1),
+            child: RefreshIndicator(
+              color: const Color(0xFF1B5E20),
+              backgroundColor: Colors.white,
+              onRefresh: () async {
+                await HapticFeedback.lightImpact();
+                ref.invalidate(firestoreEntrancesStreamProvider);
+                ref.invalidate(marketEntrancesProvider);
+                await Future.delayed(const Duration(milliseconds: 400));
+              },
+              child: filteredEntrances.isEmpty
+                  ? SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: ClampingScrollPhysics(),
+                      ),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height * 0.55,
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.search_off_rounded,
+                              size: 48,
+                              color: Color(0xFFCBD5E1),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No entrances found',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Try searching with a different keyword',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No entrances found',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Try searching with a different keyword',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: ClampingScrollPhysics(),
+                      ),
+                      itemCount: filteredEntrances.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final entrance = filteredEntrances[index];
+                        return _buildEntranceCard(context, entrance);
+                      },
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: filteredEntrances.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final entrance = filteredEntrances[index];
-                      return _buildEntranceCard(context, entrance);
-                    },
-                  ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  void _openEditSheet(BuildContext context, MarketEntryPoint entrance) {
+    HapticFeedback.selectionClick();
+    AdminEditEntranceSheet.show(
+      context,
+      entrance,
+      onSaved: () {
+        ref.invalidate(firestoreEntrancesStreamProvider);
+        ref.invalidate(marketEntrancesProvider);
+      },
     );
   }
 
@@ -217,10 +247,7 @@ class _AdminManageEntrancesScreenState
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            HapticFeedback.selectionClick();
-            AdminEditEntranceSheet.show(context, entrance);
-          },
+          onTap: () => _openEditSheet(context, entrance),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -262,81 +289,117 @@ class _AdminManageEntrancesScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDCFCE7),
-                              borderRadius: BorderRadius.circular(5),
-                              border: Border.all(
-                                  color: const Color(0xFF86EFAC), width: 0.8),
-                            ),
-                            child: Text(
-                              'Gate ${entrance.entranceId}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF166534),
+                      Builder(
+                        builder: (context) {
+                          final hasCustomTitle = entrance.title != null &&
+                              entrance.title!.trim().isNotEmpty &&
+                              entrance.title!.trim().toLowerCase() !=
+                                  'gate ${entrance.entranceId}';
+
+                          final hasDistinctDescription = entrance
+                                  .effectiveDescription.isNotEmpty &&
+                              entrance.effectiveDescription
+                                      .toLowerCase()
+                                      .trim() !=
+                                  entrance.effectiveLandmark
+                                      .toLowerCase()
+                                      .trim() &&
+                              entrance.effectiveDescription
+                                      .toLowerCase()
+                                      .trim() !=
+                                  entrance.displayName.toLowerCase().trim();
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (hasCustomTitle) ...[
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDCFCE7),
+                                        borderRadius: BorderRadius.circular(5),
+                                        border: Border.all(
+                                            color: const Color(0xFF86EFAC),
+                                            width: 0.8),
+                                      ),
+                                      child: Text(
+                                        'Gate ${entrance.entranceId}',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF166534),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        entrance.displayName,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF0F172A),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ] else ...[
+                                Text(
+                                  entrance.displayName,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+
+                              if (hasDistinctDescription) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  entrance.effectiveDescription,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF475569),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_rounded,
+                                    size: 13,
+                                    color: Color(0xFF166534),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Expanded(
+                                    child: Text(
+                                      entrance.effectiveLandmark,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: const Color(0xFF64748B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              entrance.displayName,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF0F172A),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        entrance.effectiveDescription,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF475569),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.near_me_rounded,
-                            size: 11,
-                            color: Color(0xFF2563EB),
-                          ),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              entrance.effectiveLandmark,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                color: const Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Text(
-                            entrance.nodeId,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              color: const Color(0xFF94A3B8),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -344,41 +407,15 @@ class _AdminManageEntrancesScreenState
 
                 const SizedBox(width: 8),
 
-                // Action Buttons
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Preview Button (Modal view)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.visibility_outlined,
-                        size: 20,
-                        color: Color(0xFF64748B),
-                      ),
-                      tooltip: 'Preview Modal',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        EntranceDetailSheet.show(context, entrance,
-                            isAdmin: true);
-                      },
-                    ),
-
-                    // Edit Pen
-                    IconButton(
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        size: 20,
-                        color: AppColors.primary,
-                      ),
-                      tooltip: 'Edit Gate',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        AdminEditEntranceSheet.show(context, entrance);
-                      },
-                    ),
-                  ],
+                // Edit Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                  tooltip: 'Edit Gate',
+                  onPressed: () => _openEditSheet(context, entrance),
                 ),
               ],
             ),

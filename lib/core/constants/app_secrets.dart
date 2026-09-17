@@ -4,36 +4,63 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// NEVER commit actual values to version control
 class AppSecrets {
   // Cloudinary Configuration
-  static String get cloudinaryCloudName =>
-      dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
+  static String get cloudinaryCloudName {
+    const fromEnv = String.fromEnvironment('CLOUDINARY_CLOUD_NAME');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
+  }
   
   // Note: These credentials are stored but NOT used in unsigned uploads
-  static String get cloudinaryApiKey =>
-      dotenv.env['CLOUDINARY_API_KEY'] ?? '';
+  static String get cloudinaryApiKey {
+    const fromEnv = String.fromEnvironment('CLOUDINARY_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['CLOUDINARY_API_KEY'] ?? '';
+  }
   
-  static String get cloudinaryApiSecret =>
-      dotenv.env['CLOUDINARY_API_SECRET'] ?? '';
+  static String get cloudinaryApiSecret {
+    const fromEnv = String.fromEnvironment('CLOUDINARY_API_SECRET');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['CLOUDINARY_API_SECRET'] ?? '';
+  }
   
-  static String get cloudinaryUrl =>
-      dotenv.env['CLOUDINARY_URL'] ?? '';
+  static String get cloudinaryUrl {
+    const fromEnv = String.fromEnvironment('CLOUDINARY_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['CLOUDINARY_URL'] ?? '';
+  }
   
-  static String get cloudinaryUploadPreset =>
-      dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
+  static String get cloudinaryUploadPreset {
+    const fromEnv = String.fromEnvironment('CLOUDINARY_UPLOAD_PRESET');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
+  }
 
   // Gemini AI Configuration
-  static String get geminiApiKey =>
-      dotenv.env['GEMINI_API_KEY'] ?? '';
+  static String get geminiApiKey {
+    const fromEnv = String.fromEnvironment('GEMINI_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['GEMINI_API_KEY'] ?? '';
+  }
 
   // Google Maps Configuration
-  static String get googleMapsApiKey =>
-      dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+  static String get googleMapsApiKey {
+    const fromEnv = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+  }
 
   // Firebase Configuration
-  static String get firebaseAndroidApiKey =>
-      dotenv.env['FIREBASE_ANDROID_API_KEY'] ?? '';
+  static String get firebaseAndroidApiKey {
+    const fromEnv = String.fromEnvironment('FIREBASE_ANDROID_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['FIREBASE_ANDROID_API_KEY'] ?? '';
+  }
 
-  static String get firebaseWebApiKey =>
-      dotenv.env['FIREBASE_WEB_API_KEY'] ?? '';
+  static String get firebaseWebApiKey {
+    const fromEnv = String.fromEnvironment('FIREBASE_WEB_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return dotenv.env['FIREBASE_WEB_API_KEY'] ?? '';
+  }
 
   // Validation
   static bool get isConfigured {

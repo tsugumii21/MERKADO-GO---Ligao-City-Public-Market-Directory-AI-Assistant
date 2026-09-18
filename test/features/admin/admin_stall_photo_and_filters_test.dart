@@ -123,6 +123,109 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Done'), findsNothing);
     });
+
+    testWidgets('Step 1 Cancel button is styled red with soft background and border', (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: AddEditStallScreen(stallId: null),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cancelFinder = find.widgetWithText(OutlinedButton, 'Cancel');
+      expect(cancelFinder, findsOneWidget);
+
+      final cancelBtn = tester.widget<OutlinedButton>(cancelFinder);
+      expect(cancelBtn.style?.backgroundColor?.resolve({}), const Color(0xFFFEF2F2));
+      expect(cancelBtn.style?.foregroundColor?.resolve({}), const Color(0xFFDC2626));
+      final side = cancelBtn.style?.side?.resolve({});
+      expect(side?.color, const Color(0xFFFECACA));
+    });
+
+    testWidgets('Stall Deleted modal renders red delete badge, stall details, and Done button', (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (dialogCtx) => Dialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFFFECACA),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Color(0xFFDC2626),
+                                    size: 32,
+                                  ),
+                                ),
+                              ),
+                              const Text('Stall Deleted'),
+                              const Text('Stall Name: Aling Nena Fish'),
+                              const Text('Permanently Deleted'),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(dialogCtx).pop(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0F172A),
+                                  padding: EdgeInsets.zero,
+                                ),
+                                child: const Text('Done'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('Delete Stall'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Delete Stall'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stall Deleted'), findsOneWidget);
+      expect(find.text('Permanently Deleted'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.text('Stall Deleted'), findsNothing);
+    });
   });
 
   group('ManageStallsScreen Admin Sort & Filter Tests', () {

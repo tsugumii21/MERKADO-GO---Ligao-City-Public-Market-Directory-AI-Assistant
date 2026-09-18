@@ -2474,15 +2474,18 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Text(
-                    'Subcategories for $_finalPrimaryCategoryName *',
+                    'Subcategories',
                     style: GoogleFonts.poppins(
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                      color: const Color(0xFF0F172A),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Row(
@@ -2966,19 +2969,34 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
               icon: Icon(
                 _currentStep == 0 ? Icons.close_rounded : Icons.arrow_back_rounded,
                 size: 16,
-                color: AppColors.inkMuted,
+                color: _currentStep == 0
+                    ? const Color(0xFFDC2626)
+                    : AppColors.inkMuted,
               ),
               label: Text(
                 _currentStep == 0 ? 'Cancel' : 'Back',
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.inkMuted,
+                  color: _currentStep == 0
+                      ? const Color(0xFFDC2626)
+                      : AppColors.inkMuted,
                 ),
               ),
               style: OutlinedButton.styleFrom(
+                backgroundColor: _currentStep == 0
+                    ? const Color(0xFFFEF2F2)
+                    : Colors.transparent,
+                foregroundColor: _currentStep == 0
+                    ? const Color(0xFFDC2626)
+                    : AppColors.inkMuted,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                side: const BorderSide(color: AppColors.border, width: 1.5),
+                side: BorderSide(
+                  color: _currentStep == 0
+                      ? const Color(0xFFFECACA)
+                      : AppColors.border,
+                  width: 1.5,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

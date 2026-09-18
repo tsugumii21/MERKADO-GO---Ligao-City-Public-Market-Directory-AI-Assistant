@@ -16,7 +16,7 @@ class AppSecrets {
   // Base64 encoded to avoid false-positive pattern triggers in version control scanners.
   static const String _fbWeb = 'QUl6YVN5QWJ1ZjFxbTZwNTZxTDJzUmJuVmIwaWdkNy0tbU5fQXBF';
   static const String _fbAndroid = 'QUl6YVN5QVczbW1xc0NRU0w1WkxEYm84NlJWQnd6RE4ycW15aFdv';
-  static const String _gemini = 'QUl6YVN5Q2phYU9OenF2bHlFVUVxZzlhck43Sl9zbTN0VXFIWXhv';
+  static const String _gemini = '';
   static const String _maps = 'QUl6YVN5QUhWczNLbUVLVHRySUNucWJ0N0IwYUJVYlprMmdHbnh3';
   static const String _defaultCloudName = 'diiuzmjnk';
   static const String _defaultPreset = 'merkadogo';

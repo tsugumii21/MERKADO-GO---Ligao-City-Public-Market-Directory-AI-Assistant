@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/services/cloudinary_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -43,6 +45,26 @@ class MapScreenState extends ConsumerState<MapScreen> {
     // Pre-initialize graph pathfinding engine & search directory
     ref.read(pathfindingInitProvider);
     ref.read(marketSearchInitProvider);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final entrances = ref.read(marketEntrancesProvider);
+      if (entrances.isNotEmpty) {
+        _precacheEntranceImages(entrances);
+      }
+    });
+  }
+
+  void _precacheEntranceImages(List<MarketEntryPoint> entrances) {
+    if (!mounted) return;
+    for (final entrance in entrances) {
+      final url = entrance.imageUrl?.trim();
+      if (url != null && url.isNotEmpty) {
+        final optUrl = CloudinaryService.getOptimizedImageUrl(url, width: 800);
+        precacheImage(CachedNetworkImageProvider(optUrl), context)
+            .catchError((_) {});
+      }
+    }
   }
 
   void resetUI() {
@@ -101,6 +123,12 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final skipTrigger = ref.watch(routeSkipTraversalTriggerProvider);
     final pickingOriginTargetStall = ref.watch(pickingOriginTargetStallProvider);
     final selectedOriginStall = ref.watch(selectedOriginStallProvider);
+
+    ref.listen<List<MarketEntryPoint>>(marketEntrancesProvider, (prev, next) {
+      if (next.isNotEmpty) {
+        _precacheEntranceImages(next);
+      }
+    });
 
     return Scaffold(
         backgroundColor: Colors.white,

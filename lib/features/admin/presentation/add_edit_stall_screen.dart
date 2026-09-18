@@ -258,6 +258,9 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   }
 
   void _removePhoto() {
+    if (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty) {
+      CloudinaryService.evictImage(_existingPhotoUrl);
+    }
     setState(() {
       _selectedImageBytes = null;
       _existingPhotoUrl = null;
@@ -1525,6 +1528,18 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
           _selectedImageBytes!,
           stallId: widget.stallId,
         );
+        if (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty) {
+          await CloudinaryService.evictImage(_existingPhotoUrl);
+        }
+      } else if (_isPhotoRemoved) {
+        if (_existingPhotoUrl != null && _existingPhotoUrl!.isNotEmpty) {
+          await CloudinaryService.evictImage(_existingPhotoUrl);
+        }
+        if (widget.stallId != null && widget.stallId!.isNotEmpty) {
+          final defaultStallUrl =
+              CloudinaryService.getStallPhotoUrl(widget.stallId!);
+          await CloudinaryService.evictImage(defaultStallUrl);
+        }
       }
 
       final combinedTags = <String>[
@@ -1583,6 +1598,8 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         if (_isPhotoRemoved && photoUrl == null) ...{
           'photoUrl': FieldValue.delete(),
           'photo_url': FieldValue.delete(),
+          'imageUrl': FieldValue.delete(),
+          'image_url': FieldValue.delete(),
         },
         'openTime': openTimeText,
         'open_time': openTimeText,

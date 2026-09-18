@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/widgets/image_shimmer_placeholder.dart';
 import '../../../../providers/user_provider.dart';
 import '../../domain/navigation_models.dart';
 import '../../providers/navigation_provider.dart';
@@ -38,6 +40,14 @@ class EntranceDetailSheet extends ConsumerWidget {
     VoidCallback? onStartRoute,
     VoidCallback? onClearSelection,
   }) {
+    final rawUrl = entrance.imageUrl?.trim();
+    if (rawUrl != null && rawUrl.isNotEmpty) {
+      final optimizedUrl =
+          CloudinaryService.getOptimizedImageUrl(rawUrl, width: 800);
+      precacheImage(CachedNetworkImageProvider(optimizedUrl), context)
+          .catchError((_) {});
+    }
+
     bool effectiveAdmin = isAdmin;
     if (!effectiveAdmin) {
       try {
@@ -226,39 +236,46 @@ class EntranceDetailSheet extends ConsumerWidget {
                     const SizedBox(height: 6),
 
                     // Hero Media Card
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Container(
-                        height: 200,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                    Builder(
+                      builder: (context) {
+                        final rawUrl = liveEntrance.imageUrl?.trim();
+                        final optimizedUrl = (rawUrl != null && rawUrl.isNotEmpty)
+                            ? CloudinaryService.getOptimizedImageUrl(rawUrl, width: 800)
+                            : null;
+
+                        return ClipRRect(
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: const Color(0xFFE2E8F0),
-                            width: 1,
-                          ),
-                        ),
-                        child: (liveEntrance.imageUrl != null &&
-                                liveEntrance.imageUrl!.trim().isNotEmpty)
-                            ? CachedNetworkImage(
-                                imageUrl: liveEntrance.imageUrl!.trim(),
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  color: const Color(0xFFF1F5F9),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Color(0xFF2E7D32)),
+                          child: Container(
+                            height: 200,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                                width: 1,
+                              ),
+                            ),
+                            child: optimizedUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: optimizedUrl,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 800,
+                                    maxWidthDiskCache: 1200,
+                                    fadeInDuration: const Duration(milliseconds: 160),
+                                    fadeOutDuration: const Duration(milliseconds: 100),
+                                    placeholder: (context, url) =>
+                                        const ImageShimmerPlaceholder(
+                                      height: 200,
+                                      centerIcon: Icons.door_front_door_outlined,
                                     ),
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) =>
-                                    _buildImagePlaceholder(liveEntrance),
-                              )
-                            : _buildImagePlaceholder(liveEntrance),
-                      ),
+                                    errorWidget: (context, url, error) =>
+                                        _buildImagePlaceholder(liveEntrance),
+                                  )
+                                : _buildImagePlaceholder(liveEntrance),
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 16),

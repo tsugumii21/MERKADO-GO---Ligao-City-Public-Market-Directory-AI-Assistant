@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/cloudinary_service.dart';
+import '../../../core/widgets/image_shimmer_placeholder.dart';
 import '../../map/domain/navigation_models.dart';
 import '../../map/providers/entrance_provider.dart';
 import 'widgets/admin_edit_entrance_sheet.dart';
@@ -262,18 +264,20 @@ class _AdminManageEntrancesScreenState
                     color: const Color(0xFFF1F5F9),
                     child: hasCustomImage
                         ? CachedNetworkImage(
-                            imageUrl: entrance.imageUrl!.trim(),
+                            imageUrl: CloudinaryService.getOptimizedImageUrl(
+                              entrance.imageUrl!.trim(),
+                              width: 200,
+                            ),
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Color(0xFF2E7D32)),
-                                ),
-                              ),
+                            memCacheWidth: 200,
+                            maxWidthDiskCache: 400,
+                            fadeInDuration: const Duration(milliseconds: 160),
+                            fadeOutDuration: const Duration(milliseconds: 100),
+                            placeholder: (context, url) =>
+                                const ImageShimmerPlaceholder(
+                              width: 68,
+                              height: 68,
+                              centerIcon: Icons.door_front_door_outlined,
                             ),
                             errorWidget: (context, url, error) =>
                                 _buildCardPlaceholder(entrance),

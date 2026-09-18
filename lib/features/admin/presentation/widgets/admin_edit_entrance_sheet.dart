@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/cloudinary_service.dart';
+import '../../../../core/widgets/image_shimmer_placeholder.dart';
 import '../../../map/domain/navigation_models.dart';
 import '../../../map/providers/entrance_provider.dart';
 
@@ -114,6 +116,13 @@ class _AdminEditEntranceSheetState
 
   void _removeImage() {
     HapticFeedback.selectionClick();
+    if (widget.entrance.imageUrl != null &&
+        widget.entrance.imageUrl!.trim().isNotEmpty) {
+      CloudinaryService.evictImage(widget.entrance.imageUrl!.trim());
+    }
+    final baselineCdn =
+        CloudinaryService.getEntrancePhotoUrl(widget.entrance.entranceId);
+    CloudinaryService.evictImage(baselineCdn);
     setState(() {
       _pickedImageBytes = null;
       _isImageRemoved = true;
@@ -140,24 +149,26 @@ class _AdminEditEntranceSheetState
 
     try {
       final repository = ref.read(entranceRepositoryProvider);
-      String? photoUrl = widget.entrance.imageUrl;
+      final oldImageUrl = widget.entrance.imageUrl;
+      String? photoUrl = oldImageUrl;
 
       if (_isImageRemoved) {
         photoUrl = null;
+        await CloudinaryService.evictImage(oldImageUrl);
+        final baselineCdn =
+            CloudinaryService.getEntrancePhotoUrl(widget.entrance.entranceId);
+        await CloudinaryService.evictImage(baselineCdn);
       } else if (_pickedImageBytes != null) {
         photoUrl = await repository.uploadEntranceImage(
           entranceId: widget.entrance.entranceId,
           imageBytes: _pickedImageBytes!,
         );
-      }
-
-      if (_isImageRemoved &&
-          widget.entrance.imageUrl != null &&
-          widget.entrance.imageUrl!.trim().isNotEmpty) {
-        try {
-          await CachedNetworkImage.evictFromCache(
-              widget.entrance.imageUrl!.trim());
-        } catch (_) {}
+        if (oldImageUrl != null && oldImageUrl.isNotEmpty) {
+          await CloudinaryService.evictImage(oldImageUrl);
+        }
+        final baselineCdn =
+            CloudinaryService.getEntrancePhotoUrl(widget.entrance.entranceId);
+        await CloudinaryService.evictImage(baselineCdn);
       }
 
       final updated = widget.entrance.copyWith(
@@ -569,13 +580,17 @@ class _AdminEditEntranceSheetState
         fit: StackFit.expand,
         children: [
           CachedNetworkImage(
-            imageUrl: widget.entrance.imageUrl!.trim(),
+            imageUrl: CloudinaryService.getOptimizedImageUrl(
+              widget.entrance.imageUrl!.trim(),
+              width: 800,
+            ),
             fit: BoxFit.cover,
-            placeholder: (context, url) => const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
-              ),
+            memCacheWidth: 800,
+            maxWidthDiskCache: 1200,
+            fadeInDuration: const Duration(milliseconds: 160),
+            fadeOutDuration: const Duration(milliseconds: 100),
+            placeholder: (context, url) => const ImageShimmerPlaceholder(
+              centerIcon: Icons.door_front_door_outlined,
             ),
             errorWidget: (context, url, error) => _buildPlaceholderGraphic(),
           ),

@@ -41,6 +41,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Entrances collection - public read for Mobile App, Guest browsing, and Web Kiosk
+    match /entrances/{entranceId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // Category metadata collection - public read for subcategories and tags
     match /category_metadata/{docId} {
       allow read: if true;

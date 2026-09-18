@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/services/cloudinary_service.dart';
+import '../../../core/widgets/image_shimmer_placeholder.dart';
 import '../../../models/stall_model.dart';
 import '../../../providers/favorite_provider.dart';
 import '../../report/presentation/report_screen.dart';
@@ -47,6 +49,18 @@ class StallDetailSheet extends ConsumerStatefulWidget {
     bool isAdmin = false,
     VoidCallback? onEdit,
   }) {
+    final photoList = stall.photoUrls.isNotEmpty
+        ? stall.photoUrls
+        : (stall.primaryPhotoUrl.isNotEmpty
+            ? [stall.primaryPhotoUrl]
+            : <String>[]);
+    if (photoList.isNotEmpty) {
+      final firstOptimized =
+          CloudinaryService.getOptimizedImageUrl(photoList.first, width: 800);
+      precacheImage(CachedNetworkImageProvider(firstOptimized), context)
+          .catchError((_) {});
+    }
+
     bool effectiveAdmin = isAdmin;
     if (!effectiveAdmin) {
       try {
@@ -84,6 +98,25 @@ class StallDetailSheet extends ConsumerStatefulWidget {
 class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
   int _currentPhotoIndex = 0;
   final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final photoList = widget.stall.photoUrls.isNotEmpty
+          ? widget.stall.photoUrls
+          : (widget.stall.primaryPhotoUrl.isNotEmpty
+              ? [widget.stall.primaryPhotoUrl]
+              : <String>[]);
+      if (photoList.length > 1) {
+        for (int i = 1; i < photoList.length; i++) {
+          final optUrl = CloudinaryService.getOptimizedImageUrl(photoList[i], width: 800);
+          precacheImage(CachedNetworkImageProvider(optUrl), context).catchError((_) {});
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -437,14 +470,24 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                                       setState(() => _currentPhotoIndex = idx);
                                     },
                                     itemBuilder: (context, index) {
+                                      final rawUrl = photoList[index];
+                                      final optimizedUrl =
+                                          CloudinaryService.getOptimizedImageUrl(
+                                              rawUrl,
+                                              width: 800);
                                       return CachedNetworkImage(
-                                        imageUrl: photoList[index],
+                                        imageUrl: optimizedUrl,
                                         fit: BoxFit.cover,
-                                        placeholder: (_, __) => Center(
-                                          child: CircularProgressIndicator(
-                                            color: categoryVisuals.color,
-                                            strokeWidth: 2,
-                                          ),
+                                        memCacheWidth: 800,
+                                        maxWidthDiskCache: 1200,
+                                        fadeInDuration: const Duration(milliseconds: 160),
+                                        fadeOutDuration: const Duration(milliseconds: 100),
+                                        placeholder: (_, __) =>
+                                            ImageShimmerPlaceholder(
+                                          height: 180,
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          centerIcon: categoryVisuals.icon,
                                         ),
                                         errorWidget: (_, __, ___) => Center(
                                           child: Column(

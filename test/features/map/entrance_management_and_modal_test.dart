@@ -5,8 +5,10 @@ import 'package:merkado_go/features/admin/presentation/admin_manage_entrances_sc
 import 'package:merkado_go/features/admin/presentation/widgets/admin_edit_entrance_sheet.dart';
 import 'package:merkado_go/features/map/domain/navigation_models.dart';
 import 'package:merkado_go/features/map/presentation/widgets/entrance_detail_sheet.dart';
+import 'package:merkado_go/features/map/presentation/widgets/entrance_selector_sheet.dart';
 import 'package:merkado_go/features/map/providers/entrance_provider.dart';
 import 'package:merkado_go/features/map/providers/navigation_provider.dart';
+import 'package:merkado_go/providers/stall_provider.dart';
 
 void main() {
   group('MarketEntryPoint Model Tests', () {
@@ -601,6 +603,129 @@ void main() {
       expect(find.text('Remove Photo'), findsNothing);
       // Placeholder graphic is now shown
       expect(find.text('No Photo Configured'), findsOneWidget);
+    });
+  });
+
+  group('EntranceSelectorSheet Widget Tests', () {
+    const gate1 = MarketEntryPoint(
+      entranceId: 1,
+      nodeId: 'node_ex_1',
+      description: 'Straight From Church',
+      title: 'Gate 1 - Church Entrance',
+      landmark: 'Legazpi St. Entrance',
+    );
+    const gate2 = MarketEntryPoint(
+      entranceId: 2,
+      nodeId: 'node_ex_2',
+      description: 'West Corridor • Back of LCC',
+      title: 'Gate 2',
+      landmark: 'Behind LCC',
+    );
+
+    testWidgets(
+        'renders Clear Selected Entrance button when an entrance is already active',
+        (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([gate1, gate2]),
+          selectedEntranceProvider.overrideWith((ref) => gate1),
+          allStallsProvider.overrideWith((ref) => Stream.value([])),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: EntranceSelectorSheet(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Clear Selected Entrance button must be present
+      expect(find.text('Clear Selected Entrance'), findsOneWidget);
+      expect(find.byIcon(Icons.clear_rounded), findsOneWidget);
+      expect(
+          find.textContaining('Select Starting Entrance • Gate 1'), findsNothing);
+    });
+
+    testWidgets(
+        'tapping Clear Selected Entrance resets selectedEntranceProvider to null',
+        (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([gate1, gate2]),
+          selectedEntranceProvider.overrideWith((ref) => gate1),
+          allStallsProvider.overrideWith((ref) => Stream.value([])),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: EntranceSelectorSheet(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Clear Selected Entrance'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(selectedEntranceProvider), isNull);
+    });
+
+    testWidgets(
+        'tapping a different gate changes button to Select Starting Entrance • Gate 2',
+        (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([gate1, gate2]),
+          selectedEntranceProvider.overrideWith((ref) => gate1),
+          allStallsProvider.overrideWith((ref) => Stream.value([])),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: EntranceSelectorSheet(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Initially Clear Selected Entrance
+      expect(find.text('Clear Selected Entrance'), findsOneWidget);
+
+      // Tap Gate 2 in the list
+      await tester.tap(find.text('Entrance Gate 2'));
+      await tester.pumpAndSettle();
+
+      // Button must now say Select Starting Entrance • Gate 2
+      expect(find.text('Select Starting Entrance • Gate 2'), findsOneWidget);
+      expect(find.text('Clear Selected Entrance'), findsNothing);
+
+      // Confirming Gate 2 updates selectedEntranceProvider
+      await tester.tap(find.text('Select Starting Entrance • Gate 2'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(selectedEntranceProvider)?.entranceId, equals(2));
     });
   });
 }

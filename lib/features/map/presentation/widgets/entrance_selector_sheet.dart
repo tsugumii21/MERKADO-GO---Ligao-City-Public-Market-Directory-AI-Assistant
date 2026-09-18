@@ -108,6 +108,36 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
     Navigator.of(context).pop(entrance);
   }
 
+  void _clearSelection() {
+    HapticFeedback.selectionClick();
+    ref.read(selectedEntranceProvider.notifier).state = null;
+
+    final activeRoute = ref.read(activeRouteProvider);
+    if (activeRoute != null && widget.targetStallId == null) {
+      ref.read(activeRouteProvider.notifier).clearRoute();
+    }
+
+    Navigator.of(context).pop(null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Starting entrance selection cleared',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: const Color(0xFF334155),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
   void _triggerPickOnMap() {
     HapticFeedback.selectionClick();
     Navigator.of(context).pop('pick_on_map');
@@ -169,7 +199,12 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
     final nearestEntrance = (widget.targetStallId != null && service.isInitialized)
         ? service.findNearestEntranceByWalkingDistance(widget.targetStallId!)
         : null;
+    final activeEntrance = ref.watch(selectedEntranceProvider);
     final effectiveSelected = _selectedEntrance;
+    final isClearAction = widget.targetStallId == null &&
+        activeEntrance != null &&
+        (effectiveSelected == null ||
+            effectiveSelected.entranceId == activeEntrance.entranceId);
     final isMapMode = _viewMode == _EntranceViewMode.map && widget.targetStallId != null;
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -619,7 +654,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                   // Gate badge icon
                                   Container(
                                     width: 58,
-                                    height: 54,
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
                                     decoration: BoxDecoration(
                                       color: isSelected
                                           ? AppColors.primary
@@ -634,13 +669,14 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                     ),
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
                                           Icons.location_on_rounded,
                                           color: isSelected
                                               ? Colors.white
                                               : const Color(0xFFE53935),
-                                          size: 24,
+                                          size: 22,
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
@@ -785,33 +821,28 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: effectiveSelected != null
-                        ? _confirmSelection
-                        : (widget.targetStallId == null &&
-                                ref.read(selectedEntranceProvider) != null
-                            ? _confirmSelection
-                            : null),
+                    onPressed: isClearAction
+                        ? _clearSelection
+                        : (effectiveSelected != null ? _confirmSelection : null),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: effectiveSelected != null
-                          ? AppColors.primary
-                          : (widget.targetStallId == null &&
-                                  ref.read(selectedEntranceProvider) != null
-                              ? AppColors.surface
+                      backgroundColor: isClearAction
+                          ? const Color(0xFFFEF2F2)
+                          : (effectiveSelected != null
+                              ? AppColors.primary
                               : const Color(0xFFE2E8F0)),
                       disabledBackgroundColor: const Color(0xFFE2E8F0),
-                      foregroundColor: effectiveSelected != null
-                          ? Colors.white
-                          : (widget.targetStallId == null &&
-                                  ref.read(selectedEntranceProvider) != null
-                              ? AppColors.ink
+                      foregroundColor: isClearAction
+                          ? const Color(0xFFDC2626)
+                          : (effectiveSelected != null
+                              ? Colors.white
                               : const Color(0xFF94A3B8)),
                       disabledForegroundColor: const Color(0xFF94A3B8),
-                      elevation: effectiveSelected != null ? 1 : 0,
-                      side: (effectiveSelected == null &&
-                              widget.targetStallId == null &&
-                              ref.read(selectedEntranceProvider) != null)
+                      elevation: isClearAction
+                          ? 0
+                          : (effectiveSelected != null ? 1 : 0),
+                      side: isClearAction
                           ? const BorderSide(
-                              color: Color(0xFFD1D5DB),
+                              color: Color(0xFFFECACA),
                               width: 1.2,
                             )
                           : BorderSide.none,
@@ -824,42 +855,34 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          effectiveSelected != null
-                              ? Icons.directions_walk_rounded
-                              : (widget.targetStallId == null &&
-                                      ref.read(selectedEntranceProvider) != null
-                                  ? Icons.clear_rounded
-                                  : Icons.directions_walk_rounded),
+                          isClearAction
+                              ? Icons.clear_rounded
+                              : Icons.directions_walk_rounded,
                           size: 19,
-                          color: effectiveSelected != null
-                              ? Colors.white
-                              : (widget.targetStallId == null &&
-                                      ref.read(selectedEntranceProvider) != null
-                                  ? AppColors.ink
+                          color: isClearAction
+                              ? const Color(0xFFDC2626)
+                              : (effectiveSelected != null
+                                  ? Colors.white
                                   : const Color(0xFF94A3B8)),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          effectiveSelected != null
-                              ? 'Select Starting Entrance • Gate ${effectiveSelected.entranceId}'
-                              : (widget.targetStallId == null &&
-                                      ref.read(selectedEntranceProvider) != null
-                                  ? 'Clear Selected Entrance'
+                          isClearAction
+                              ? 'Clear Selected Entrance'
+                              : (effectiveSelected != null
+                                  ? 'Select Starting Entrance • Gate ${effectiveSelected.entranceId}'
                                   : 'Select Starting Entrance'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-
-                            color: effectiveSelected != null
-                                ? Colors.white
-                                : (widget.targetStallId == null &&
-                                        ref.read(selectedEntranceProvider) !=
-                                            null
-                                    ? AppColors.ink
+                            color: isClearAction
+                                ? const Color(0xFFDC2626)
+                                : (effectiveSelected != null
+                                    ? Colors.white
                                     : const Color(0xFF94A3B8)),
                           ),
                         ),
-                        if (effectiveSelected != null) ...[
+                        if (!isClearAction && effectiveSelected != null) ...[
                           const SizedBox(width: 8),
                           const Icon(
                             Icons.arrow_forward_rounded,

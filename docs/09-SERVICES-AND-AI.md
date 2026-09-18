@@ -18,7 +18,7 @@ All services are in `lib/core/services/`:
 
 ### What It Does
 - Powers the in-app AI chatbot that helps users find market stalls and products
-- Uses **Google Gemini 3.1 Flash-Lite** model (`gemini-3.1-flash-lite`)
+- Uses **Google Gemini 3.5 Flash-Lite** model (`gemini-3.5-flash-lite`)
 - Supports both **English** and **Tagalog** conversation
 - Has full knowledge of every stall in the market (loaded into system prompt)
 

@@ -78,7 +78,7 @@ class MarketCategories {
       ],
       keywords: [
         'isda', 'sira', 'tilapia', 'bangus', 'galunggong', 'tulingan',
-        'pusit', 'hipon', 'alimasag', 'tuyo', 'daing', 'alamang',
+        'pusit', 'hipon', 'alimasag', 'tuyo', 'daing', 'alamang', 'matang baka',
       ],
     ),
 

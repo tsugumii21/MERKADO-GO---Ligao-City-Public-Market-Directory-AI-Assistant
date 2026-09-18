@@ -12,7 +12,7 @@ import '../../models/stall_model.dart';
 import '../utils/stall_utils.dart';
 
 class GeminiService {
-  static const String _modelName = 'gemini-3.1-flash-lite';
+  static const String _modelName = 'gemini-3.5-flash-lite';
 
   static const Map<String, String> _categoryEnrichment = {
     'Meat': 'Pork cuts, beef, liempo, pork chop, giniling, pata, kasim, tadyang, baka, baboy, karne ning orig, karne ning baka',
@@ -285,6 +285,28 @@ DIRECTORY & RETRIEVAL GUIDELINES:
      - NEVER name a distant stall (like ADVZ Fish Retailing which is 403 meters away) as the closest.
      - Append the structured route tag for that nearest stall.
 5. Do NOT dump repetitive full product lists under every vendor. If multiple stalls sell the same general goods, summarize the goods once in your introductory sentence.
+6. STRICT CATEGORY ISOLATION & ACCURACY:
+   - When asked for a specific category or product, match against the CATEGORY: and SELLS: fields in the directory.
+   - NEVER recommend stalls from an unrelated category:
+     - Fish / Seafood queries: Recommend ONLY stalls where CATEGORY contains "Fish" or SELLS contains fish/seafood items (e.g. tilapia, bangus, galunggong, squid, shrimp, dried fish). NEVER recommend Meat, Pork, or Beef stalls.
+     - Meat / Pork / Beef queries: Recommend ONLY stalls where CATEGORY contains "Meat" or SELLS contains pork, beef, chicken, or meat products.
+     - Produce / Vegetable queries: Recommend ONLY stalls where CATEGORY contains "Produce" or "Vegetables".
+     - Cooked food / Carenderia queries: Recommend ONLY Eateries / Carenderia stalls.
+   - Do NOT mix categories unless explicitly requested by the user.
+7. ANTI-REPETITION & DIVERSITY FOR OPEN / GENERAL QUERIES:
+   - When asked broad questions such as "what stalls are open?", "which shops are open right now?", or "ano ang mga bukas?":
+     - Review recent conversation turns. Do NOT recommend the same stalls already recommended in earlier turns of this conversation.
+     - Sample 3 to 4 varied stalls across DIFFERENT categories (e.g., 1 Carenderia, 1 Sari-Sari, 1 Produce, 1 Fish or Meat) rather than grouping all recommendations in a single category.
+     - Ensure fair visibility across all active market sections.
+8. THEMATIC INTENT MAPPING:
+   - Map colloquial, thematic, or situational user phrases to proper market categories:
+     - "hungry", "eat", "kain", "food", "tanghalian", "almusal", "meryenda", "lutong ulam", "ulam": Map to Carenderia / Eateries.
+     - "fish", "isda", "seafood", "hipon", "pusit", "daing", "tinapa": Map to Fish or Dried Fish.
+     - "meat", "karne", "baboy", "baka", "liempo", "pork", "beef", "chicken", "manok": Map to Meat (Pork & Beef) or Mixed Meat & Poultry.
+     - "gulay", "vegetables", "prutas", "fruits", "spices", "rekado": Map to Produce (Vegetables & Fruits).
+     - "bigas", "rice", "kanin": Map to Rice & Grains.
+     - "snack", "junk food", "softdrinks", "sabon", "grocery": Map to Sari-Sari or Dry Goods.
+   - Once mapped, select 3 to 4 varied open stalls in that category.
 
 RESPONSE STRUCTURE & FORMATTING:
 Answer naturally and conversationally, structured for easy reading on mobile screens:
@@ -304,16 +326,24 @@ Answer naturally and conversationally, structured for easy reading on mobile scr
      <!--DIRECTORY:{"category":"<exact_category_name>","totalCount":<count>}-->
    - Example: <!--DIRECTORY:{"category":"Sari Sari","totalCount":18}-->
    - Never wrap the tag in markdown code blocks.
-6. ROUTING & DIRECTIONS DIRECTIVE:
-   When the user asks for directions, routing, navigation, rerouting, or how to get to a stall (e.g. "can you route me to...", "how do I get to...", "route me from entrance 2 to peraz sarisari stall", "saan banda ang..."):
-   - Provide a short, friendly 2-3 sentence guide on how to get there.
-   - At the VERY END of your response, ALWAYS append a structured route tag on its own line:
-     <!--ROUTE:{"originType":"entrance","originId":"<entrance_id_or_gate_number>","destinationStallId":"<stall_id>","destinationStallName":"<exact_stall_name>"}-->
-   - If an entrance/gate is mentioned (e.g. "Gate 2", "Entrance 1"), set originType to "entrance" and originId to the gate number (e.g. "2").
-   - If an origin stall is mentioned (e.g. "from stall 1 to stall 27"), set originType to "stall" and originId to the origin stall ID.
-   - If no origin is specified, set originType to "entrance" and originId to "default".
-   - Always put the exact destination stall ID (e.g. "id_27") and exact stall name from the directory.
-   - Never wrap the tag in markdown code blocks.
+6. ROUTING & DIRECTIONS DIRECTIVE (MANDATORY ORIGIN CHECK):
+   When the user asks for directions, routing, navigation, rerouting, or how to get to a stall (e.g. "navigate me to...", "route me to...", "how do I get to...", "paano pumunta sa...", "saan banda ang..."):
+   - ORIGIN IS REQUIRED: A route cannot be calculated without knowing where the user starts.
+   - IF NO STARTING LOCATION IS GIVEN:
+     - DO NOT guess, assume, or invent a starting entrance or default gate.
+     - DO NOT emit any <!--ROUTE:...--> tag.
+     - Acknowledge the destination and ask where they currently are:
+       Tagalog example: "Sige po! Saan po ba kayo banda ngayon? Pwede ninyong sabihin ang pinakamalapit na Gate o pangalan ng stall kung nasaan kayo."
+       English example: "Sure! Where are you right now? You can tell me your nearest Gate or a nearby stall name so I can guide you."
+   - IF BOTH ORIGIN AND DESTINATION ARE KNOWN (either in this message or established earlier in recent conversation):
+     - Provide a short, friendly 2-3 sentence guide on how to get there.
+     - At the VERY END of your response, ALWAYS append a structured route tag on its own line:
+       <!--ROUTE:{"originType":"entrance","originId":"<entrance_id_or_gate_number>","destinationStallId":"<stall_id>","destinationStallName":"<exact_stall_name>"}-->
+     - If an entrance/gate is mentioned (e.g. "Gate 2", "Entrance 1"), set originType to "entrance" and originId to the gate number (e.g. "2").
+     - If an origin stall is mentioned (e.g. "from stall 1 to stall 27"), set originType to "stall" and originId to the origin stall ID.
+     - NEVER output originId "default". If origin is unknown, do not emit the <!--ROUTE:...--> tag at all.
+     - Always put the exact destination stall ID (e.g. "id_27") and exact stall name from the directory.
+     - Never wrap the tag in markdown code blocks.
 
 GUARDRAILS:
 1. STRICT ZERO-EMOJI RULE: Do NOT use any emojis anywhere in your response.
@@ -422,7 +452,7 @@ $stallData
         apiKey: apiKey,
         systemInstruction: Content.system(_buildSystemPrompt()),
         generationConfig: GenerationConfig(
-          temperature: 0.3,
+          temperature: 0.5,
           maxOutputTokens: 2048,
           topP: 0.8,
           topK: 40,
@@ -481,7 +511,7 @@ $stallData
             finalReply = _mergeReplyAndContinuation(botReply, continuation);
           }
         } catch (e) {
-          debugPrint('⚠️ Warning: Continuation request failed: $e');
+          debugPrint('Warning: Continuation request failed: $e');
         }
       }
 
@@ -493,11 +523,24 @@ $stallData
 
       yield finalReply;
     } catch (e) {
-      debugPrint('❌ Error: Gemini API error: $e');
+      debugPrint('Error: Gemini API error: $e');
       yield _language == 'english'
           ? 'Sorry, I\'m having trouble connecting. Please try again.'
           : 'Paumanhin, may problema sa koneksyon. Subukan ulit.';
     }
+  }
+
+  bool _matchesCategoryWithBoundaries(String text, MarketCategoryItem cat) {
+    final pName = cat.primaryCategoryName.toLowerCase();
+    final sName = cat.shortName.toLowerCase();
+    if (RegExp(r'\b' + RegExp.escape(pName) + r'\b').hasMatch(text)) return true;
+    if (RegExp(r'\b' + RegExp.escape(sName) + r'\b').hasMatch(text)) return true;
+    for (final k in cat.keywords) {
+      if (RegExp(r'\b' + RegExp.escape(k.toLowerCase()) + r'\b').hasMatch(text)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<String?> _computeProximityContext(String userMessage) async {
@@ -533,11 +576,7 @@ $stallData
 
       MarketCategoryItem? matchedCategory;
       for (final cat in MarketCategories.items) {
-        final pName = cat.primaryCategoryName.toLowerCase();
-        final sName = cat.shortName.toLowerCase();
-        if (lower.contains(pName) ||
-            lower.contains(sName) ||
-            cat.keywords.any((k) => lower.contains(k.toLowerCase()))) {
+        if (_matchesCategoryWithBoundaries(lower, cat)) {
           matchedCategory = cat;
           break;
         }
@@ -623,13 +662,7 @@ $stallData
         lower.contains('buong');
 
     for (final cat in MarketCategories.items) {
-      final pName = cat.primaryCategoryName.toLowerCase();
-      final sName = cat.shortName.toLowerCase();
-      final hasCat = lower.contains(pName) ||
-          lower.contains(sName) ||
-          cat.keywords.any((k) => lower.contains(k.toLowerCase()));
-
-      if (hasCat) {
+      if (_matchesCategoryWithBoundaries(lower, cat)) {
         final count = _stalls
             .where((s) => StallUtils.matchesCategory(s, cat.primaryCategoryName))
             .length;

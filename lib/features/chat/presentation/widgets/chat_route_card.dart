@@ -402,22 +402,39 @@ class ChatRouteCard extends ConsumerWidget {
   }) async {
     if (destStall == null) return;
 
-    // 1. Haptic feedback
+    // 1. Capture required notifiers and state synchronously before widget dismissal
+    final activeNotifier = ref.read(activeRouteProvider.notifier);
+    final selectedEntranceNotifier = ref.read(selectedEntranceProvider.notifier);
+    final routeTraversalNotifier = ref.read(routeTraversalTriggerProvider.notifier);
+    final pathService = ref.read(pathfindingServiceProvider);
+    final currentSelectedEntrance = ref.read(selectedEntranceProvider);
+    final availableEntryPoints = ref.read(entryPointsProvider);
+
+    final chosenEntrance = isStallOrigin
+        ? null
+        : (originEntrance ??
+            currentSelectedEntrance ??
+            pathService.findNearestEntranceByWalkingDistance(destStall.stallId) ??
+            (availableEntryPoints.isNotEmpty ? availableEntryPoints.first : null));
+
+    if (chosenEntrance != null) {
+      selectedEntranceNotifier.state = chosenEntrance;
+    }
+
+    // 2. Haptic feedback
     unawaited(HapticFeedback.mediumImpact());
 
-    // 2. Dismiss chat modal
+    // 3. Dismiss chat modal
     if (onClose != null) {
       onClose!();
     } else {
       await Navigator.of(context).maybePop();
     }
 
-    // 3. Switch to Map Tab (tab 0)
+    // 4. Switch to Map Tab (tab 0)
     mainShellKey.currentState?.goToTab(0);
 
-    // 4. Trigger Navigation
-    final activeNotifier = ref.read(activeRouteProvider.notifier);
-
+    // 5. Trigger Navigation asynchronously using pre-captured notifiers
     if (isStallOrigin && originStall != null) {
       await NavigationLoadingDialog.show(
         null,
@@ -431,15 +448,6 @@ class ChatRouteCard extends ConsumerWidget {
         destinationStallName: destStall.name,
       );
     } else {
-      final chosenEntrance = originEntrance ??
-          ref.read(selectedEntranceProvider) ??
-          ref.read(pathfindingServiceProvider).findNearestEntranceByWalkingDistance(destStall.stallId) ??
-          (ref.read(entryPointsProvider).isNotEmpty ? ref.read(entryPointsProvider).first : null);
-
-      if (chosenEntrance != null) {
-        ref.read(selectedEntranceProvider.notifier).state = chosenEntrance;
-      }
-
       await NavigationLoadingDialog.show(
         null,
         stallName: destStall.name,
@@ -453,8 +461,8 @@ class ChatRouteCard extends ConsumerWidget {
       );
     }
 
-    // 5. Trigger avatar walking traversal animation on the map
-    ref.read(routeTraversalTriggerProvider.notifier).state++;
+    // 6. Trigger avatar walking traversal animation on the map
+    routeTraversalNotifier.state++;
   }
 
   StallModel? _findStall(

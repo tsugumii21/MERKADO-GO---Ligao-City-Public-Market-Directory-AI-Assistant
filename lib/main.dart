@@ -12,13 +12,13 @@ import 'providers/theme_provider.dart';
 void main() async {
   // CRITICAL: Catch all Flutter errors before anything else
   FlutterError.onError = (details) {
-    debugPrint('❌ Error: ${details.exceptionAsString()}');
-    debugPrint('❌ Stack: ${details.stack}');
+    debugPrint('Error: ${details.exceptionAsString()}');
+    debugPrint('Stack: ${details.stack}');
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('❌ Error: $error');
-    debugPrint('❌ Stack: $stack');
+    debugPrint('Error: $error');
+    debugPrint('Stack: $stack');
     return true;
   };
 

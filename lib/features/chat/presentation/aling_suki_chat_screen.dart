@@ -100,6 +100,198 @@ class AlingSukiChatScreen extends ConsumerStatefulWidget {
     );
   }
 
+  /// Resolves fallback route action when user and bot chat establishes routing intent.
+  /// Strictly requires a starting location (entrance or stall). Returns null if no origin was provided.
+  static ChatRouteAction? resolveFallbackRouteAction(
+    String botContent,
+    String? userPrompt, {
+    List<StallModel> stalls = const [],
+  }) {
+    final combined = '${userPrompt ?? ''} $botContent'.toLowerCase();
+    final isRoutingIntent = combined.contains('route') ||
+        combined.contains('navigate') ||
+        combined.contains('direction') ||
+        combined.contains('papunta') ||
+        combined.contains('pumunta') ||
+        combined.contains('direksyon') ||
+        combined.contains('paano pumunta') ||
+        combined.contains('how to get') ||
+        combined.contains('take me to') ||
+        combined.contains('saan banda') ||
+        combined.contains('patungo');
+
+    if (!isRoutingIntent) return null;
+    if (stalls.isEmpty) return null;
+
+    final cleanCombined = combined.replaceAll('#', '');
+
+    // Check destination pattern first: e.g. "to stall 27", "papunta sa stall 27"
+    final destStallNumMatch = RegExp(
+      r'(?:to|papunta\s*(?:sa)?|patungo\s*(?:sa)?)\s*(?:stall\s*#?\s*)?(\d+)',
+      caseSensitive: false,
+    ).firstMatch(combined);
+
+    StallModel? matchedStall;
+    if (destStallNumMatch != null) {
+      final destNum = destStallNumMatch.group(1);
+      for (final s in stalls) {
+        final sDigits = RegExp(r'\d+').firstMatch(s.stallNumber ?? '')?.group(0);
+        final idDigits = RegExp(r'\d+').firstMatch(s.stallId)?.group(0);
+        if (sDigits == destNum || idDigits == destNum) {
+          matchedStall = s;
+          break;
+        }
+      }
+    }
+
+    if (matchedStall == null) {
+      for (final stall in stalls) {
+        if (stall.stallNumber != null && stall.stallNumber!.trim().isNotEmpty) {
+          final cleanNum = stall.stallNumber!.toLowerCase().replaceAll('#', '').trim();
+          if (cleanCombined.contains(cleanNum)) {
+            matchedStall = stall;
+            break;
+          }
+        }
+        if (stall.name.length > 4 && combined.contains(stall.name.toLowerCase())) {
+          matchedStall = stall;
+          break;
+        }
+      }
+    }
+
+    if (matchedStall == null) return null;
+
+    // Detect entrance origin if mentioned (e.g. "entrance 2" or "gate 2")
+    final gateMatch = RegExp(
+      r'(?:gate|entrance|pinto)\s*(?:#|\s*no\.?\s*)?(\d+)',
+      caseSensitive: false,
+    ).firstMatch(combined);
+    final originGateId = gateMatch?.group(1);
+
+    if (originGateId != null) {
+      return ChatRouteAction(
+        originType: 'entrance',
+        originId: originGateId,
+        destinationStallId: matchedStall.stallId,
+        destinationStallName: matchedStall.name,
+      );
+    }
+
+    // Detect stall origin if mentioned (e.g. "from stall 1 to stall 27", "galing stall 5")
+    final stallOriginMatch = RegExp(
+      r'(?:from|galing\s*(?:sa)?|mula\s*(?:sa)?)\s*(?:stall\s*#?\s*)?(\d+)',
+      caseSensitive: false,
+    ).firstMatch(combined);
+    if (stallOriginMatch != null) {
+      final originStallNum = stallOriginMatch.group(1);
+      StallModel? originStall;
+      for (final s in stalls) {
+        final sDigits = RegExp(r'\d+').firstMatch(s.stallNumber ?? '')?.group(0);
+        final idDigits = RegExp(r'\d+').firstMatch(s.stallId)?.group(0);
+        if (sDigits == originStallNum || idDigits == originStallNum) {
+          originStall = s;
+          break;
+        }
+      }
+      if (originStall != null && originStall.stallId != matchedStall.stallId) {
+        return ChatRouteAction(
+          originType: 'stall',
+          originId: originStall.stallId,
+          destinationStallId: matchedStall.stallId,
+          destinationStallName: matchedStall.name,
+        );
+      }
+    }
+
+    // Never default to a gate if no starting location was provided
+    return null;
+  }
+
+  /// Resolves fallback directory action when a large category handoff is requested.
+  /// Evaluates user prompt with weighted word-boundary matching to prevent false category matches.
+  static ChatDirectoryAction? resolveFallbackDirectoryAction(
+    String botContent,
+    String? userPrompt, {
+    List<StallModel> stalls = const [],
+  }) {
+    final lowerPrompt = (userPrompt ?? '').toLowerCase();
+    final lowerBot = botContent.toLowerCase();
+
+    final mentionsDirectory = lowerBot.contains('stall directory') ||
+        lowerBot.contains('direktoryo') ||
+        lowerBot.contains('directory tab') ||
+        lowerBot.contains('directory screen') ||
+        lowerBot.contains('tingnan sa directory') ||
+        lowerBot.contains('check it out in the stall directory') ||
+        lowerBot.contains('explore the complete list');
+
+    final userAskedAll = lowerPrompt.contains('all') ||
+        lowerPrompt.contains('lahat') ||
+        lowerPrompt.contains('show all') ||
+        lowerPrompt.contains('list all');
+
+    // Only show directory card when explicitly instructed or user asked for all stalls
+    if (!mentionsDirectory && !userAskedAll) {
+      return null;
+    }
+
+    int scoreCategory(String text, MarketCategoryItem cat) {
+      int score = 0;
+      final pName = cat.primaryCategoryName.toLowerCase();
+      final sName = cat.shortName.toLowerCase();
+      if (RegExp(r'\b' + RegExp.escape(pName) + r'\b').hasMatch(text)) {
+        score += 15;
+      }
+      if (sName != pName && RegExp(r'\b' + RegExp.escape(sName) + r'\b').hasMatch(text)) {
+        score += 15;
+      }
+      for (final k in cat.keywords) {
+        if (RegExp(r'\b' + RegExp.escape(k.toLowerCase()) + r'\b').hasMatch(text)) {
+          score += (k.contains(' ') || k.length > 5 ? 6 : 2);
+        }
+      }
+      return score;
+    }
+
+    // 1. Identify category from user prompt first by highest score
+    MarketCategoryItem? targetCategory;
+    int bestScore = 0;
+    for (final item in MarketCategories.items) {
+      final s = scoreCategory(lowerPrompt, item);
+      if (s > bestScore) {
+        bestScore = s;
+        targetCategory = item;
+      }
+    }
+
+    // 2. If prompt did not specify a category, check bot's direct recommendation
+    if (targetCategory == null && mentionsDirectory) {
+      for (final item in MarketCategories.items) {
+        final s = scoreCategory(lowerBot, item);
+        if (s > bestScore) {
+          bestScore = s;
+          targetCategory = item;
+        }
+      }
+    }
+
+    if (targetCategory == null) return null;
+
+    final matchingCount = stalls
+        .where((s) => StallUtils.matchesCategory(s, targetCategory!.primaryCategoryName))
+        .length;
+
+    if (matchingCount > 5) {
+      return ChatDirectoryAction(
+        category: targetCategory.primaryCategoryName,
+        totalCount: matchingCount,
+      );
+    }
+
+    return null;
+  }
+
   @override
   ConsumerState<AlingSukiChatScreen> createState() =>
       _AlingSukiChatScreenState();
@@ -976,47 +1168,10 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
     String? userPrompt, {
     List<StallModel> stalls = const [],
   }) {
-    final combined = '${userPrompt ?? ''} $botContent'.toLowerCase();
-    final isRoutingIntent = combined.contains('route') ||
-        combined.contains('direction') ||
-        combined.contains('papunta') ||
-        combined.contains('pumunta') ||
-        combined.contains('direksyon') ||
-        combined.contains('paano pumunta') ||
-        combined.contains('how to get') ||
-        combined.contains('take me to') ||
-        combined.contains('saan banda');
-
-    if (!isRoutingIntent) return null;
-    if (stalls.isEmpty) return null;
-
-    // Detect destination stall
-    StallModel? matchedStall;
-    for (final stall in stalls) {
-      if (stall.stallNumber != null &&
-          stall.stallNumber!.trim().isNotEmpty &&
-          combined.contains(stall.stallNumber!.toLowerCase())) {
-        matchedStall = stall;
-        break;
-      }
-      if (stall.name.length > 4 && combined.contains(stall.name.toLowerCase())) {
-        matchedStall = stall;
-        break;
-      }
-    }
-
-    if (matchedStall == null) return null;
-
-    // Detect entrance origin if mentioned (e.g. "entrance 2" or "gate 2")
-    final gateMatch = RegExp(r'(?:gate|entrance)\s*(\d+)', caseSensitive: false)
-        .firstMatch(combined);
-    final originId = gateMatch?.group(1);
-
-    return ChatRouteAction(
-      originType: 'entrance',
-      originId: originId ?? 'default',
-      destinationStallId: matchedStall.stallId,
-      destinationStallName: matchedStall.name,
+    return AlingSukiChatScreen.resolveFallbackRouteAction(
+      botContent,
+      userPrompt,
+      stalls: stalls,
     );
   }
 
@@ -1025,38 +1180,10 @@ class _AlingSukiChatScreenState extends ConsumerState<AlingSukiChatScreen>
     String? userPrompt, {
     List<StallModel> stalls = const [],
   }) {
-    final combined = '${userPrompt ?? ''} $botContent'.toLowerCase();
-    final mentionsDirectory = combined.contains('stall directory') ||
-        combined.contains('direktoryo') ||
-        combined.contains('directory tab') ||
-        combined.contains('directory screen') ||
-        combined.contains('tingnan sa directory') ||
-        combined.contains('check it out in the stall directory');
-
-    final userAskedAll = (userPrompt ?? '').toLowerCase().contains('all') ||
-        (userPrompt ?? '').toLowerCase().contains('lahat');
-
-    for (final item in MarketCategories.items) {
-      final pName = item.primaryCategoryName.toLowerCase();
-      final sName = item.shortName.toLowerCase();
-      final hasCategoryMention = combined.contains(pName) ||
-          combined.contains(sName) ||
-          item.keywords.any((k) => combined.contains(k.toLowerCase()));
-
-      if (hasCategoryMention) {
-        final matchingCount = stalls
-            .where((s) => StallUtils.matchesCategory(s, item.primaryCategoryName))
-            .length;
-
-        if (matchingCount > 5 && (mentionsDirectory || userAskedAll || matchingCount >= 10)) {
-          return ChatDirectoryAction(
-            category: item.primaryCategoryName,
-            totalCount: matchingCount,
-          );
-        }
-      }
-    }
-
-    return null;
+    return AlingSukiChatScreen.resolveFallbackDirectoryAction(
+      botContent,
+      userPrompt,
+      stalls: stalls,
+    );
   }
 }

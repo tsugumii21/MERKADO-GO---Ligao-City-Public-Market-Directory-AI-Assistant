@@ -46,7 +46,11 @@ class ChatRouteAction {
       final jsonStr = match.group(1)!;
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
       final action = ChatRouteAction.fromJson(decoded);
-      if (action.destinationStallId.trim().isNotEmpty) {
+      // Valid route requires destination and a specified starting location (not 'default' or null/empty)
+      if (action.destinationStallId.trim().isNotEmpty &&
+          action.originId != null &&
+          action.originId!.trim().isNotEmpty &&
+          action.originId != 'default') {
         return action;
       }
     } catch (_) {

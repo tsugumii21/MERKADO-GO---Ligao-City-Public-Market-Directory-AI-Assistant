@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merkado_go/data/seed_stalls.dart';
 import 'package:merkado_go/features/chat/domain/chat_directory_action.dart';
+import 'package:merkado_go/features/chat/presentation/aling_suki_chat_screen.dart';
 import 'package:merkado_go/features/chat/presentation/widgets/chat_directory_card.dart';
 import 'package:merkado_go/features/map/services/pathfinding_service.dart';
+import 'package:merkado_go/models/stall_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -94,6 +96,91 @@ Here are 5 sari-sari stores. Since there are 18 stalls total, you can check them
       await tester.pumpAndSettle();
 
       expect(wasClosed, isTrue);
+    });
+  });
+
+  group('AlingSukiChatScreen Fallback Directory Resolution Tests', () {
+    List<StallModel> generateStalls(String category, int count) {
+      return List.generate(
+        count,
+        (i) => StallModel(
+          stallId: 'id_${category.toLowerCase()}_$i',
+          name: '${category.toUpperCase()} STALL $i',
+          category: category,
+          categories: [category],
+          products: ['Sample $category product'],
+          address: 'Market Complex',
+          photoUrls: const [],
+          openTime: '5:00 AM',
+          closeTime: '6:00 PM',
+          daysOpen: const ['Monday'],
+          latitude: 0.0,
+          longitude: 0.0,
+          isActive: true,
+          status: 'open',
+          section: '$category Section',
+          stallNumber: 'STALL #$i',
+          updatedAt: DateTime.now(),
+        ),
+      );
+    }
+
+    final testStalls = [
+      ...generateStalls('Fish', 8),
+      ...generateStalls('Meat', 12),
+      ...generateStalls('Produce', 10),
+    ];
+
+    test('General query "what stalls are open?" returns null and never hijacks to Meat', () {
+      final action = AlingSukiChatScreen.resolveFallbackDirectoryAction(
+        'Here are some open stalls across the market: ADVZ Fish Retailing, Peraz Sari-Sari Store, and Mang Juan Meat Shop.',
+        'what stalls are open?',
+        stalls: testStalls,
+      );
+      expect(action, isNull,
+          reason: 'General query should not display category directory card');
+    });
+
+    test('Fish query "where can I buy fish?" without directory advice returns null and never returns Meat', () {
+      final action = AlingSukiChatScreen.resolveFallbackDirectoryAction(
+        'You can buy fresh fish at ADVZ Fish Retailing and Ponteres Dried Fish Store.',
+        'where can I buy fish?',
+        stalls: testStalls,
+      );
+      expect(action, isNull,
+          reason: 'Conversational fish recommendation without directory handoff must not trigger directory card');
+    });
+
+    test('Explicit "show all fish" returns Fish directory action, not Meat', () {
+      final action = AlingSukiChatScreen.resolveFallbackDirectoryAction(
+        'Here are some fish vendors. You can view all in the directory.',
+        'show all fish stalls',
+        stalls: testStalls,
+      );
+      expect(action, isNotNull);
+      expect(action!.category, equals('Fish'));
+      expect(action.totalCount, equals(8));
+    });
+
+    test('Word boundary regex prevents "origin" from matching Meat keyword "orig"', () {
+      final action = AlingSukiChatScreen.resolveFallbackDirectoryAction(
+        'I am Aling Suki, the official assistant of Ligao Public Market.',
+        'what is your origin?',
+        stalls: testStalls,
+      );
+      expect(action, isNull,
+          reason: 'The word "origin" must not trigger Meat category via keyword "orig"');
+    });
+
+    test('Query for "matang baka" fish targets Fish category, not Meat', () {
+      final action = AlingSukiChatScreen.resolveFallbackDirectoryAction(
+        'Since there are 8 Fish stalls, you can check it out in the stall directory.',
+        'where can I buy matang baka fish?',
+        stalls: testStalls,
+      );
+      expect(action, isNotNull);
+      expect(action!.category, equals('Fish'),
+          reason: 'Matang baka fish query with directory advice must match Fish');
     });
   });
 

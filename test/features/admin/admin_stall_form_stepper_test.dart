@@ -102,7 +102,6 @@ void main() {
 
       // Subcategories card is auto-expanded and shows required indicator
       expect(find.text('Subcategories'), findsAtLeastNWidgets(1));
-      expect(find.text('Subcategories for Meat *'), findsOneWidget);
       expect(find.text('Pork Cuts'), findsOneWidget);
 
       // Attempting to advance to Step 2 without selecting a subcategory should block

@@ -617,6 +617,73 @@ void main() {
       // Direct corridor distance is ~1,148 px, far shorter than perimeter detour (>2,600 px)
       expect(route.totalDistance, lessThan(1200.0));
     });
+
+    test('River & Bridge: Route from Gate 1 (node_ex_1) to id_88 must cross river via Bridge 1 (node_ex_t1) and use wet market corridors', () {
+      final route = service.findRoute(
+        entranceNodeId: 'node_ex_1',
+        destinationStallId: 'id_88',
+        destinationName: 'Sample Wet Market Stall 88',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+      expect(route.nodeIds.first, 'node_ex_1');
+      // Must cross river via Bridge 1 (node_ex_t1)
+      expect(route.nodeIds.contains('node_ex_t1'), isTrue,
+          reason: 'Path must cross the river using Bridge 1 (node_ex_t1)');
+      // Must enter Wet Market via entrance node
+      expect(route.nodeIds.contains('node_wm_e1'), isTrue);
+      expect(route.nodeIds.contains('node_wm_e1.1'), isTrue);
+      // Destination node must be inside wet market corridor
+      expect(PathfindingService.getNodeZone(route.nodeIds.last), 'wm');
+      expect(route.nodeIds.length, greaterThanOrEqualTo(4));
+    });
+
+    test('River & Bridge: Route from Gate 1 (node_ex_1) to id_155 must cross river via Bridge 1 (node_ex_t1) and use wet market corridors', () {
+      final route = service.findRoute(
+        entranceNodeId: 'node_ex_1',
+        destinationStallId: 'id_155',
+        destinationName: 'Sample Wet Market Stall 155',
+      );
+
+      expect(route, isNotNull);
+      expect(route!.nodeIds, isNotEmpty);
+      expect(route.nodeIds.first, 'node_ex_1');
+      // Must cross river via Bridge 1 (node_ex_t1)
+      expect(route.nodeIds.contains('node_ex_t1'), isTrue,
+          reason: 'Path must cross the river using Bridge 1 (node_ex_t1)');
+      expect(route.nodeIds.contains('node_wm_e1'), isTrue);
+      expect(route.nodeIds.contains('node_wm_e1.1'), isTrue);
+      expect(PathfindingService.getNodeZone(route.nodeIds.last), 'wm');
+      expect(route.nodeIds.length, greaterThanOrEqualTo(4));
+    });
+
+    test('River & Bridge: Route from Gate 1 (node_ex_1) to id_189 and id_190 uses Bridge 1 (node_ex_t1)', () {
+      final route189 = service.findRoute(
+        entranceNodeId: 'node_ex_1',
+        destinationStallId: 'id_189',
+        destinationName: 'PAYOYO-LOPEZ STORE',
+      );
+
+      expect(route189, isNotNull);
+      expect(route189!.nodeIds.first, 'node_ex_1');
+      // Crosses Bridge 1 from east to west bank
+      expect(route189.nodeIds.contains('node_ex_t1'), isTrue,
+          reason: 'Must cross Bridge 1 to reach south perimeter stall');
+      expect(route189.nodeIds, ['node_ex_1', 'node_ex_t1']);
+
+      final route190 = service.findRoute(
+        entranceNodeId: 'node_ex_1',
+        destinationStallId: 'id_190',
+        destinationName: 'Sample Perimeter Stall 190',
+      );
+
+      expect(route190, isNotNull);
+      expect(route190!.nodeIds.first, 'node_ex_1');
+      expect(route190.nodeIds.contains('node_ex_t1'), isTrue,
+          reason: 'Must cross Bridge 1 to reach south perimeter stall');
+      expect(route190.nodeIds, ['node_ex_1', 'node_ex_t1']);
+    });
   });
 }
 

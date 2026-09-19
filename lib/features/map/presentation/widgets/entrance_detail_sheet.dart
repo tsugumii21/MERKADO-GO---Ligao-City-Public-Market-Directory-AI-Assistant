@@ -88,8 +88,11 @@ class EntranceDetailSheet extends ConsumerWidget {
 
     final targetStall = ref.read(pickingOriginTargetStallProvider);
     final activeRoute = ref.read(activeRouteProvider);
+    final activeRouteNotifier = ref.read(activeRouteProvider.notifier);
 
     if (targetStall != null) {
+      final destStallId = targetStall.stallId;
+      final destStallName = targetStall.name;
       ref.read(pickingOriginTargetStallProvider.notifier).state = null;
       ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
       onStartRoute?.call();
@@ -97,25 +100,38 @@ class EntranceDetailSheet extends ConsumerWidget {
 
       await NavigationLoadingDialog.show(
         null,
-        stallName: targetStall.name,
+        stallName: destStallName,
         entrance: entrance,
       );
 
-      await ref.read(activeRouteProvider.notifier).navigateToStall(
-        stallId: targetStall.stallId,
-        stallName: targetStall.name,
+      await activeRouteNotifier.navigateToStall(
+        stallId: destStallId,
+        stallName: destStallName,
         entranceOverride: entrance,
       );
       return;
     }
 
     if (activeRoute != null && activeRoute.destinationStallId.isNotEmpty) {
-      unawaited(
-        ref.read(activeRouteProvider.notifier).navigateToStall(
-              stallId: activeRoute.destinationStallId,
-              entranceOverride: entrance,
-            ),
+      final destStallId = activeRoute.destinationStallId;
+      final destStallName = activeRoute.destinationStallName;
+      ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+      ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
+      onStartRoute?.call();
+      Navigator.of(context).pop();
+
+      await NavigationLoadingDialog.show(
+        null,
+        stallName: destStallName,
+        entrance: entrance,
       );
+
+      await activeRouteNotifier.navigateToStall(
+        stallId: destStallId,
+        stallName: destStallName,
+        entranceOverride: entrance,
+      );
+      return;
     }
 
     onStartRoute?.call();
@@ -186,7 +202,10 @@ class EntranceDetailSheet extends ConsumerWidget {
     final userIsAdmin = isAdmin || (currentUser?.role == 'admin');
     final selectedEntrance = ref.watch(selectedEntranceProvider);
     final targetStall = ref.watch(pickingOriginTargetStallProvider);
-    final isSelected = selectedEntrance?.entranceId == liveEntrance.entranceId;
+    final activeRoute = ref.watch(activeRouteProvider);
+    final isPickingEntranceOnMap = ref.watch(isPickingEntranceOnMapProvider);
+    final isPickingMode = targetStall != null || isPickingEntranceOnMap;
+    final isSelected = !isPickingMode && (selectedEntrance?.entranceId == liveEntrance.entranceId);
     final mediaQuery = MediaQuery.of(context);
 
     return Container(
@@ -438,7 +457,9 @@ class EntranceDetailSheet extends ConsumerWidget {
                         label: Text(
                           targetStall != null
                               ? 'Start Route to ${targetStall.name}'
-                              : 'Start Route From Here',
+                              : (activeRoute != null && activeRoute.destinationStallName.isNotEmpty
+                                  ? 'Start Route to ${activeRoute.destinationStallName}'
+                                  : 'Start Route From Here'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

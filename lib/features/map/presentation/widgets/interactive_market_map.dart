@@ -1108,13 +1108,13 @@ class InteractiveMarketMapState extends State<InteractiveMarketMap>
                         widget.showEntrancePins ||
                         widget.selectedEntrance != null)
                       ..._effectiveEntryPoints.where((entrance) {
+                        if (widget.showEntrancePins) {
+                          return true;
+                        }
                         if (widget.activeRoute != null) {
                           if (widget.activeRoute!.entrance == null) return false;
                           return entrance.entranceId ==
                               widget.activeRoute!.entrance!.entranceId;
-                        }
-                        if (widget.showEntrancePins) {
-                          return true;
                         }
                         if (widget.selectedEntrance != null) {
                           return entrance.entranceId ==

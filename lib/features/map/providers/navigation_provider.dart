@@ -73,6 +73,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
     _ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
+    _ref.read(routeTraversalTriggerProvider.notifier).state++;
   }
 
   /// Calculate route directly from origin stall to destination stall
@@ -100,6 +101,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
     _ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
+    _ref.read(routeTraversalTriggerProvider.notifier).state++;
   }
 
   /// Redirect active route to a new destination stall while preserving the previous origin

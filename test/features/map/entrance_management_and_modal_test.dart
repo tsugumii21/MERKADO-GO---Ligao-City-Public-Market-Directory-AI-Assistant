@@ -6,6 +6,7 @@ import 'package:merkado_go/features/admin/presentation/widgets/admin_edit_entran
 import 'package:merkado_go/features/map/domain/navigation_models.dart';
 import 'package:merkado_go/features/map/presentation/widgets/entrance_detail_sheet.dart';
 import 'package:merkado_go/features/map/presentation/widgets/entrance_selector_sheet.dart';
+import 'package:merkado_go/features/map/presentation/widgets/route_navigation_card.dart';
 import 'package:merkado_go/features/map/providers/entrance_provider.dart';
 import 'package:merkado_go/features/map/providers/navigation_provider.dart';
 import 'package:merkado_go/providers/stall_provider.dart';
@@ -830,12 +831,350 @@ void main() {
       await tester.tap(find.text('Open Sheet'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Pick on Map'), findsOneWidget);
+      expect(find.text('Pick on the Map'), findsOneWidget);
 
-      await tester.tap(find.text('Pick on Map'));
+      await tester.tap(find.text('Pick on the Map'));
       await tester.pumpAndSettle();
 
       expect(returnedResult, equals('pick_on_map'));
     });
   });
+
+  _registerRouteNavigationChangeTests();
+}
+
+class _TestActiveRouteNotifier extends ActiveRouteNotifier {
+  _TestActiveRouteNotifier(super.ref, NavigationRoute? initial) {
+    state = initial;
+  }
+}
+
+void _registerRouteNavigationChangeTests() {
+  group('Route Navigation Entrance Change Tests', () {
+    testWidgets(
+        'RouteNavigationCard calls onChangeEntrance when tapping origin in minimized bar',
+        (tester) async {
+      bool changed = false;
+      const route = NavigationRoute(
+        nodeIds: ['node_ex_1', 'node_ex_t1'],
+        nodes: [],
+        points: [],
+        steps: [
+          NavigationStep(
+            stepNumber: 1,
+            instruction: 'Head straight',
+            distance: 10,
+            direction: TurnDirection.straight,
+            nodeId: 'node_ex_1',
+          ),
+        ],
+        totalDistance: 10,
+        destinationStallId: 'stall_1',
+        destinationStallName: 'Target Stall',
+        entrance: MarketEntryPoint(
+          entranceId: 1,
+          nodeId: 'node_ex_1',
+          description: 'Gate 1 Description',
+        ),
+      );
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: RouteNavigationCard(
+                route: route,
+                onChangeEntrance: () {
+                  changed = true;
+                },
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(find.text('1 Steps • Gate 1'), findsOneWidget);
+
+      await tester.tap(find.text('1 Steps • Gate 1'));
+      await tester.pumpAndSettle();
+
+      expect(changed, isTrue);
+    });
+
+    testWidgets(
+        'RouteNavigationCard calls onChangeEntrance when tapping origin in expanded content',
+        (tester) async {
+      bool changed = false;
+      const route = NavigationRoute(
+        nodeIds: ['node_ex_1', 'node_ex_t1'],
+        nodes: [],
+        points: [],
+        steps: [
+          NavigationStep(
+            stepNumber: 1,
+            instruction: 'Head straight',
+            distance: 10,
+            direction: TurnDirection.straight,
+            nodeId: 'node_ex_1',
+          ),
+        ],
+        totalDistance: 10,
+        destinationStallId: 'stall_1',
+        destinationStallName: 'Target Stall',
+        entrance: MarketEntryPoint(
+          entranceId: 1,
+          nodeId: 'node_ex_1',
+          description: 'Gate 1 Description',
+        ),
+      );
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: RouteNavigationCard(
+                route: route,
+                onChangeEntrance: () {
+                  changed = true;
+                },
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      // Expand card
+      await tester.tap(find.text('Steps'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('From Gate 1: Gate 1 Description'), findsOneWidget);
+
+      await tester.tap(find.text('From Gate 1: Gate 1 Description'));
+      await tester.pumpAndSettle();
+
+      expect(changed, isTrue);
+    });
+
+    testWidgets(
+        'EntranceDetailSheet displays Start Route to destination stall when activeRoute is set',
+        (tester) async {
+      const gate2 = MarketEntryPoint(
+        entranceId: 2,
+        nodeId: 'node_ex_2',
+        description: 'Gate 2 Entrance',
+      );
+      const activeRoute = NavigationRoute(
+        nodeIds: ['node_ex_1'],
+        nodes: [],
+        points: [],
+        steps: [],
+        totalDistance: 10,
+        destinationStallId: 'stall_88',
+        destinationStallName: 'Wet Market Stall 88',
+        entrance: MarketEntryPoint(
+          entranceId: 1,
+          nodeId: 'node_ex_1',
+          description: 'Gate 1 Entrance',
+        ),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([gate2]),
+          activeRouteProvider.overrideWith(
+            (ref) => _TestActiveRouteNotifier(ref, activeRoute),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => EntranceDetailSheet.show(context, gate2),
+                  child: const Text('Open Detail'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Detail'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Start Route to Wet Market Stall 88'), findsOneWidget);
+    });
+
+    testWidgets(
+        'EntranceDetailSheet in picking mode shows Start Route to destination even if gate matches selectedEntrance',
+        (tester) async {
+      const gate1 = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Gate 1 Entrance',
+      );
+      final targetStall = StallModel(
+        stallId: 'stall_88',
+        name: 'Wet Market Stall 88',
+        category: 'Fish',
+        products: const [],
+        address: '',
+        photoUrls: const [],
+        openTime: '',
+        closeTime: '',
+        daysOpen: const [],
+        latitude: 0,
+        longitude: 0,
+        isActive: true,
+        updatedAt: DateTime.now(),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([gate1]),
+          selectedEntranceProvider.overrideWith((ref) => gate1),
+          pickingOriginTargetStallProvider.overrideWith((ref) => targetStall),
+          isPickingEntranceOnMapProvider.overrideWith((ref) => true),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => EntranceDetailSheet.show(context, gate1),
+                  child: const Text('Open Detail'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Detail'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Start Route to Wet Market Stall 88'), findsOneWidget);
+      expect(find.text('Clear Selection'), findsNothing);
+    });
+
+    testWidgets(
+        'EntranceDetailSheet reroutes to target stall when tapping Start Route in picking mode',
+        (tester) async {
+      const gate2 = MarketEntryPoint(
+        entranceId: 2,
+        nodeId: 'node_ex_2',
+        description: 'Gate 2 Entrance',
+      );
+      final targetStall = StallModel(
+        stallId: 'stall_88',
+        name: 'Wet Market Stall 88',
+        category: 'Fish',
+        products: const [],
+        address: '',
+        photoUrls: const [],
+        openTime: '',
+        closeTime: '',
+        daysOpen: const [],
+        latitude: 0,
+        longitude: 0,
+        isActive: true,
+        updatedAt: DateTime.now(),
+      );
+
+      late _SpyActiveRouteNotifier spyNotifier;
+
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([gate2]),
+          pickingOriginTargetStallProvider.overrideWith((ref) => targetStall),
+          isPickingEntranceOnMapProvider.overrideWith((ref) => true),
+          activeRouteProvider.overrideWith((ref) {
+            spyNotifier = _SpyActiveRouteNotifier(ref);
+            return spyNotifier;
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      bool startRouteCallbackCalled = false;
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => EntranceDetailSheet.show(
+                    context,
+                    gate2,
+                    onStartRoute: () {
+                      startRouteCallbackCalled = true;
+                    },
+                  ),
+                  child: const Text('Open Detail'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Detail'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Start Route to Wet Market Stall 88'), findsOneWidget);
+
+      await tester.tap(find.text('Start Route to Wet Market Stall 88'));
+      await tester.pumpAndSettle();
+
+      expect(startRouteCallbackCalled, isTrue);
+      expect(spyNotifier.lastNavigatedStallId, equals('stall_88'));
+      expect(spyNotifier.lastNavigatedStallName, equals('Wet Market Stall 88'));
+      expect(spyNotifier.lastNavigatedEntrance?.entranceId, equals(2));
+    });
+  });
+}
+
+class _SpyActiveRouteNotifier extends ActiveRouteNotifier {
+  String? lastNavigatedStallId;
+  String? lastNavigatedStallName;
+  MarketEntryPoint? lastNavigatedEntrance;
+
+  _SpyActiveRouteNotifier(super.ref, [NavigationRoute? initial]) {
+    state = initial;
+  }
+
+  @override
+  Future<void> navigateToStall({
+    required String stallId,
+    String? stallName,
+    MarketEntryPoint? entranceOverride,
+  }) async {
+    lastNavigatedStallId = stallId;
+    lastNavigatedStallName = stallName;
+    lastNavigatedEntrance = entranceOverride;
+  }
 }

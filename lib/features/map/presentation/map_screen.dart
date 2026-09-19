@@ -119,6 +119,139 @@ class MapScreenState extends ConsumerState<MapScreen> {
     ref.read(pickingOriginTargetStallProvider.notifier).state = null;
   }
 
+  Future<void> _changeRouteOrigin(NavigationRoute route) async {
+    unawaited(HapticFeedback.selectionClick());
+    if (!mounted) return;
+
+    if (route.originType == NavigationOriginType.stall) {
+      final result = await StallOriginPickerSheet.show(
+        context,
+        targetStallId: route.destinationStallId,
+        targetStallName: route.destinationStallName,
+        title: 'Change Starting Stall',
+        subtitle: 'Choose where you are currently standing',
+      );
+      if (!mounted || result == null) return;
+      if (result == 'pick_on_map') {
+        final allStalls = ref.read(allStallsProvider).asData?.value ?? [];
+        StallModel? destStall;
+        for (final s in allStalls) {
+          if (s.stallId == route.destinationStallId ||
+              s.documentId == route.destinationStallId ||
+              s.physicalStallId == route.destinationStallId) {
+            destStall = s;
+            break;
+          }
+        }
+        destStall ??= StallModel(
+          stallId: route.destinationStallId,
+          name: route.destinationStallName,
+          category: '',
+          products: const [],
+          address: '',
+          photoUrls: const [],
+          openTime: '',
+          closeTime: '',
+          daysOpen: const [],
+          latitude: 0,
+          longitude: 0,
+          isActive: true,
+          updatedAt: DateTime.now(),
+        );
+        ref.read(pickingOriginTargetStallProvider.notifier).state = destStall;
+        ref.read(selectedOriginStallProvider.notifier).state = null;
+        setState(() {
+          _isPickingEntranceOnMap = false;
+        });
+        ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Tap any stall on the map to select starting point.',
+              style: GoogleFonts.poppins(fontSize: 12.5),
+            ),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        return;
+      }
+      if (result is! StallModel) return;
+      setState(() => _selectedStall = result);
+      await StallDetailSheet.show(
+        context,
+        result,
+        isChangingOrigin: true,
+      );
+    } else {
+      final result = await EntranceSelectorSheet.show(
+        context,
+        targetStallId: route.destinationStallId,
+        targetStallName: route.destinationStallName,
+      );
+      if (!mounted || result == null) return;
+      if (result == 'pick_on_map') {
+        final allStalls = ref.read(allStallsProvider).asData?.value ?? [];
+        StallModel? destStall;
+        for (final s in allStalls) {
+          if (s.stallId == route.destinationStallId ||
+              s.documentId == route.destinationStallId ||
+              s.physicalStallId == route.destinationStallId) {
+            destStall = s;
+            break;
+          }
+        }
+        destStall ??= StallModel(
+          stallId: route.destinationStallId,
+          name: route.destinationStallName,
+          category: '',
+          products: const [],
+          address: '',
+          photoUrls: const [],
+          openTime: '',
+          closeTime: '',
+          daysOpen: const [],
+          latitude: 0,
+          longitude: 0,
+          isActive: true,
+          updatedAt: DateTime.now(),
+        );
+        ref.read(pickingOriginTargetStallProvider.notifier).state = destStall;
+        setState(() {
+          _isPickingEntranceOnMap = true;
+        });
+        ref.read(isPickingEntranceOnMapProvider.notifier).state = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Tap any gate on the map to select starting entrance.',
+              style: GoogleFonts.poppins(fontSize: 12.5),
+            ),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        return;
+      }
+      if (result is MarketEntryPoint) {
+        ref.read(selectedEntranceProvider.notifier).state = result;
+        final activeRouteNotifier = ref.read(activeRouteProvider.notifier);
+        await NavigationLoadingDialog.show(
+          null,
+          stallName: route.destinationStallName,
+          entrance: result,
+        );
+        await activeRouteNotifier.navigateToStall(
+          stallId: route.destinationStallId,
+          stallName: route.destinationStallName,
+          entranceOverride: result,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final stallsAsync = ref.watch(allStallsProvider);
@@ -262,22 +395,42 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 alignment: Alignment.topCenter,
                 child: Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.sm),
-                  child: activeRoute != null
-                      ? _buildActiveNavigationDirectionHeader(activeRoute)
-                      : (isPickingEntranceOnMap
-                          ? _buildPickingEntranceBanner(targetStall: pickingOriginTargetStall)
-                          : (pickingOriginTargetStall != null
-                              ? _buildPickingStallOriginHeader(
-                                  pickingOriginTargetStall,
-                                  selectedOriginStall,
-                                )
+                  child: isPickingEntranceOnMap
+                      ? _buildPickingEntranceBanner(
+                          targetStall: pickingOriginTargetStall ??
+                              (activeRoute != null
+                                  ? StallModel(
+                                      stallId: activeRoute.destinationStallId,
+                                      name: activeRoute.destinationStallName,
+                                      category: '',
+                                      products: const [],
+                                      address: '',
+                                      photoUrls: const [],
+                                      openTime: '',
+                                      closeTime: '',
+                                      daysOpen: const [],
+                                      latitude: 0,
+                                      longitude: 0,
+                                      isActive: true,
+                                      updatedAt: DateTime.now(),
+                                    )
+                                  : null),
+                        )
+                      : (pickingOriginTargetStall != null &&
+                              !ref.watch(isPickingEntranceOnMapProvider)
+                          ? _buildPickingStallOriginHeader(
+                              pickingOriginTargetStall,
+                              selectedOriginStall,
+                            )
+                          : (activeRoute != null
+                              ? _buildActiveNavigationDirectionHeader(activeRoute)
                               : _buildTopSearchAndEntranceBar(selectedEntrance))),
                 ),
               ),
             ),
 
             // 3. Bottom Navigation Guidance Card (Two-State: Minimized bar or Expanded sheet)
-            if (activeRoute != null)
+            if (activeRoute != null && !isPickingEntranceOnMap && pickingOriginTargetStall == null)
               SafeArea(
                 child: Align(
                   alignment: Alignment.bottomCenter,
@@ -287,8 +440,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Dedicated floating Skip to Arrival pill during active navigation traversal
-                        if (!ref.watch(isNavigationCompletedProvider) &&
-                            activeRoute.steps.length > 1)
+                        if (!ref.watch(isNavigationCompletedProvider))
                           Padding(
                             padding: const EdgeInsets.only(bottom: AppSpacing.xs + 2),
                             child: Material(
@@ -345,6 +497,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                           ),
                         RouteNavigationCard(
                           route: activeRoute,
+                          onChangeEntrance: () => _changeRouteOrigin(activeRoute),
                           onClose: () {
                             ref.read(activeRouteProvider.notifier).clearRoute();
                           },
@@ -451,6 +604,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
               _isPickingEntranceOnMap = true;
               _selectedStall = null;
             });
+            ref.read(isPickingEntranceOnMapProvider.notifier).state = true;
           }
         },
         onStallSelected: (stall) async {
@@ -970,64 +1124,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(8),
                       child: InkWell(
-                        onTap: () async {
-                          unawaited(HapticFeedback.selectionClick());
-                          if (!mounted) return;
-                          if (route.originType == NavigationOriginType.stall) {
-                            final result = await StallOriginPickerSheet.show(
-                              context,
-                              targetStallId: route.destinationStallId,
-                              targetStallName: route.destinationStallName,
-                              title: 'Change Starting Stall',
-                              subtitle: 'Choose where you are currently standing',
-                            );
-                            if (!mounted || result == null) return;
-                            if (result == 'pick_on_map') {
-                              final allStalls = ref.read(allStallsProvider).asData?.value ?? [];
-                              StallModel? destStall;
-                              for (final s in allStalls) {
-                                if (s.stallId == route.destinationStallId) {
-                                  destStall = s;
-                                  break;
-                                }
-                              }
-                              if (destStall != null) {
-                                ref.read(pickingOriginTargetStallProvider.notifier).state = destStall;
-                                ref.read(selectedOriginStallProvider.notifier).state = null;
-                                ref.read(activeRouteProvider.notifier).clearRoute();
-                              }
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Tap any stall on the map to select starting point.',
-                                    style: GoogleFonts.poppins(fontSize: 12.5),
-                                  ),
-                                  duration: const Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: AppColors.primary,
-                                ),
-                              );
-                              return;
-                            }
-                            if (result is! StallModel) return;
-                            setState(() => _selectedStall = result);
-                            await StallDetailSheet.show(
-                              context,
-                              result,
-                              isChangingOrigin: true,
-                            );
-                          } else {
-                            final result = await EntranceSelectorSheet.show(
-                              context,
-                              targetStallId: route.destinationStallId,
-                            );
-                            if (result == 'pick_on_map') {
-                              setState(() {
-                                _isPickingEntranceOnMap = true;
-                              });
-                            }
-                          }
-                        },
+                        onTap: () => _changeRouteOrigin(route),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           constraints: const BoxConstraints(minHeight: 38),

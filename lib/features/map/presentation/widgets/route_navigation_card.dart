@@ -99,20 +99,61 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                widget.route.originType == NavigationOriginType.stall
-                    ? '${widget.route.steps.length} Steps • From ${widget.route.originStallName ?? "Stall"}'
-                    : '${widget.route.steps.length} Steps • Gate ${widget.route.entrance?.entranceId ?? ""}',
-                style: AppTextStyles.captionSmall.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              InkWell(
+                onTap: widget.onChangeEntrance,
+                borderRadius: BorderRadius.circular(4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.route.originType == NavigationOriginType.stall
+                            ? '${widget.route.steps.length} Steps • From ${widget.route.originStallName ?? "Stall"}'
+                            : '${widget.route.steps.length} Steps • Gate ${widget.route.entrance?.entranceId ?? ""}',
+                        style: AppTextStyles.captionSmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (widget.onChangeEntrance != null) ...[
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.swap_horiz_rounded,
+                        size: 13,
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
+        if (widget.onSkip != null &&
+            !ref.watch(isNavigationCompletedProvider))
+          TextButton.icon(
+            onPressed: widget.onSkip,
+            icon: const Icon(
+              Icons.fast_forward_rounded,
+              size: 16,
+              color: AppColors.primary,
+            ),
+            label: const Text(
+              'Skip',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+            ),
+          ),
         TextButton.icon(
           onPressed: () => setState(() => _isMinimized = false),
           icon: const Text(
@@ -178,20 +219,61 @@ class _RouteNavigationCardState extends ConsumerState<RouteNavigationCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    widget.route.originType == NavigationOriginType.stall
-                        ? 'From: ${widget.route.originStallName ?? "Starting Stall"}'
-                        : 'From Gate ${widget.route.entrance?.entranceId ?? ""}: ${widget.route.entrance?.description ?? ""}',
-                    style: AppTextStyles.captionSmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+                  InkWell(
+                    onTap: widget.onChangeEntrance,
+                    borderRadius: BorderRadius.circular(4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            widget.route.originType == NavigationOriginType.stall
+                                ? 'From: ${widget.route.originStallName ?? "Starting Stall"}'
+                                : 'From Gate ${widget.route.entrance?.entranceId ?? ""}: ${widget.route.entrance?.description ?? ""}',
+                            style: AppTextStyles.captionSmall.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (widget.onChangeEntrance != null) ...[
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.swap_horiz_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
+            if (widget.onSkip != null &&
+                !ref.watch(isNavigationCompletedProvider))
+              TextButton.icon(
+                onPressed: widget.onSkip,
+                icon: const Icon(
+                  Icons.fast_forward_rounded,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                label: const Text(
+                  'Skip',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                ),
+              ),
             IconButton(
               onPressed: () => setState(() => _isMinimized = true),
               icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 22),

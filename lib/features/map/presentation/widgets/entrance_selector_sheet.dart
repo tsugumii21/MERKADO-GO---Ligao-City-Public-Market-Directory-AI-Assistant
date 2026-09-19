@@ -377,106 +377,8 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                 ),
               ),
 
-            // View mode toggle: [ List View ] | [ Pick on Map ] (strictly on stall page)
-            if (widget.targetStallId != null)
-              _buildViewModeToggle(),
-
-            if (widget.targetStallId == null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: Material(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    onTap: _triggerPickOnMap,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF86EFAC),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.map_rounded,
-                              color: Colors.white,
-                              size: 19,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Pick on the Map',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF14532D),
-                                  ),
-                                ),
-
-                                Text(
-                                  'Zoom out to view and tap all 14 gates',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF166534),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Pick',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.touch_app_rounded,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            // Pick on the Map Banner (Always rendered for repositioning & target stall navigation)
+            _buildPickOnMapBanner(),
 
               // Search filter field
               Container(
@@ -876,86 +778,102 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
     );
   }
 
-  /// Segmented capsule switch for toggling between List View and Map View
-  Widget _buildViewModeToggle() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-      height: 38,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
-      ),
-      padding: const EdgeInsets.all(2.5),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildToggleSegment(
-              title: 'List View',
-              icon: Icons.format_list_bulleted_rounded,
-              isSelected: true,
-              onTap: () {},
+  /// Action banner to switch to full-screen map entrance picking mode
+  Widget _buildPickOnMapBanner() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Material(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: _triggerPickOnMap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
             ),
-          ),
-          const SizedBox(width: 3),
-          Expanded(
-            child: _buildToggleSegment(
-              title: 'Pick on Map',
-              icon: Icons.map_rounded,
-              isSelected: false,
-              onTap: _triggerPickOnMap,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleSegment({
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: isSelected ? Colors.white : Colors.transparent,
-      elevation: isSelected ? 1 : 0,
-      shadowColor: Colors.black12,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: isSelected
-                ? Border.all(color: const Color(0xFFCBD5E1), width: 0.8)
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isSelected ? AppColors.primary : AppColors.inkMuted,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF86EFAC),
+                width: 1.2,
               ),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.inkMuted,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.map_rounded,
+                    color: Colors.white,
+                    size: 19,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pick on the Map',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF14532D),
+                        ),
+                      ),
+                      Text(
+                        'Zoom out to view and tap all 14 gates',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF166534),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Pick',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.touch_app_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
 }
 

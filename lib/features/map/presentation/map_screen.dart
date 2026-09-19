@@ -91,26 +91,32 @@ class MapScreenState extends ConsumerState<MapScreen> {
       return true;
     }
 
-    // 1. Cancel active stall-to-stall origin picker
+    // 1. Exit gate/entrance picking mode on map
+    if (_isPickingEntranceOnMap || ref.read(isPickingEntranceOnMapProvider)) {
+      _cancelPickingEntrance();
+      return true;
+    }
+
+    // 2. Cancel active stall-to-stall origin picker
     if (ref.read(pickingOriginTargetStallProvider) != null) {
       ref.read(pickingOriginTargetStallProvider.notifier).state = null;
       ref.read(selectedOriginStallProvider.notifier).state = null;
       return true;
     }
 
-    // 2. Clear active navigation route
+    // 3. Clear active navigation route
     if (ref.read(activeRouteProvider) != null) {
       ref.read(activeRouteProvider.notifier).clearRoute();
       return true;
     }
 
-    // 3. Exit gate/entrance picking mode on map
-    if (_isPickingEntranceOnMap) {
-      setState(() => _isPickingEntranceOnMap = false);
-      return true;
-    }
-
     return false;
+  }
+
+  void _cancelPickingEntrance() {
+    setState(() => _isPickingEntranceOnMap = false);
+    ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
+    ref.read(pickingOriginTargetStallProvider.notifier).state = null;
   }
 
   @override
@@ -123,6 +129,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
     final skipTrigger = ref.watch(routeSkipTraversalTriggerProvider);
     final pickingOriginTargetStall = ref.watch(pickingOriginTargetStallProvider);
     final selectedOriginStall = ref.watch(selectedOriginStallProvider);
+    final isPickingEntranceOnMap = ref.watch(isPickingEntranceOnMapProvider) || _isPickingEntranceOnMap;
 
     ref.listen<List<MarketEntryPoint>>(marketEntrancesProvider, (prev, next) {
       if (next.isNotEmpty) {
@@ -143,7 +150,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                 activeRoute: activeRoute,
                 entryPoints: entryPoints,
                 selectedEntrance: selectedEntrance,
-                showEntrancePins: _isPickingEntranceOnMap,
+                showEntrancePins: isPickingEntranceOnMap,
                 traversalTrigger: traversalTrigger,
                 skipTrigger: skipTrigger,
                 onTraversalCompleted: () {
@@ -158,7 +165,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   ref.read(isNavigationCompletedProvider.notifier).state = false;
                 },
                 onStallSelected: (stall) async {
-                  if (_isPickingEntranceOnMap) return;
+                  if (isPickingEntranceOnMap) return;
 
                   if (pickingOriginTargetStall != null) {
                     if (stall.stallId == pickingOriginTargetStall.stallId) {
@@ -192,23 +199,15 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   await EntranceDetailSheet.show(
                     context,
                     entrance,
-                    onStartRoute: () {
-                      if (_isPickingEntranceOnMap) {
-                        setState(() => _isPickingEntranceOnMap = false);
-                      }
-                    },
-                    onClearSelection: () {
-                      if (_isPickingEntranceOnMap) {
-                        setState(() => _isPickingEntranceOnMap = false);
-                      }
-                    },
+                    onStartRoute: _cancelPickingEntrance,
+                    onClearSelection: _cancelPickingEntrance,
                   );
                 },
                 onMapTapped: () {
                   if (_isSearchDropdownOpen) {
                     setState(() => _isSearchDropdownOpen = false);
                   }
-                  if (_isPickingEntranceOnMap) return;
+                  if (isPickingEntranceOnMap) return;
                   if (pickingOriginTargetStall != null) return;
                   if (_selectedStall != null) {
                     setState(() => _selectedStall = null);
@@ -265,13 +264,13 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   padding: const EdgeInsets.only(top: AppSpacing.sm),
                   child: activeRoute != null
                       ? _buildActiveNavigationDirectionHeader(activeRoute)
-                      : (pickingOriginTargetStall != null
-                          ? _buildPickingStallOriginHeader(
-                              pickingOriginTargetStall,
-                              selectedOriginStall,
-                            )
-                          : (_isPickingEntranceOnMap
-                              ? _buildPickingEntranceBanner()
+                      : (isPickingEntranceOnMap
+                          ? _buildPickingEntranceBanner(targetStall: pickingOriginTargetStall)
+                          : (pickingOriginTargetStall != null
+                              ? _buildPickingStallOriginHeader(
+                                  pickingOriginTargetStall,
+                                  selectedOriginStall,
+                                )
                               : _buildTopSearchAndEntranceBar(selectedEntrance))),
                 ),
               ),
@@ -363,7 +362,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
               ),
 
             // 4. Floating Aling Suki Avatar Button (Hidden during active navigation or picking mode)
-            if (activeRoute == null && !_isPickingEntranceOnMap && pickingOriginTargetStall == null)
+            if (activeRoute == null && !isPickingEntranceOnMap && pickingOriginTargetStall == null)
 
             Positioned(
               left: 16,
@@ -466,7 +465,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  Widget _buildPickingEntranceBanner() {
+  Widget _buildPickingEntranceBanner({StallModel? targetStall}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       child: Material(
@@ -475,7 +474,7 @@ class MapScreenState extends ConsumerState<MapScreen> {
         color: const Color(0xFF1B5E20),
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         child: Container(
-          height: 50,
+          height: targetStall != null ? 56 : 50,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: 4,
@@ -494,22 +493,52 @@ class MapScreenState extends ConsumerState<MapScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Tap any gate pin on the map to set entrance',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (targetStall != null) ...[
+                      Text(
+                        'Navigating to: ${targetStall.name}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        'Tap any gate pin on the map to start route',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFFE8F5E9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ] else ...[
+                      Text(
+                        'Tap any gate pin on the map to set entrance',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
               InkWell(
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  setState(() => _isPickingEntranceOnMap = false);
+                  _cancelPickingEntrance();
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(

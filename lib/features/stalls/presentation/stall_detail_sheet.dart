@@ -138,6 +138,27 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
   Future<void> _navigateToStallOnMap() async {
     // ignore: unawaited_futures
     HapticFeedback.mediumImpact();
+
+    final preSelectedEntrance = ref.read(selectedEntranceProvider);
+    if (preSelectedEntrance != null) {
+      final activeNotifier = ref.read(activeRouteProvider.notifier);
+      widget.onClose();
+      mainShellKey.currentState?.goToTab(0);
+
+      await NavigationLoadingDialog.show(
+        null,
+        stallName: widget.stall.name,
+        entrance: preSelectedEntrance,
+      );
+
+      await activeNotifier.navigateToStall(
+        stallId: widget.stall.stallId,
+        stallName: widget.stall.name,
+        entranceOverride: preSelectedEntrance,
+      );
+      return;
+    }
+
     // 1. Prompt user to choose starting origin (Gate or Stall)
     final originResult = await NavigationOriginSheet.show(
       context,
@@ -149,6 +170,15 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
     if (originResult is PickStallOnMapOriginResult) {
       // Switch directly to map in picking mode
       ref.read(pickingOriginTargetStallProvider.notifier).state = widget.stall;
+      widget.onClose();
+      mainShellKey.currentState?.goToTab(0);
+      return;
+    }
+
+    if (originResult is PickEntranceOnMapOriginResult) {
+      // Switch directly to map in entrance picking mode
+      ref.read(pickingOriginTargetStallProvider.notifier).state = widget.stall;
+      ref.read(isPickingEntranceOnMapProvider.notifier).state = true;
       widget.onClose();
       mainShellKey.currentState?.goToTab(0);
       return;
@@ -296,6 +326,7 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
 
     final activeRoute = ref.watch(activeRouteProvider);
     final pickingOriginTarget = ref.watch(pickingOriginTargetStallProvider);
+    final preSelectedEntrance = ref.watch(selectedEntranceProvider);
 
     final VoidCallback? primaryActionPressed;
     final String primaryActionLabel;
@@ -371,7 +402,9 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
       }
     } else {
       primaryActionLabel = 'Navigate to Stall';
-      primaryActionSubtitle = null;
+      primaryActionSubtitle = preSelectedEntrance != null
+          ? 'From ${preSelectedEntrance.displayName}'
+          : null;
       primaryActionIcon = Icons.near_me_rounded;
       primaryActionPressed = _navigateToStallOnMap;
       isActionDisabled = false;

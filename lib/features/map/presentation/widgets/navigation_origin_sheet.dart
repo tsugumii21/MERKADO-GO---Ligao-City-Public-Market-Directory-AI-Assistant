@@ -26,6 +26,10 @@ class PickStallOnMapOriginResult extends NavigationOriginResult {
   const PickStallOnMapOriginResult();
 }
 
+class PickEntranceOnMapOriginResult extends NavigationOriginResult {
+  const PickEntranceOnMapOriginResult();
+}
+
 /// Bottom sheet modal prompting the user to select either an entrance gate or a starting stall
 class NavigationOriginSheet extends StatelessWidget {
   final String? targetStallId;
@@ -186,13 +190,16 @@ class NavigationOriginSheet extends StatelessWidget {
             onTap: (ctx) async {
               await HapticFeedback.selectionClick();
               if (!ctx.mounted) return;
-              final entrance = await EntranceSelectorSheet.show(
+              final result = await EntranceSelectorSheet.show(
                 ctx,
                 targetStallId: targetStallId,
                 targetStallName: targetStallName,
               );
-              if (entrance != null && entrance is MarketEntryPoint && ctx.mounted) {
-                Navigator.of(ctx).pop(EntranceOriginResult(entrance));
+              if (!ctx.mounted || result == null) return;
+              if (result == 'pick_on_map') {
+                Navigator.of(ctx).pop(const PickEntranceOnMapOriginResult());
+              } else if (result is MarketEntryPoint) {
+                Navigator.of(ctx).pop(EntranceOriginResult(result));
               }
             },
           ),

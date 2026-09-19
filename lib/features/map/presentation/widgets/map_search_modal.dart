@@ -562,6 +562,29 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(10),
                                       onTap: () async {
+                                        final preSelectedEntrance =
+                                            ref.read(selectedEntranceProvider);
+                                        if (preSelectedEntrance != null) {
+                                          await NavigationLoadingDialog.show(
+                                            context,
+                                            stallName: stall.name,
+                                            entrance: preSelectedEntrance,
+                                          );
+                                          if (!context.mounted) return;
+
+                                          await ref
+                                              .read(activeRouteProvider.notifier)
+                                              .navigateToStall(
+                                                stallId: stall.stallId,
+                                                stallName: stall.name,
+                                                entranceOverride: preSelectedEntrance,
+                                              );
+                                          if (context.mounted) {
+                                            Navigator.of(context).pop();
+                                          }
+                                          return;
+                                        }
+
                                         final originResult =
                                             await NavigationOriginSheet.show(
                                           context,
@@ -570,6 +593,15 @@ class _MapSearchModalState extends ConsumerState<MapSearchModal> {
                                         );
                                         if (originResult is PickStallOnMapOriginResult) {
                                           ref.read(pickingOriginTargetStallProvider.notifier).state = stall;
+                                          if (context.mounted) {
+                                            Navigator.of(context).pop();
+                                          }
+                                          return;
+                                        }
+
+                                        if (originResult is PickEntranceOnMapOriginResult) {
+                                          ref.read(pickingOriginTargetStallProvider.notifier).state = stall;
+                                          ref.read(isPickingEntranceOnMapProvider.notifier).state = true;
                                           if (context.mounted) {
                                             Navigator.of(context).pop();
                                           }

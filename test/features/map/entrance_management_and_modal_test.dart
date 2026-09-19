@@ -9,6 +9,7 @@ import 'package:merkado_go/features/map/presentation/widgets/entrance_selector_s
 import 'package:merkado_go/features/map/providers/entrance_provider.dart';
 import 'package:merkado_go/features/map/providers/navigation_provider.dart';
 import 'package:merkado_go/providers/stall_provider.dart';
+import 'package:merkado_go/models/stall_model.dart';
 
 void main() {
   group('MarketEntryPoint Model Tests', () {
@@ -446,6 +447,64 @@ void main() {
       // selectedEntranceProvider should now be null
       expect(container.read(selectedEntranceProvider), isNull);
     });
+
+    testWidgets(
+        'when pickingOriginTargetStall is set, button displays Start Route to StallName and tapping resets target and picking state',
+        (tester) async {
+      const testGate = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+      );
+      final testStall = StallModel(
+        stallId: 'stall_101',
+        name: 'Aling Nena Fruit Stand',
+        category: 'Fruits',
+        products: ['Mango', 'Banana'],
+        address: 'Fruit Section',
+        photoUrls: [],
+        openTime: '6:00 AM',
+        closeTime: '6:00 PM',
+        daysOpen: ['Daily'],
+        latitude: 13.24,
+        longitude: 123.54,
+        isActive: true,
+        updatedAt: DateTime.now(),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([testGate]),
+          pickingOriginTargetStallProvider.overrideWith((ref) => testStall),
+          isPickingEntranceOnMapProvider.overrideWith((ref) => true),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: EntranceDetailSheet(
+                entrance: testGate,
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Start Route to Aling Nena Fruit Stand'), findsOneWidget);
+
+      await tester.tap(find.text('Start Route to Aling Nena Fruit Stand'));
+      await tester.pump();
+
+      expect(container.read(pickingOriginTargetStallProvider), isNull);
+      expect(container.read(isPickingEntranceOnMapProvider), isFalse);
+    });
   });
 
   group('AdminManageEntrancesScreen Widget Tests', () {
@@ -726,6 +785,57 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(container.read(selectedEntranceProvider)?.entranceId, equals(2));
+    });
+
+    testWidgets('tapping Pick on Map closes sheet with pick_on_map result',
+        (tester) async {
+      const gate1 = MarketEntryPoint(
+        entranceId: 1,
+        nodeId: 'node_ex_1',
+        description: 'Straight From Church',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          marketEntrancesProvider.overrideWithValue([gate1]),
+          allStallsProvider.overrideWith((ref) => Stream.value([])),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      dynamic returnedResult;
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () async {
+                    returnedResult = await EntranceSelectorSheet.show(
+                      context,
+                      targetStallId: 'stall_1',
+                      targetStallName: 'Target Stall',
+                    );
+                  },
+                  child: const Text('Open Sheet'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pick on Map'), findsOneWidget);
+
+      await tester.tap(find.text('Pick on Map'));
+      await tester.pumpAndSettle();
+
+      expect(returnedResult, equals('pick_on_map'));
     });
   });
 }

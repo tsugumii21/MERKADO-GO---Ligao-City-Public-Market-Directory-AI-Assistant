@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,7 @@ import '../../../../providers/user_provider.dart';
 import '../../domain/navigation_models.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/entrance_provider.dart';
+import 'navigation_loading_dialog.dart';
 import '../../../admin/presentation/widgets/admin_edit_entrance_sheet.dart';
 
 /// Modal bottom sheet displaying detailed entrance information, photograph, and routing actions.
@@ -80,16 +82,40 @@ class EntranceDetailSheet extends ConsumerWidget {
     );
   }
 
-  void _handleStartRoute(BuildContext context, WidgetRef ref) {
-    HapticFeedback.selectionClick();
+  void _handleStartRoute(BuildContext context, WidgetRef ref) async {
+    unawaited(HapticFeedback.selectionClick());
     ref.read(selectedEntranceProvider.notifier).state = entrance;
 
+    final targetStall = ref.read(pickingOriginTargetStallProvider);
     final activeRoute = ref.read(activeRouteProvider);
+
+    if (targetStall != null) {
+      ref.read(pickingOriginTargetStallProvider.notifier).state = null;
+      ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
+      onStartRoute?.call();
+      Navigator.of(context).pop();
+
+      await NavigationLoadingDialog.show(
+        null,
+        stallName: targetStall.name,
+        entrance: entrance,
+      );
+
+      await ref.read(activeRouteProvider.notifier).navigateToStall(
+        stallId: targetStall.stallId,
+        stallName: targetStall.name,
+        entranceOverride: entrance,
+      );
+      return;
+    }
+
     if (activeRoute != null && activeRoute.destinationStallId.isNotEmpty) {
-      ref.read(activeRouteProvider.notifier).navigateToStall(
-            stallId: activeRoute.destinationStallId,
-            entranceOverride: entrance,
-          );
+      unawaited(
+        ref.read(activeRouteProvider.notifier).navigateToStall(
+              stallId: activeRoute.destinationStallId,
+              entranceOverride: entrance,
+            ),
+      );
     }
 
     onStartRoute?.call();
@@ -159,6 +185,7 @@ class EntranceDetailSheet extends ConsumerWidget {
     final currentUser = ref.watch(userDataStreamProvider).value;
     final userIsAdmin = isAdmin || (currentUser?.role == 'admin');
     final selectedEntrance = ref.watch(selectedEntranceProvider);
+    final targetStall = ref.watch(pickingOriginTargetStallProvider);
     final isSelected = selectedEntrance?.entranceId == liveEntrance.entranceId;
     final mediaQuery = MediaQuery.of(context);
 
@@ -409,7 +436,9 @@ class EntranceDetailSheet extends ConsumerWidget {
                         onPressed: () => _handleStartRoute(context, ref),
                         icon: const Icon(Icons.directions_walk_rounded, size: 20),
                         label: Text(
-                          'Start Route From Here',
+                          targetStall != null
+                              ? 'Start Route to ${targetStall.name}'
+                              : 'Start Route From Here',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

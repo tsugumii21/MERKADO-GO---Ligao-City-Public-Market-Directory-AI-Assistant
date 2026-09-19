@@ -5,19 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../models/stall_model.dart';
-import '../../../../providers/stall_provider.dart';
 import '../../domain/navigation_models.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/entrance_provider.dart';
 import 'entrance_detail_sheet.dart';
-import 'interactive_market_map.dart';
 
-/// Available selection modes in the EntranceSelectorSheet
-enum _EntranceViewMode {
-  list,
-  map,
-}
 
 /// Bottom sheet modal for selecting starting market entrance
 class EntranceSelectorSheet extends ConsumerStatefulWidget {
@@ -43,7 +35,7 @@ class EntranceSelectorSheet extends ConsumerStatefulWidget {
     return showModalBottomSheet<dynamic>(
       context: context,
       isScrollControlled: true,
-      enableDrag: false,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.40),
       sheetAnimationStyle: AnimationStyle(
@@ -70,7 +62,6 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   MarketEntryPoint? _selectedEntrance;
-  _EntranceViewMode _viewMode = _EntranceViewMode.list;
 
   @override
   void initState() {
@@ -191,11 +182,6 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
   Widget build(BuildContext context) {
     final entryPoints = ref.watch(marketEntrancesProvider);
     final service = ref.watch(pathfindingServiceProvider);
-    final stallsAsync = ref.watch(allStallsProvider);
-    final stalls = stallsAsync.value ?? const [];
-    final targetStall = widget.targetStallId != null
-        ? stalls.where((s) => s.stallId == widget.targetStallId).firstOrNull
-        : null;
     final nearestEntrance = (widget.targetStallId != null && service.isInitialized)
         ? service.findNearestEntranceByWalkingDistance(widget.targetStallId!)
         : null;
@@ -205,7 +191,6 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
         activeEntrance != null &&
         (effectiveSelected == null ||
             effectiveSelected.entranceId == activeEntrance.entranceId);
-    final isMapMode = _viewMode == _EntranceViewMode.map && widget.targetStallId != null;
     final screenHeight = MediaQuery.of(context).size.height;
 
     final filteredEntryPoints = entryPoints.where((e) {
@@ -221,7 +206,6 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
     }).toList();
 
     return Container(
-      height: isMapMode ? screenHeight * 0.70 : null,
       constraints: BoxConstraints(
         maxHeight: screenHeight * 0.70,
       ),
@@ -234,7 +218,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
       child: SafeArea(
         top: false,
         child: Column(
-          mainAxisSize: isMapMode ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Drag handle
             Center(
@@ -494,7 +478,6 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                 ),
               ),
 
-            if (!isMapMode) ...[
               // Search filter field
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
@@ -797,15 +780,6 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                     },
                   ),
                 ),
-            ] else ...[
-              // Interactive Market Map View
-              _buildInteractiveMapView(
-                entryPoints: entryPoints,
-                stalls: stalls,
-                targetStall: targetStall,
-                nearestEntrance: nearestEntrance,
-              ),
-            ],
             // Bottom Action Bar: Select Starting Entrance Button
             SafeArea(
               top: false,
@@ -904,7 +878,6 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
 
   /// Segmented capsule switch for toggling between List View and Map View
   Widget _buildViewModeToggle() {
-    final isMapMode = _viewMode == _EntranceViewMode.map;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
       height: 38,
@@ -920,13 +893,8 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
             child: _buildToggleSegment(
               title: 'List View',
               icon: Icons.format_list_bulleted_rounded,
-              isSelected: !isMapMode,
-              onTap: () {
-                if (_viewMode != _EntranceViewMode.list) {
-                  HapticFeedback.selectionClick();
-                  setState(() => _viewMode = _EntranceViewMode.list);
-                }
-              },
+              isSelected: true,
+              onTap: () {},
             ),
           ),
           const SizedBox(width: 3),
@@ -934,13 +902,8 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
             child: _buildToggleSegment(
               title: 'Pick on Map',
               icon: Icons.map_rounded,
-              isSelected: isMapMode,
-              onTap: () {
-                if (_viewMode != _EntranceViewMode.map) {
-                  HapticFeedback.selectionClick();
-                  setState(() => _viewMode = _EntranceViewMode.map);
-                }
-              },
+              isSelected: false,
+              onTap: _triggerPickOnMap,
             ),
           ),
         ],
@@ -994,217 +957,5 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
     );
   }
 
-  /// Embedded Interactive SVG Map view for picking starting entrance directly on the map canvas
-  Widget _buildInteractiveMapView({
-    required List<MarketEntryPoint> entryPoints,
-    required List<StallModel> stalls,
-    required StallModel? targetStall,
-    required MarketEntryPoint? nearestEntrance,
-  }) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            // The Interactive SVG Map showing stalls, destination highlight, and 14 entrance pins
-            InteractiveMarketMap(
-              stalls: stalls,
-              selectedStall: targetStall,
-              entryPoints: entryPoints,
-              selectedEntrance: _selectedEntrance,
-              showEntrancePins: true,
-              onEntranceTapped: (entrance) {
-                HapticFeedback.selectionClick();
-                setState(() {
-                  if (_selectedEntrance?.entranceId == entrance.entranceId) {
-                    _selectedEntrance = null; // Toggle unchoose
-                  } else {
-                    _selectedEntrance = entrance; // Select gate
-                  }
-                });
-              },
-            ),
-
-            // Top Guidance Pill
-            Positioned(
-              top: 10,
-              left: 12,
-              right: 12,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.94),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.10),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: const Color(0xFFCBD5E1),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.touch_app_rounded,
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _selectedEntrance != null
-                            ? 'Selected: Gate ${_selectedEntrance!.entranceId} (tap pin to toggle)'
-                            : 'Tap any Gate pin on the map to select',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: _selectedEntrance != null
-                              ? AppColors.primary
-                              : AppColors.ink,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Bottom Selected Gate Preview Card (left-floated to not overlap map zoom controls)
-            if (_selectedEntrance != null)
-              Positioned(
-                bottom: 12,
-                left: 12,
-                right: 76,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.96),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.4),
-                      width: 1.2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'G${_selectedEntrance!.entranceId}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  'Gate ${_selectedEntrance!.entranceId}',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.ink,
-                                  ),
-                                ),
-
-                                if (nearestEntrance?.entranceId ==
-                                    _selectedEntrance!.entranceId) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 1.5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE8F5E9),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'Closest',
-                                      style: TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF1B5E20),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            Text(
-                              _getLandmarkContext(_selectedEntrance!.entranceId),
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                color: AppColors.inkMuted,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _selectedEntrance = null);
-                        },
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                        color: AppColors.inkMuted,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 28,
-                          minHeight: 28,
-                        ),
-                        tooltip: 'Unchoose entrance',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 

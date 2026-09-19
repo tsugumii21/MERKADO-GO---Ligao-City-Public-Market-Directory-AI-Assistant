@@ -72,6 +72,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     _ref.read(isNavigationCompletedProvider.notifier).state = false;
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
+    _ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
   }
 
   /// Calculate route directly from origin stall to destination stall
@@ -98,6 +99,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     _ref.read(isNavigationCompletedProvider.notifier).state = false;
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
+    _ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
   }
 
   /// Redirect active route to a new destination stall while preserving the previous origin
@@ -111,6 +113,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     // Clear picking providers to eliminate any state conflicts
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
+    _ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
 
     if (current.originType == NavigationOriginType.stall &&
         current.originStallId != null) {
@@ -144,6 +147,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
 
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
+    _ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
 
     await navigateStallToStall(
       originStallId: newOriginStallId,
@@ -160,6 +164,7 @@ class ActiveRouteNotifier extends StateNotifier<NavigationRoute?> {
     _ref.read(isNavigationCompletedProvider.notifier).state = false;
     _ref.read(pickingOriginTargetStallProvider.notifier).state = null;
     _ref.read(selectedOriginStallProvider.notifier).state = null;
+    _ref.read(isPickingEntranceOnMapProvider.notifier).state = false;
   }
 }
 
@@ -185,4 +190,7 @@ final pickingOriginTargetStallProvider = StateProvider<StallModel?>((ref) => nul
 
 /// Currently picked origin stall in map-picking mode (before starting navigation)
 final selectedOriginStallProvider = StateProvider<StallModel?>((ref) => null);
+
+/// Whether the map is currently in entrance-picking mode (displaying all 14 entrance pins)
+final isPickingEntranceOnMapProvider = StateProvider<bool>((ref) => false);
 

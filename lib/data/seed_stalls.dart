@@ -12,6 +12,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #15 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '3',
@@ -22,6 +25,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '2:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '5',
@@ -32,6 +38,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL NO. 12A NEW CAMARIN MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Tailoring & Dress Shop',
     'categories': <String>['Tailoring & Dress Shop'],
+    'open_time': '7:30 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '9',
@@ -42,6 +51,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #19A MARKET SPACE AT NEW CAMARIN MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Specialty Repair',
     'categories': <String>['Specialty Repair'],
+    'open_time': '8:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '10',
@@ -52,6 +64,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #48 FISH SECTION MARKET SITE BAGUMBAYAN',
     'category': 'Fish',
     'categories': <String>['Fish'],
+    'open_time': '5:00 AM',
+    'close_time': '4:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '14',
@@ -62,6 +77,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #16 CARENDERIA MARKET SITE BAGUMBAYAN',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '15',
@@ -72,6 +90,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #9 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Dry Goods',
     'categories': <String>['Dry Goods'],
+    'open_time': '7:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '16',
@@ -82,6 +103,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #10 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Dry Goods',
     'categories': <String>['Dry Goods'],
+    'open_time': '7:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '22',
@@ -92,6 +116,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #7 MEAT SECTION MARKET SITE BAGUMBAYAN',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '4:00 PM',
+    'days_open': <String>['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '23',
@@ -102,6 +129,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #9 EXTENSION V MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari', 'Wholesale Snacks & Repacked Supplies'],
+    'open_time': '5:00 AM',
+    'close_time': '7:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '24',
@@ -112,6 +142,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #26 BUILDING I MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '4:30 AM',
+    'close_time': '2:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '31',
@@ -122,6 +155,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #10 NEW CAMARIN MARKET SITE LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '34',
@@ -132,6 +168,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 NEW CAMARIN MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '35',
@@ -142,6 +181,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #9 NEW CAMARIN MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '36',
@@ -152,6 +194,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #26 NEW CAMARIN MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Dry Goods',
     'categories': <String>['Dry Goods'],
+    'open_time': '7:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '37',
@@ -162,6 +207,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #20 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '38',
@@ -172,6 +220,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL NO. 19 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '39',
@@ -182,6 +233,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #28 BUILDING III MARKET SITE BAGUMBAYAN',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '40',
@@ -192,6 +246,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '2:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '41.1',
@@ -202,6 +259,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#1 EXTENSION I MARKET SITE BAGUMBAYAN',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '2:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '41.2',
@@ -212,6 +272,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#1 EXTENSION I MARKET SITE BAGUMBAYAN',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '4:00 AM',
+    'close_time': '2:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '44',
@@ -222,6 +285,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #6 NEW CAMARIN MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '45',
@@ -232,6 +298,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 NEW CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '47',
@@ -242,6 +311,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #13 EXTENSION I MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '6:00 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '49',
@@ -252,6 +324,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #7 NEW CAMARIN MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '50',
@@ -262,6 +337,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 EXTENSION IX MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Produce',
     'categories': <String>['Produce'],
+    'open_time': '5:30 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '55',
@@ -272,6 +350,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '1:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '58',
@@ -282,6 +363,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 BUILDING IV MARKET SITE, BAGUMBAYAN',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '60',
@@ -292,6 +376,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #17 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains', 'Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '61',
@@ -302,6 +389,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #18 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains', 'Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '62',
@@ -312,6 +402,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #22 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '4:30 AM',
+    'close_time': '1:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '64',
@@ -322,6 +415,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #13 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '4:00 AM',
+    'close_time': '2:30 PM',
+    'days_open': <String>['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '65',
@@ -332,6 +428,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #18 EXTENSION V MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Produce',
     'categories': <String>['Sari Sari', 'Produce'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '66',
@@ -342,6 +441,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 BUILDING VIII MARKET SITE, BAGUMBAYAN',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '6:00 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '67',
@@ -352,6 +454,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 EXTENSION VIII MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '68',
@@ -362,6 +467,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #9 EXTENSION IX MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '69',
@@ -372,6 +480,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#12 EXTENSION V OLD CAMARIN, MARKET SITE BAGUMBAYAN',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '72',
@@ -382,6 +493,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #7 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '3:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '77',
@@ -392,6 +506,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL # 21 BUILDING II MARKET SITE, BAGUMBAYAN',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '78',
@@ -402,6 +519,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#13 EXTENSION V MARKET SITE BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Produce'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '79',
@@ -412,6 +532,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 EXTENSION X MARKET SITE LIGAO CITY',
     'category': 'Produce',
     'categories': <String>['Sari Sari', 'Produce'],
+    'open_time': '4:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '80',
@@ -422,6 +545,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #14 CARENDERIA MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '81',
@@ -432,6 +558,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #15 CARENDERIA MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '82',
@@ -442,6 +571,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #15 OLD CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '3:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '83',
@@ -452,6 +584,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #12 BUILDING IV MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '84',
@@ -462,6 +597,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#4 BUILDING II MARKET SITE, BAGUMBAYAN',
     'category': 'Dry Goods',
     'categories': <String>['Dry Goods', 'Sari Sari'],
+    'open_time': '8:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '87',
@@ -472,6 +610,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '2:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '88',
@@ -482,6 +623,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 BUILDING V MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Sari Sari', 'Ingredients', 'Rice & Grains'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '90',
@@ -492,6 +636,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #15 EXTENSION I MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari', 'Produce'],
+    'open_time': '5:00 AM',
+    'close_time': '7:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '91',
@@ -502,6 +649,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #4 CARENDERIA MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '6:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '92',
@@ -512,6 +662,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #18 EXTENSION I MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:30 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '93',
@@ -522,6 +675,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #17 EXTENSION I MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:30 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '94',
@@ -532,6 +688,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #13 CARENDERIA MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:30 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '95',
@@ -542,6 +701,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #12 CARENDERIA MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '6:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '96',
@@ -552,6 +714,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #24 BUILDING III MARKET SITE, BAGUMBAYAN',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '5:30 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '101',
@@ -562,6 +727,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #4 BUILDING VI MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '102',
@@ -572,6 +740,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 BUILDING VI MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '105',
@@ -582,6 +753,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #2 EXTENSION IV MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '6:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '107',
@@ -592,6 +766,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #16 BUILDING V MARKET SITE, BAGUMBAYAN',
     'category': 'Ingredients',
     'categories': <String>['Ingredients', 'Produce'],
+    'open_time': '6:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '108',
@@ -602,6 +779,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #4 EXTENSION V MARKET SITE BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Sari Sari', 'Produce'],
+    'open_time': '5:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '109',
@@ -612,6 +792,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #14 MEAT SECTION MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '3:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '110',
@@ -622,6 +805,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #3 EXTENSION IX MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Produce',
     'categories': <String>['Produce'],
+    'open_time': '5:00 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '113',
@@ -632,6 +818,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #11 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '2:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '114',
@@ -642,6 +831,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #18 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '4:30 AM',
+    'close_time': '2:30 PM',
+    'days_open': <String>['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '116',
@@ -652,6 +844,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL 16 BUILDING II MARKET SITE, BAGUMBAYAN',
     'category': 'Rice & Grains',
     'categories': <String>['Sari Sari', 'Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '118',
@@ -662,6 +857,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #23 NEW CAMARIN MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Tailoring & Dress Shop',
     'categories': <String>['Tailoring & Dress Shop'],
+    'open_time': '7:30 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '119',
@@ -672,6 +870,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#19 NEW CAMARIN MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '6:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '121',
@@ -682,6 +883,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#17 NEW CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '6:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '122',
@@ -692,6 +896,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #20 FISH SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Fish',
     'categories': <String>['Fish'],
+    'open_time': '5:00 AM',
+    'close_time': '1:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '124',
@@ -702,6 +909,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #22 BUILDING II MARKET SITE, BAGUMBAYAN LIGAO CITY',
     'category': 'Wholesale Snacks & Repacked Supplies',
     'categories': <String>['Sari Sari', 'Wholesale Snacks & Repacked Supplies'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '126',
@@ -712,6 +922,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 EXTENSION V MARKET SITE BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Produce', 'Sari Sari'],
+    'open_time': '4:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '131',
@@ -722,6 +935,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL # 5 BUILDING VII MARKET SITE, BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Produce', 'Sari Sari'],
+    'open_time': '5:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '132',
@@ -732,6 +948,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL# 7 BUILDING VII MARKET SITE, BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Produce'],
+    'open_time': '5:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '135',
@@ -742,6 +961,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #13 NEW CAMARIN MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Tailoring & Dress Shop',
     'categories': <String>['Tailoring & Dress Shop'],
+    'open_time': '8:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
   },
   {
     'id': '136',
@@ -752,6 +974,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 MARKET SPACE AT NEW CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Sari Sari',
     'categories': <String>['Rice & Grains', 'Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '7:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '137',
@@ -762,6 +987,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #21 NEW CAMARIN MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '138',
@@ -772,6 +1000,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #22 NEW CAMARIN MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '6:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '143',
@@ -782,6 +1013,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 EXTENSION V MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Fish',
     'categories': <String>['Fish'],
+    'open_time': '4:30 AM',
+    'close_time': '4:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '144',
@@ -792,6 +1026,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL NO. 1 EXTENSION II MARKET SITE BAGUMBAYAN',
     'category': 'Coconut & Gata',
     'categories': <String>['Coconut & Gata'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '146',
@@ -802,6 +1039,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 EXTENSION VIII MARKET SITE LIGAO CITY',
     'category': 'Wholesale Snacks & Repacked Supplies',
     'categories': <String>['Wholesale Snacks & Repacked Supplies'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '154',
@@ -812,6 +1052,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #36 BUILDING III MARKET SITE, BAGUMBAYAN',
     'category': 'Ingredients',
     'categories': <String>['Rice & Grains', 'Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '155',
@@ -822,6 +1065,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#25 EXTENSION I MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Sari Sari', 'Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '156',
@@ -832,6 +1078,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #44 FISH SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Fish',
     'categories': <String>['Fish'],
+    'open_time': '4:30 AM',
+    'close_time': '2:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '157',
@@ -842,6 +1091,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #3 BUILDING VIII MARKET SITE, BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Produce'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '158',
@@ -852,6 +1104,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #20 NEW CAMARIN MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '6:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '160',
@@ -862,6 +1117,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #3 CARENDERIA MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '164',
@@ -872,6 +1130,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 EXTENSION VI MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Wholesale Snacks & Repacked Supplies',
     'categories': <String>['Wholesale Snacks & Repacked Supplies'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '165',
@@ -882,6 +1143,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #6 EXTENSION VI MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Wholesale Snacks & Repacked Supplies',
     'categories': <String>['Wholesale Snacks & Repacked Supplies'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '166',
@@ -892,6 +1156,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 BUILDING VI MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Produce',
     'categories': <String>['Produce'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '167',
@@ -902,6 +1169,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 OLD CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Mixed Meat',
     'categories': <String>['Mixed Meat'],
+    'open_time': '6:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '168',
@@ -912,6 +1182,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #13 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '5:30 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '169',
@@ -922,6 +1195,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #2 BUILDING II MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '5:30 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '172',
@@ -932,6 +1208,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #2 EXTENSION III MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Produce',
     'categories': <String>['Produce'],
+    'open_time': '4:30 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '176',
@@ -942,6 +1221,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #14 NEW CAMARIN MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Salon & Beauty',
     'categories': <String>['Salon & Beauty'],
+    'open_time': '9:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '177',
@@ -952,6 +1234,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #24 NEW CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Thrift Apparel',
     'categories': <String>['Thrift Apparel'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '187',
@@ -962,6 +1247,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 EXTENSION I MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Mixed Meat',
     'categories': <String>['Meat', 'Mixed Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '189',
@@ -972,6 +1260,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 BUILDING I MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '190',
@@ -982,6 +1273,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #9 BUILDING I MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '191',
@@ -992,6 +1286,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #10 BUILDING I MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '192',
@@ -1002,6 +1299,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #27 BUILDING III MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari', 'Wholesale Snacks & Repacked Supplies'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '193',
@@ -1012,6 +1312,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #7 CARENDERIA MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '6:00 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '194',
@@ -1022,6 +1325,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #8 CARENDERIA MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:00 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '195',
@@ -1032,6 +1338,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #10 CARENDERIA MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:30 AM',
+    'close_time': '7:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '196',
@@ -1042,6 +1351,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #7 BUILDING VIII MARKET SITE, BAGUMBAYAN',
     'category': 'Fish',
     'categories': <String>['Fish', 'Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '3:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '199',
@@ -1052,6 +1364,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 BUILDING VIII MARKET SITE BAGUMBAYAN',
     'category': 'Miscellaneous',
     'categories': <String>['Miscellaneous'],
+    'open_time': '7:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '202',
@@ -1062,6 +1377,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 EXTENSION V MARKET SITE BAGUMBAYAN',
     'category': 'Ingredients',
     'categories': <String>['Ingredients', 'Rice & Grains'],
+    'open_time': '5:30 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '208',
@@ -1072,6 +1390,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': '#5 BUILDING I MARKET SITE BAGUMBAYAN',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '6:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '211',
@@ -1082,6 +1403,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #25 BUILDING III MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '5:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '212',
@@ -1092,6 +1416,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 CARENDERIA MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '213',
@@ -1102,6 +1429,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #6 CARENDERIA MARKET SITE BAGUMBAYAN',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '218',
@@ -1112,6 +1442,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #30 FISH SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Fish',
     'categories': <String>['Fish'],
+    'open_time': '5:00 AM',
+    'close_time': '3:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '219',
@@ -1122,6 +1455,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #43 FISH SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Fish',
     'categories': <String>['Fish'],
+    'open_time': '5:00 AM',
+    'close_time': '1:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '221',
@@ -1132,6 +1468,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': '11 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Dry Goods',
     'categories': <String>['Dry Goods'],
+    'open_time': '8:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '222',
@@ -1142,6 +1481,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#23 BUILDING III MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Ingredients',
     'categories': <String>['Ingredients'],
+    'open_time': '5:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '223',
@@ -1152,6 +1494,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 OLD CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Mixed Meat',
     'categories': <String>['Mixed Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '225',
@@ -1162,6 +1507,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#17 EXTENSION V MARKET SITE BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Produce', 'Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '226',
@@ -1172,6 +1520,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #32 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '4:00 AM',
+    'close_time': '2:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '227',
@@ -1182,6 +1533,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #2 OLD CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Fish',
     'categories': <String>['Fish'],
+    'open_time': '5:00 AM',
+    'close_time': '3:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '231',
@@ -1192,6 +1546,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 CARENDERIA MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '232',
@@ -1202,6 +1559,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #2 CARENDERIA MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Eateries',
     'categories': <String>['Eateries'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '235',
@@ -1212,6 +1572,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #10 MEAT SECTION MARKET SITE BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '4:00 AM',
+    'close_time': '1:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '237',
@@ -1222,6 +1585,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #34 BUILDING III MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '5:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '238',
@@ -1232,6 +1598,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #28 MEAT SECTION MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Meat',
     'categories': <String>['Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '3:00 PM',
+    'days_open': <String>['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '240',
@@ -1242,6 +1611,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #11 BUILDING IV MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '6:00 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '246',
@@ -1252,6 +1624,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#25 NEW CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Wellness & Spa',
     'categories': <String>['Wellness & Spa'],
+    'open_time': '9:00 AM',
+    'close_time': '5:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '247',
@@ -1262,6 +1637,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #5 BUILDING IV MARKET SITE, BAGUMBAYAN',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:30 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '248',
@@ -1272,6 +1650,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #6 BUILDING IV MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:30 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '249',
@@ -1282,6 +1663,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #1 NEW CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Dry Goods',
     'categories': <String>['Dry Goods'],
+    'open_time': '7:30 AM',
+    'close_time': '5:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '252',
@@ -1292,6 +1676,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #16 EXTENSION I MARKET SITE BAGUMBAYAN',
     'category': 'Sari Sari',
     'categories': <String>['Sari Sari'],
+    'open_time': '5:00 AM',
+    'close_time': '6:30 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '253',
@@ -1302,6 +1689,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#38 OLD CAMARIN MARKET SITE BAGUMBAYAN',
     'category': 'Mixed Meat',
     'categories': <String>['Mixed Meat'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '257',
@@ -1312,6 +1702,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #14 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '257.2',
@@ -1322,6 +1715,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL #14 BUILDING II MARKET SITE, BAGUMBAYAN, LIGAO CITY',
     'category': 'Rice & Grains',
     'categories': <String>['Rice & Grains'],
+    'open_time': '5:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
   {
     'id': '259',
@@ -1332,6 +1728,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL 1 BUILDING VII MARKET SITE, BAGUMBAYAN',
     'category': 'Produce',
     'categories': <String>['Produce', 'Sari Sari'],
+    'open_time': '4:30 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
   {
     'id': '261',
@@ -1342,6 +1741,9 @@ const List<Map<String, dynamic>> kMarketVendorsSeedData = [
     'address': 'STALL#4 EXTENSION I MARKET SITE BAGUMBAYAN',
     'category': 'Mixed Meat',
     'categories': <String>['Sari Sari', 'Meat', 'Mixed Meat'],
+    'open_time': '6:00 AM',
+    'close_time': '6:00 PM',
+    'days_open': <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
   },
 ];
 
@@ -1400,8 +1802,8 @@ Future<int> purgeAndSeedStalls({
         'address': vendor['address'],
         'products': <String>[],
         'photoUrls': <String>[],
-        'openTime': '5:00 AM',
-        'closeTime': '6:00 PM',
+        'openTime': vendor['open_time'] ?? '5:00 AM',
+        'closeTime': vendor['close_time'] ?? '6:00 PM',
         'daysOpen': <String>[
           'Monday',
           'Tuesday',

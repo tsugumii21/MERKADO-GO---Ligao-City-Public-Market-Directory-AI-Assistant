@@ -691,33 +691,69 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Location / Address Row (Below tag for full width and zero truncation)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 15,
-                          color: Color(0xFF6B7280),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            StallUtils.formatStallLocation(
-                              building: stall.section,
-                              stallNumber: stall.stallNumber,
-                              address: stall.address,
+                    // Location / Address Rows (Split into two structured rows)
+                    Builder(
+                      builder: (context) {
+                        final locationParts = StallUtils.parseStallLocationParts(
+                          building: stall.section,
+                          stallNumber: stall.stallNumber,
+                          address: stall.address,
+                        );
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Row 1: Location within market (building/section + stall number)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.storefront_outlined,
+                                  size: 15,
+                                  color: Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    locationParts.marketLocation,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF1E293B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                            style: GoogleFonts.poppins(
-                              fontSize: 12.5,
-                              color: const Color(0xFF4B5563),
-                              fontWeight: FontWeight.w500,
+                            const SizedBox(height: 5),
+                            // Row 2: Street / City address (barangay + city)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.location_on_outlined,
+                                  size: 15,
+                                  color: Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    locationParts.streetAddress,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 16),

@@ -569,66 +569,171 @@ class StallUtils {
     String? address,
     String fallback = 'Ligao City Public Market',
   }) {
+    final parts = parseStallLocationParts(
+      building: building,
+      stallNumber: stallNumber,
+      address: address,
+      fallbackMarket: fallback,
+      fallbackStreet: '',
+    );
+    if (parts.marketLocation == fallback && parts.streetAddress.isEmpty) {
+      return fallback;
+    }
+    if (parts.streetAddress.isEmpty) {
+      return parts.marketLocation;
+    }
+    if (parts.marketLocation == fallback) {
+      return parts.streetAddress;
+    }
+    return '${parts.marketLocation} • ${parts.streetAddress}';
+  }
+
+  /// Parses raw stall location fields into two structured, non-redundant rows:
+  /// - Row 1 (marketLocation): Building/Section name + Stall number (e.g. "Building I, Stall #15")
+  /// - Row 2 (streetAddress): Barangay + City only, no repeated building or market-site name (e.g. "Bagumbayan, Ligao City")
+  static StallLocationParts parseStallLocationParts({
+    String? building,
+    String? stallNumber,
+    String? address,
+    String fallbackMarket = 'Ligao Public Market',
+    String fallbackStreet = 'Bagumbayan, Ligao City',
+  }) {
     String bld = (building ?? '').trim();
     String stNum = (stallNumber ?? '').trim();
     String addr = (address ?? '').trim();
 
-    // If stallNumber has duplicated 'STALL #', extract number
+    // 1. Isolate clean stall number token
+    // Extract only the code directly following 'stall' / '#' (e.g. '15', '5', '19A', 'K-02')
+    // Discards dirty trailing text like '5 EXTENSION V MARKET SITE BAGUMBAYAN'
+    String cleanStallNum = '';
     if (stNum.isNotEmpty) {
-      final cleanNum = stNum.replaceFirst(
-        RegExp(r'^(stall\s*(#|no\.?|number)?\s*)+', caseSensitive: false),
+      final match = RegExp(
+        r'(?:stall\s*(?:#|no\.?|number)?\s*|^#\s*)([0-9a-zA-Z_-]+)',
+        caseSensitive: false,
+      ).firstMatch(stNum);
+      if (match != null) {
+        cleanStallNum = 'Stall #${match.group(1)}';
+      } else {
+        final cleanRaw = stNum.replaceFirst(
+          RegExp(r'^(stall\s*(#|no\.?|number)?\s*)+', caseSensitive: false),
+          '',
+        ).trim();
+        if (cleanRaw.isNotEmpty) {
+          cleanStallNum = 'Stall #$cleanRaw';
+        }
+      }
+    }
+
+    // If stall number is not yet found, attempt extraction from address
+    if (cleanStallNum.isEmpty && addr.isNotEmpty) {
+      final match = RegExp(
+        r'stall\s*(?:#|no\.?|number)?\s*([0-9a-zA-Z_-]+)',
+        caseSensitive: false,
+      ).firstMatch(addr);
+      if (match != null) {
+        cleanStallNum = 'Stall #${match.group(1)}';
+      }
+    }
+
+    // 2. Extract or clean building / section
+    if (bld.isEmpty && addr.isNotEmpty) {
+      final bldMatch = RegExp(
+        r'(building\s+[ivx0-9]+|extension\s+[ivx0-9]+|new\s+camarin|wet\s+market|meat\s+section|fish\s+section|fruits?\s+section|vegetables?\s+section)',
+        caseSensitive: false,
+      ).firstMatch(addr);
+      if (bldMatch != null) {
+        bld = bldMatch.group(0)!;
+      }
+    }
+
+    if (bld.isNotEmpty) {
+      bld = toTitleCase(bld);
+    }
+
+    // 3. Compose Row 1: Market Location
+    final row1Parts = <String>[];
+    if (bld.isNotEmpty) {
+      row1Parts.add(bld);
+    }
+    if (cleanStallNum.isNotEmpty) {
+      row1Parts.add(cleanStallNum);
+    }
+    final marketLocation =
+        row1Parts.isNotEmpty ? row1Parts.join(', ') : fallbackMarket;
+
+    // 4. Compose Row 2: Clean Street / Barangay / City Address
+    String cleanAddr = addr;
+
+    // Strip stall number pattern from address
+    cleanAddr = cleanAddr.replaceAll(
+      RegExp(r'stall\s*(?:#|no\.?|number)?\s*[0-9a-zA-Z_-]+', caseSensitive: false),
+      '',
+    );
+    cleanAddr = cleanAddr.replaceAll(
+      RegExp(r'^#\s*[0-9a-zA-Z_-]+', caseSensitive: false),
+      '',
+    );
+
+    // Strip building / section pattern from address
+    if (bld.isNotEmpty) {
+      cleanAddr = cleanAddr.replaceAll(
+        RegExp(RegExp.escape(bld), caseSensitive: false),
         '',
-      ).trim();
-      stNum = cleanNum.isNotEmpty ? 'Stall #$cleanNum' : 'Stall';
+      );
     }
+    cleanAddr = cleanAddr.replaceAll(
+      RegExp(
+        r'(building\s+[ivx0-9]+|extension\s+[ivx0-9]+|new\s+camarin|wet\s+market|meat\s+section|fish\s+section|fruits?\s+section|vegetables?\s+section)',
+        caseSensitive: false,
+      ),
+      '',
+    );
 
-    // Extract building and stall number from address if not explicitly passed
-    if (addr.isNotEmpty) {
-      // Check for 'STALL #XX' in address
-      if (stNum.isEmpty) {
-        final stallMatch = RegExp(r'stall\s*(?:#|no\.?|number)?\s*([0-9a-zA-Z_-]+)', caseSensitive: false).firstMatch(addr);
-        if (stallMatch != null) {
-          stNum = 'Stall #${stallMatch.group(1)}';
-          addr = addr.replaceRange(stallMatch.start, stallMatch.end, '').trim();
-        }
-      } else {
-        // Remove redundant stall number from address
-        addr = addr.replaceAll(RegExp(r'stall\s*(?:#|no\.?|number)?\s*[0-9a-zA-Z_-]+', caseSensitive: false), '').trim();
-      }
+    // Strip redundant "Market Site"
+    cleanAddr = cleanAddr.replaceAll(
+      RegExp(r'market\s+site', caseSensitive: false),
+      '',
+    );
 
-      // Check for building pattern e.g. "BUILDING I", "BUILDING II", "NEW CAMARIN", "EXTENSION V"
-      if (bld.isEmpty) {
-        final bldMatch = RegExp(r'(building\s+[ivx0-9]+|new\s+camarin|extension\s+[ivx0-9]+)', caseSensitive: false).firstMatch(addr);
-        if (bldMatch != null) {
-          bld = bldMatch.group(0)!;
-          addr = addr.replaceRange(bldMatch.start, bldMatch.end, '').trim();
-        }
-      } else {
-        // Remove redundant building name from address if present
-        addr = addr.replaceAll(RegExp(RegExp.escape(bld), caseSensitive: false), '').trim();
-      }
-    }
-
-    // Clean up residual punctuation and separators from address
-    addr = addr
+    // Clean up residual punctuation and separators
+    cleanAddr = cleanAddr
         .replaceAll(RegExp(r'^[,\s•-]+|[,\s•-]+$'), '')
         .replaceAll(RegExp(r',\s*,'), ',')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
 
-    final parts = <String>[];
-    if (bld.isNotEmpty) {
-      parts.add(toTitleCase(bld));
-    }
-    if (stNum.isNotEmpty) {
-      parts.add(stNum);
-    }
-    if (addr.isNotEmpty) {
-      parts.add(toTitleCase(addr));
+    if (cleanAddr.isNotEmpty) {
+      cleanAddr = toTitleCase(cleanAddr);
     }
 
-    if (parts.isEmpty) return fallback;
-    return parts.join(' • ');
+    // Normalize City: ensure "Ligao City" presence without duplication
+    if (cleanAddr.isEmpty) {
+      cleanAddr = fallbackStreet;
+    } else {
+      final lower = cleanAddr.toLowerCase();
+      if (!lower.contains('ligao')) {
+        cleanAddr = '$cleanAddr, Ligao City';
+      } else if (!lower.contains('ligao city')) {
+        cleanAddr = cleanAddr.replaceAll(
+          RegExp(r'ligao', caseSensitive: false),
+          'Ligao City',
+        );
+      }
+      // Deduplicate consecutive "Ligao City, Ligao City"
+      cleanAddr = cleanAddr.replaceAll(
+        RegExp(r'Ligao City,\s*Ligao City', caseSensitive: false),
+        'Ligao City',
+      );
+      cleanAddr = cleanAddr
+          .replaceAll(RegExp(r'^[,\s•-]+|[,\s•-]+$'), '')
+          .replaceAll(RegExp(r',\s*,'), ', ')
+          .trim();
+    }
+
+    return StallLocationParts(
+      marketLocation: marketLocation,
+      streetAddress: cleanAddr,
+    );
   }
 
   /// Formats physical location cleanly by de-duplicating section if already contained in address.
@@ -752,3 +857,18 @@ class StallUtils {
     return true;
   }
 }
+
+/// Structured stall location parts separated into market location and street address.
+class StallLocationParts {
+  final String marketLocation;
+  final String streetAddress;
+
+  const StallLocationParts({
+    required this.marketLocation,
+    required this.streetAddress,
+  });
+
+  @override
+  String toString() => '$marketLocation • $streetAddress';
+}
+

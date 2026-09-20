@@ -205,7 +205,7 @@ void main() {
       expect(find.text('Straight From Church'), findsOneWidget);
       expect(find.text('Legazpi St. Entrance'), findsOneWidget);
       expect(find.text('Snap: node_ex_1'), findsNothing);
-      expect(find.text('Start Route From Here'), findsOneWidget);
+      expect(find.text('Start Route'), findsOneWidget);
     });
 
     testWidgets(
@@ -241,10 +241,10 @@ void main() {
       expect(find.text('Straight From Church'), findsOneWidget);
       // Sheet header
       expect(find.text('Entrance Details'), findsOneWidget);
-      expect(find.text('Start Route From Here'), findsOneWidget);
+      expect(find.text('Start Route'), findsOneWidget);
     });
 
-    testWidgets('tapping Start Route From Here updates selectedEntranceProvider',
+    testWidgets('tapping Start Route updates selectedEntranceProvider',
         (tester) async {
       const testGate = MarketEntryPoint(
         entranceId: 4,
@@ -275,8 +275,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap 'Start Route From Here'
-      await tester.tap(find.text('Start Route From Here'));
+      // Tap 'Start Route'
+      await tester.tap(find.text('Start Route'));
       await tester.pumpAndSettle();
 
       // Selected entrance should now be testGate
@@ -284,12 +284,12 @@ void main() {
       expect(selected?.entranceId, equals(4));
     });
 
-    testWidgets('tapping Start Route From Here triggers onStartRoute callback',
+    testWidgets('tapping Start Route triggers onStartRoute callback',
         (tester) async {
       const testGate = MarketEntryPoint(
-        entranceId: 5,
-        nodeId: 'node_ex_t4',
-        description: 'Rice Section From Wet Market',
+        entranceId: 4,
+        nodeId: 'node_ex_t3',
+        description: 'Wet Market Left Side',
       );
 
       bool startRouteCalled = false;
@@ -315,7 +315,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Start Route From Here'));
+      await tester.tap(find.text('Start Route'));
       await tester.pumpAndSettle();
 
       expect(startRouteCalled, isTrue);
@@ -498,9 +498,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Start Route to Aling Nena Fruit Stand'), findsOneWidget);
+      expect(find.text('Start Route'), findsOneWidget);
 
-      await tester.tap(find.text('Start Route to Aling Nena Fruit Stand'));
+      await tester.tap(find.text('Start Route'));
       await tester.pump();
 
       expect(container.read(pickingOriginTargetStallProvider), isNull);
@@ -1018,7 +1018,7 @@ void _registerRouteNavigationChangeTests() {
       await tester.tap(find.text('Open Detail'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Start Route to Wet Market Stall 88'), findsOneWidget);
+      expect(find.text('Start Route'), findsOneWidget);
     });
 
     testWidgets(
@@ -1074,7 +1074,7 @@ void _registerRouteNavigationChangeTests() {
       await tester.tap(find.text('Open Detail'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Start Route to Wet Market Stall 88'), findsOneWidget);
+      expect(find.text('Start Route'), findsOneWidget);
       expect(find.text('Clear Selection'), findsNothing);
     });
 
@@ -1144,9 +1144,9 @@ void _registerRouteNavigationChangeTests() {
       await tester.tap(find.text('Open Detail'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Start Route to Wet Market Stall 88'), findsOneWidget);
+      expect(find.text('Start Route'), findsOneWidget);
 
-      await tester.tap(find.text('Start Route to Wet Market Stall 88'));
+      await tester.tap(find.text('Start Route'));
       await tester.pumpAndSettle();
 
       expect(startRouteCallbackCalled, isTrue);

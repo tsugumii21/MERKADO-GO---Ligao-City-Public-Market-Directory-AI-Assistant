@@ -438,79 +438,18 @@ class MapScreenState extends ConsumerState<MapScreen> {
                   alignment: Alignment.bottomCenter,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Dedicated floating Skip to Arrival pill during active navigation traversal
-                        if (!ref.watch(isNavigationCompletedProvider))
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.xs + 2),
-                            child: Material(
-                              color: Colors.white,
-                              elevation: 6,
-                              shadowColor: Colors.black.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(24),
-                              child: InkWell(
-                                onTap: () {
-                                  HapticFeedback.mediumImpact();
-                                  ref.read(routeSkipTraversalTriggerProvider.notifier).state++;
-                                  ref.read(currentStepIndexProvider.notifier).state =
-                                      activeRoute.steps.length - 1;
-                                  ref.read(isNavigationCompletedProvider.notifier).state = true;
-                                },
-                                borderRadius: BorderRadius.circular(24),
-                                child: Container(
-                                  constraints: const BoxConstraints(minHeight: 44),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(
-                                      color: const Color(0xFFC8E6C9),
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.fast_forward_rounded,
-                                        size: 18,
-                                        color: AppColors.primary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Skip to Arrival',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
-                                          letterSpacing: 0.2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        RouteNavigationCard(
-                          route: activeRoute,
-                          onChangeEntrance: () => _changeRouteOrigin(activeRoute),
-                          onClose: () {
-                            ref.read(activeRouteProvider.notifier).clearRoute();
-                          },
-                          onSkip: () {
-                            ref.read(routeSkipTraversalTriggerProvider.notifier).state++;
-                            ref.read(currentStepIndexProvider.notifier).state =
-                                activeRoute.steps.length - 1;
-                            ref.read(isNavigationCompletedProvider.notifier).state = true;
-                          },
-                        ),
-                      ],
+                    child: RouteNavigationCard(
+                      route: activeRoute,
+                      onChangeEntrance: () => _changeRouteOrigin(activeRoute),
+                      onClose: () {
+                        ref.read(activeRouteProvider.notifier).clearRoute();
+                      },
+                      onSkip: () {
+                        ref.read(routeSkipTraversalTriggerProvider.notifier).state++;
+                        ref.read(currentStepIndexProvider.notifier).state =
+                            activeRoute.steps.length - 1;
+                        ref.read(isNavigationCompletedProvider.notifier).state = true;
+                      },
                     ),
                   ),
                 ),

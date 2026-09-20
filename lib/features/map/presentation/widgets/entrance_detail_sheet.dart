@@ -204,7 +204,6 @@ class EntranceDetailSheet extends ConsumerWidget {
     final userIsAdmin = isAdmin || (currentUser?.role == 'admin');
     final selectedEntrance = ref.watch(selectedEntranceProvider);
     final targetStall = ref.watch(pickingOriginTargetStallProvider);
-    final activeRoute = ref.watch(activeRouteProvider);
     final isPickingEntranceOnMap = ref.watch(isPickingEntranceOnMapProvider);
     final isPickingMode = targetStall != null || isPickingEntranceOnMap;
     final isSelected = !isPickingMode && (selectedEntrance?.entranceId == liveEntrance.entranceId);
@@ -457,11 +456,7 @@ class EntranceDetailSheet extends ConsumerWidget {
                         onPressed: () => _handleStartRoute(context, ref),
                         icon: const Icon(Icons.directions_walk_rounded, size: 20),
                         label: Text(
-                          targetStall != null
-                              ? 'Start Route to ${targetStall.name}'
-                              : (activeRoute != null && activeRoute.destinationStallName.isNotEmpty
-                                  ? 'Start Route to ${activeRoute.destinationStallName}'
-                                  : 'Start Route From Here'),
+                          'Start Route',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

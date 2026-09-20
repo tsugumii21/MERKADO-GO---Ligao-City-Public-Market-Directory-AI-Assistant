@@ -1314,7 +1314,11 @@ class _ManageStallsScreenState extends ConsumerState<ManageStallsScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            StallUtils.formatLocation(stall.section, stall.address),
+                            StallUtils.formatStallLocation(
+                              building: stall.section,
+                              stallNumber: stall.stallNumber,
+                              address: stall.address,
+                            ),
                             style: GoogleFonts.poppins(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w500,

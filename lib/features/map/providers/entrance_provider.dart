@@ -40,11 +40,7 @@ final marketEntrancesProvider = Provider<List<MarketEntryPoint>>((ref) {
   final mergedList = baselineEntrances.map((baseline) {
     final remote = firestoreMap[baseline.entranceId];
     if (remote == null) {
-      final defaultCdnPhoto =
-          CloudinaryService.getEntrancePhotoUrl(baseline.entranceId);
-      return baseline.copyWith(
-        imageUrl: defaultCdnPhoto,
-      );
+      return baseline;
     }
 
     final effectiveImage = (remote.imageUrl != null && remote.imageUrl!.trim().isNotEmpty)

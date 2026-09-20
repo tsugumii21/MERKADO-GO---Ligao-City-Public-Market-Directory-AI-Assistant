@@ -40,13 +40,13 @@ void main() {
       );
     });
 
-    test('De-duplicates section if address already contains the section name', () {
+    test('De-duplicates section if address already contains the section name and formats title case', () {
       expect(
         StallUtils.formatLocation(
           'BUILDING II',
           'STALL #22 BUILDING II MARKET SITE, LIGAO CITY',
         ),
-        equals('STALL #22 BUILDING II MARKET SITE, LIGAO CITY'),
+        equals('Building II • Stall #22 • Market Site, Ligao City'),
       );
 
       expect(
@@ -54,7 +54,7 @@ void main() {
           'building ii',
           'STALL #22 BUILDING II MARKET SITE, LIGAO CITY',
         ),
-        equals('STALL #22 BUILDING II MARKET SITE, LIGAO CITY'),
+        equals('Building II • Stall #22 • Market Site, Ligao City'),
       );
     });
 
@@ -62,6 +62,17 @@ void main() {
       expect(
         StallUtils.formatLocation('Meat Section', 'Stall #5'),
         equals('Meat Section • Stall #5'),
+      );
+    });
+
+    test('formatStallLocation arranges building, stall number, and address cleanly', () {
+      expect(
+        StallUtils.formatStallLocation(
+          building: 'Building II',
+          stallNumber: '15',
+          address: 'Market Site, Bagumbayan, Ligao City',
+        ),
+        equals('Building II • Stall #15 • Market Site, Bagumbayan, Ligao City'),
       );
     });
   });

@@ -31,6 +31,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
   final _nameController = TextEditingController();
   final _productController = TextEditingController();
   final _stallNumberController = TextEditingController();
+  final _addressController = TextEditingController();
   final _openTimeController = TextEditingController(text: '5:00 AM');
   final _closeTimeController = TextEditingController(text: '6:00 PM');
   final _latitudeController = TextEditingController(text: '13.2419233');
@@ -171,6 +172,7 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
     _nameController.dispose();
     _productController.dispose();
     _stallNumberController.dispose();
+    _addressController.dispose();
     _openTimeController.dispose();
     _closeTimeController.dispose();
     _latitudeController.dispose();
@@ -316,7 +318,22 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         final data = doc.data() ?? {};
         _nameController.text = stall.name;
         _products = List<String>.from(stall.products);
-        _stallNumberController.text = stall.address;
+
+        // Separate stall number and address cleanly
+        String loadedStallNum = stall.stallNumber ?? '';
+        String loadedAddress = stall.address;
+        if (loadedStallNum.isEmpty && loadedAddress.isNotEmpty) {
+          final stallMatch = RegExp(r'stall\s*(?:#|no\.?|number)?\s*([0-9a-zA-Z_-]+)', caseSensitive: false).firstMatch(loadedAddress);
+          if (stallMatch != null) {
+            loadedStallNum = stallMatch.group(1)!;
+            loadedAddress = loadedAddress.replaceRange(stallMatch.start, stallMatch.end, '').trim();
+            loadedAddress = loadedAddress.replaceAll(RegExp(r'^[,\s•-]+|[,\s•-]+$'), '').trim();
+          }
+        } else if (loadedStallNum.isNotEmpty) {
+          loadedStallNum = loadedStallNum.replaceFirst(RegExp(r'^(stall\s*(#|no\.?|number)?\s*)+', caseSensitive: false), '').trim();
+        }
+        _stallNumberController.text = loadedStallNum;
+        _addressController.text = loadedAddress;
         _selectedPhysicalStallId = stall.hasMapLocation ? stall.mapStallId : null;
 
         // Find matching primary category
@@ -1546,7 +1563,16 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         ..._selectedSubcategories,
       ];
 
-      final addressText = _stallNumberController.text.trim();
+      final rawStallNumber = _stallNumberController.text.trim();
+      final stallNumberText = rawStallNumber.isNotEmpty
+          ? rawStallNumber.replaceFirst(RegExp(r'^(stall\s*(#|no\.?|number)?\s*)+', caseSensitive: false), '').trim()
+          : '';
+      final addressText = _addressController.text.trim();
+      final fullAddressCombined = [
+        if (stallNumberText.isNotEmpty) 'Stall #$stallNumberText',
+        if (addressText.isNotEmpty) addressText,
+      ].join(' ');
+
       final stallNameText = _nameController.text.trim();
       final openTimeText = _openTimeController.text.trim().isNotEmpty
           ? _openTimeController.text.trim()
@@ -1586,9 +1612,9 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
         'categories': [_finalPrimaryCategoryName, ..._selectedSubcategories],
         'subcategories': _selectedSubcategories.toList(),
         'products': _products,
-        'address': addressText,
-        'stallNumber': addressText,
-        'stall_number': addressText,
+        'address': addressText.isNotEmpty ? addressText : fullAddressCombined,
+        'stallNumber': stallNumberText.isNotEmpty ? 'Stall #$stallNumberText' : fullAddressCombined,
+        'stall_number': stallNumberText.isNotEmpty ? 'Stall #$stallNumberText' : fullAddressCombined,
         'photoUrls': photoUrl != null && photoUrl.isNotEmpty
             ? [photoUrl]
             : <String>[],
@@ -1812,19 +1838,37 @@ class _AddEditStallScreenState extends State<AddEditStallScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              _buildFieldLabel('Stall Number & Full Address', isRequired: true),
+              _buildFieldLabel('Stall Number', isRequired: true),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _stallNumberController,
                 textAlignVertical: TextAlignVertical.center,
                 style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
                 decoration: _buildFieldDecoration(
-                  hintText: 'e.g. STALL #1 MEAT SECTION MARKET SITE, BAGUMBAYAN',
+                  hintText: 'e.g. 15 or 19A',
+                  prefixIcon: Icons.tag_rounded,
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Stall number is required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildFieldLabel('Address', isRequired: true),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _addressController,
+                textAlignVertical: TextAlignVertical.center,
+                style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF0F172A)),
+                decoration: _buildFieldDecoration(
+                  hintText: 'e.g. Market Site, Bagumbayan, Ligao City',
                   prefixIcon: Icons.location_on_outlined,
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
-                    return 'Stall address is required';
+                    return 'Address is required';
                   }
                   return null;
                 },

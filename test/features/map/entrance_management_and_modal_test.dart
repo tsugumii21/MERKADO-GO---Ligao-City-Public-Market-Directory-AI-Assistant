@@ -164,9 +164,9 @@ void main() {
       expect(gate1.title, equals('Gate 1 - Church Grand Entrance'));
       expect(gate1.imageUrl, equals('https://custom.image/gate1.jpg'));
 
-      // Gate 2 should have deterministic Cloudinary fallback URL
+      // Gate 2 should have null imageUrl when no custom photo is configured
       final gate2 = merged.firstWhere((e) => e.entranceId == 2);
-      expect(gate2.imageUrl, contains('entry_2.jpg'));
+      expect(gate2.imageUrl, isNull);
       expect(gate2.displayName, equals('Gate 2'));
     });
   });
@@ -707,11 +707,10 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Clear Selected Entrance button must be present
-      expect(find.text('Clear Selected Entrance'), findsOneWidget);
+      // Clear Selection button must be present
+      expect(find.text('Clear Selection'), findsOneWidget);
       expect(find.byIcon(Icons.clear_rounded), findsOneWidget);
-      expect(
-          find.textContaining('Select Starting Entrance • Gate 1'), findsNothing);
+      expect(find.textContaining('Select Gate 1'), findsNothing);
     });
 
     testWidgets(
@@ -739,14 +738,14 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Clear Selected Entrance'));
+      await tester.tap(find.text('Clear Selection'));
       await tester.pumpAndSettle();
 
       expect(container.read(selectedEntranceProvider), isNull);
     });
 
     testWidgets(
-        'tapping a different gate changes button to Select Starting Entrance • Gate 2',
+        'tapping a different gate changes button to Select Gate 2',
         (tester) async {
       final container = ProviderContainer(
         overrides: [
@@ -770,19 +769,19 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Initially Clear Selected Entrance
-      expect(find.text('Clear Selected Entrance'), findsOneWidget);
+      // Initially Clear Selection
+      expect(find.text('Clear Selection'), findsOneWidget);
 
       // Tap Gate 2 in the list
       await tester.tap(find.text('Entrance Gate 2'));
       await tester.pumpAndSettle();
 
-      // Button must now say Select Starting Entrance • Gate 2
-      expect(find.text('Select Starting Entrance • Gate 2'), findsOneWidget);
-      expect(find.text('Clear Selected Entrance'), findsNothing);
+      // Button must now say Select Gate 2
+      expect(find.text('Select Gate 2'), findsOneWidget);
+      expect(find.text('Clear Selection'), findsNothing);
 
       // Confirming Gate 2 updates selectedEntranceProvider
-      await tester.tap(find.text('Select Starting Entrance • Gate 2'));
+      await tester.tap(find.text('Select Gate 2'));
       await tester.pumpAndSettle();
 
       expect(container.read(selectedEntranceProvider)?.entranceId, equals(2));

@@ -8,7 +8,6 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/navigation_models.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/entrance_provider.dart';
-import 'entrance_detail_sheet.dart';
 
 
 /// Bottom sheet modal for selecting starting market entrance
@@ -629,39 +628,31 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                             fontSize: 12,
                                             color: AppColors.inkMuted,
                                             fontWeight: FontWeight.w500,
+                                            height: 1.3,
                                           ),
-                                          maxLines: 1,
+                                          maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        Text(
-                                          entrance.description,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 11,
-                                            color: AppColors.inkSubtle,
+                                        if (entrance.description.trim().isNotEmpty &&
+                                            entrance.description.trim().toLowerCase() !=
+                                                _getLandmarkContext(entrance.entranceId)
+                                                    .toLowerCase()) ...[
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            entrance.description,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              color: AppColors.inkSubtle,
+                                              height: 1.25,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                        ],
                                       ],
                                     ),
                                   ),
-
-                                  // Info Details Button
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.info_outline_rounded,
-                                      size: 20,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                    tooltip: 'Entrance details',
-                                    visualDensity: VisualDensity.compact,
-                                    splashRadius: 18,
-                                    onPressed: () {
-                                      HapticFeedback.selectionClick();
-                                      EntranceDetailSheet.show(context, entrance);
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 8),
 
                                   // Selection radio indicator
                                   Icon(
@@ -686,7 +677,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
             SafeArea(
               top: false,
               child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   border: Border(
@@ -729,6 +720,7 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           isClearAction
@@ -742,27 +734,31 @@ class _EntranceSelectorSheetState extends ConsumerState<EntranceSelectorSheet> {
                                   : const Color(0xFF94A3B8)),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          isClearAction
-                              ? 'Clear Selected Entrance'
-                              : (effectiveSelected != null
-                                  ? 'Select Starting Entrance • Gate ${effectiveSelected.entranceId}'
-                                  : 'Select Starting Entrance'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: isClearAction
-                                ? const Color(0xFFDC2626)
+                        Flexible(
+                          child: Text(
+                            isClearAction
+                                ? 'Clear Selection'
                                 : (effectiveSelected != null
-                                    ? Colors.white
-                                    : const Color(0xFF94A3B8)),
+                                    ? 'Select Gate ${effectiveSelected.entranceId}'
+                                    : 'Select Entrance'),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isClearAction
+                                  ? const Color(0xFFDC2626)
+                                  : (effectiveSelected != null
+                                      ? Colors.white
+                                      : const Color(0xFF94A3B8)),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (!isClearAction && effectiveSelected != null) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           const Icon(
                             Icons.arrow_forward_rounded,
-                            size: 17,
+                            size: 16,
                             color: Colors.white,
                           ),
                         ],

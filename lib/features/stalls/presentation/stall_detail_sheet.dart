@@ -703,11 +703,11 @@ class _StallDetailSheetState extends ConsumerState<StallDetailSheet> {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            stall.address.isNotEmpty
-                                ? stall.address
-                                : (stall.section != null
-                                    ? 'Section ${stall.section}, Ligao Public Market'
-                                    : 'Ligao City Public Market'),
+                            StallUtils.formatStallLocation(
+                              building: stall.section,
+                              stallNumber: stall.stallNumber,
+                              address: stall.address,
+                            ),
                             style: GoogleFonts.poppins(
                               fontSize: 12.5,
                               color: const Color(0xFF4B5563),

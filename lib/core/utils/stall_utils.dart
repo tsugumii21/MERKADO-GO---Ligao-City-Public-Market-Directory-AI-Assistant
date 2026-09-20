@@ -522,6 +522,115 @@ class StallUtils {
     return parts.join(', ');
   }
 
+  /// Converts text to clean Title Case, preserving Roman numerals (e.g. II, IV) and acronyms.
+  static String toTitleCase(String text) {
+    if (text.trim().isEmpty) return '';
+    final words = text.trim().split(RegExp(r'\s+'));
+    final buffer = <String>[];
+
+    final romanNumerals = {'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'};
+
+    for (final rawWord in words) {
+      final clean = rawWord.replaceAll(RegExp(r'[^\w#]'), '');
+      final lower = clean.toLowerCase();
+
+      // Check if word has trailing punctuation like comma or period
+      String suffix = '';
+      if (rawWord.endsWith(',')) suffix = ',';
+      if (rawWord.endsWith('.')) suffix = '.';
+
+      if (romanNumerals.contains(lower)) {
+        buffer.add('${lower.toUpperCase()}$suffix');
+      } else if (lower.startsWith('stall#')) {
+        final numPart = lower.replaceAll('stall#', '');
+        buffer.add('Stall #$numPart$suffix');
+      } else if (lower.startsWith('#')) {
+        final numPart = lower.replaceAll('#', '');
+        if (buffer.isNotEmpty && buffer.last.toLowerCase().contains('stall')) {
+          buffer.add('#$numPart$suffix');
+        } else {
+          buffer.add('Stall #$numPart$suffix');
+        }
+      } else if (lower.length <= 2 && !{'at', 'in', 'on', 'to', 'of'}.contains(lower)) {
+        buffer.add('${lower.toUpperCase()}$suffix');
+      } else if (lower.isNotEmpty) {
+        final title = lower[0].toUpperCase() + lower.substring(1);
+        buffer.add('$title$suffix');
+      }
+    }
+    return buffer.join(' ');
+  }
+
+  /// Formats stall location cleanly with hierarchy: Building - Stall Number - Address
+  /// Ensures Title Case formatting without screaming ALL-CAPS.
+  static String formatStallLocation({
+    String? building,
+    String? stallNumber,
+    String? address,
+    String fallback = 'Ligao City Public Market',
+  }) {
+    String bld = (building ?? '').trim();
+    String stNum = (stallNumber ?? '').trim();
+    String addr = (address ?? '').trim();
+
+    // If stallNumber has duplicated 'STALL #', extract number
+    if (stNum.isNotEmpty) {
+      final cleanNum = stNum.replaceFirst(
+        RegExp(r'^(stall\s*(#|no\.?|number)?\s*)+', caseSensitive: false),
+        '',
+      ).trim();
+      stNum = cleanNum.isNotEmpty ? 'Stall #$cleanNum' : 'Stall';
+    }
+
+    // Extract building and stall number from address if not explicitly passed
+    if (addr.isNotEmpty) {
+      // Check for 'STALL #XX' in address
+      if (stNum.isEmpty) {
+        final stallMatch = RegExp(r'stall\s*(?:#|no\.?|number)?\s*([0-9a-zA-Z_-]+)', caseSensitive: false).firstMatch(addr);
+        if (stallMatch != null) {
+          stNum = 'Stall #${stallMatch.group(1)}';
+          addr = addr.replaceRange(stallMatch.start, stallMatch.end, '').trim();
+        }
+      } else {
+        // Remove redundant stall number from address
+        addr = addr.replaceAll(RegExp(r'stall\s*(?:#|no\.?|number)?\s*[0-9a-zA-Z_-]+', caseSensitive: false), '').trim();
+      }
+
+      // Check for building pattern e.g. "BUILDING I", "BUILDING II", "NEW CAMARIN", "EXTENSION V"
+      if (bld.isEmpty) {
+        final bldMatch = RegExp(r'(building\s+[ivx0-9]+|new\s+camarin|extension\s+[ivx0-9]+)', caseSensitive: false).firstMatch(addr);
+        if (bldMatch != null) {
+          bld = bldMatch.group(0)!;
+          addr = addr.replaceRange(bldMatch.start, bldMatch.end, '').trim();
+        }
+      } else {
+        // Remove redundant building name from address if present
+        addr = addr.replaceAll(RegExp(RegExp.escape(bld), caseSensitive: false), '').trim();
+      }
+    }
+
+    // Clean up residual punctuation and separators from address
+    addr = addr
+        .replaceAll(RegExp(r'^[,\s•-]+|[,\s•-]+$'), '')
+        .replaceAll(RegExp(r',\s*,'), ',')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    final parts = <String>[];
+    if (bld.isNotEmpty) {
+      parts.add(toTitleCase(bld));
+    }
+    if (stNum.isNotEmpty) {
+      parts.add(stNum);
+    }
+    if (addr.isNotEmpty) {
+      parts.add(toTitleCase(addr));
+    }
+
+    if (parts.isEmpty) return fallback;
+    return parts.join(' • ');
+  }
+
   /// Formats physical location cleanly by de-duplicating section if already contained in address.
   static String formatLocation(
     String? section,
@@ -531,12 +640,17 @@ class StallUtils {
     final sec = section?.trim() ?? '';
     final addr = address.trim();
     if (sec.isEmpty && addr.isEmpty) return fallback;
-    if (sec.isEmpty) return addr;
-    if (addr.isEmpty) return 'Section $sec, Ligao Public Market';
-    if (addr.toLowerCase().contains(sec.toLowerCase())) {
-      return addr;
+    if (sec.isEmpty) {
+      return toTitleCase(addr);
     }
-    return '$sec • $addr';
+    if (addr.isEmpty) {
+      return 'Section $sec, Ligao Public Market';
+    }
+    return formatStallLocation(
+      building: sec,
+      address: addr,
+      fallback: fallback,
+    );
   }
 
   /// Formats stall number cleanly, eliminating duplicated prefixes like "STALL #STALL #1".

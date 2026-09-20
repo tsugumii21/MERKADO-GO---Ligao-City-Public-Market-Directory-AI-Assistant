@@ -60,9 +60,11 @@ class MapScreenState extends ConsumerState<MapScreen> {
     for (final entrance in entrances) {
       final url = entrance.imageUrl?.trim();
       if (url != null && url.isNotEmpty) {
-        final optUrl = CloudinaryService.getOptimizedImageUrl(url, width: 800);
-        precacheImage(CachedNetworkImageProvider(optUrl), context)
-            .catchError((_) {});
+        try {
+          final optUrl = CloudinaryService.getOptimizedImageUrl(url, width: 800);
+          precacheImage(CachedNetworkImageProvider(optUrl), context)
+              .catchError((_) {});
+        } catch (_) {}
       }
     }
   }

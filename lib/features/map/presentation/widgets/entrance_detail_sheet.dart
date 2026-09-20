@@ -44,10 +44,12 @@ class EntranceDetailSheet extends ConsumerWidget {
   }) {
     final rawUrl = entrance.imageUrl?.trim();
     if (rawUrl != null && rawUrl.isNotEmpty) {
-      final optimizedUrl =
-          CloudinaryService.getOptimizedImageUrl(rawUrl, width: 800);
-      precacheImage(CachedNetworkImageProvider(optimizedUrl), context)
-          .catchError((_) {});
+      try {
+        final optimizedUrl =
+            CloudinaryService.getOptimizedImageUrl(rawUrl, width: 800);
+        precacheImage(CachedNetworkImageProvider(optimizedUrl), context)
+            .catchError((_) {});
+      } catch (_) {}
     }
 
     bool effectiveAdmin = isAdmin;
